@@ -1,0 +1,131 @@
+/* Student Settings Page Styling */
+
+.headerBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.pageTitle {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0f1e36;
+  margin: 0;
+}
+
+.pageSub {
+  font-size: 13.5px;
+  color: #64748b;
+  margin: 4px 0 0 0;
+}
+
+.settingsGrid {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 24px;
+}
+
+.settingsNav {
+  background-color: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  height: fit-content;
+}
+
+.navBtn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.navBtn:hover {
+  background-color: #f1f5f9;
+  color: #0f1e36;
+}
+
+.activeNavBtn {
+  background-color: #e0edff;
+  color: #1b62d4;
+}
+
+.card {
+  background-color: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  padding: 28px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.cardTitle {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f1e36;
+  margin: 0 0 20px 0;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 12px;
+}
+
+.settingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.settingRow:last-child {
+  border-bottom: none;
+}
+
+.settingLabel {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f1e36;
+  margin: 0 0 2px 0;
+}
+
+.settingDesc {
+  font-size: 12.5px;
+  color: #64748b;
+  margin: 0;
+}
+
+.dangerCard {
+  border: 1px solid #fee2e2;
+  background-color: #fff5f5;
+  border-radius: 16px;
+  padding: 28px;
+  margin-top: 24px;
+}
+
+.primaryBtn {
+  background-color: #1b62d4;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (max-width: 850px) {
+  .settingsGrid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,197 @@
+/* ===================================================
+   AlumniConnect – Global Dark Mode tokens
+   Applied when <html data-theme="dark"> is set
+   =================================================== */
+
+[data-theme="dark"] {
+  /* Backgrounds */
+  --ac-bg-main: #0d1117;
+  --ac-bg-card: #161b22;
+  --ac-bg-sidebar: #010409;
+  --ac-bg-header: #161b22;
+  --ac-bg-input: #21262d;
+  --ac-bg-hover: rgba(255, 255, 255, 0.05);
+
+  /* Borders */
+  --ac-border: #30363d;
+
+  /* Text */
+  --ac-text-primary: #e6edf3;
+  --ac-text-secondary: #8b949e;
+  --ac-text-muted: #6e7681;
+
+  /* Brand */
+  --ac-brand: #58a6ff;
+  --ac-brand-bg: rgba(88, 166, 255, 0.1);
+}
+
+/* Light Mode tokens (default) */
+:root {
+  --ac-bg-main: #f5f7fc;
+  --ac-bg-card: #ffffff;
+  --ac-bg-sidebar: #071330;
+  --ac-bg-header: #ffffff;
+  --ac-bg-input: #f1f5f9;
+  --ac-bg-hover: rgba(255, 255, 255, 0.06);
+  --ac-border: #e2e8f0;
+  --ac-text-primary: #0f1e36;
+  --ac-text-secondary: #64748b;
+  --ac-text-muted: #94a3b8;
+  --ac-brand: #1b62d4;
+  --ac-brand-bg: #e0edff;
+}
+
+/* ─── Apply tokens to layout shells ─── */
+
+/* Student / Alumni / Admin main content bg */
+[data-theme="dark"] .dashboardLayout,
+[data-theme="dark"] [class*="dashboardLayout"] {
+  background-color: var(--ac-bg-main) !important;
+}
+
+[data-theme="dark"] [class*="mainContainer"] {
+  background-color: var(--ac-bg-main) !important;
+}
+
+[data-theme="dark"] [class*="topHeader"] {
+  background-color: var(--ac-bg-header) !important;
+  border-bottom-color: var(--ac-border) !important;
+}
+
+[data-theme="dark"] [class*="searchInput"] {
+  background-color: var(--ac-bg-input) !important;
+  color: var(--ac-text-primary) !important;
+}
+
+[data-theme="dark"] [class*="userName"] {
+  color: var(--ac-text-primary) !important;
+}
+
+[data-theme="dark"] [class*="userBadge"] {
+  color: var(--ac-text-secondary) !important;
+}
+
+/* Cards */
+[data-theme="dark"] [class*="card"],
+[data-theme="dark"] [class*="panelCard"],
+[data-theme="dark"] [class*="statCard"],
+[data-theme="dark"] [class*="profileHeaderCard"],
+[data-theme="dark"] [class*="settingsNav"],
+[data-theme="dark"] [class*="mentorCard"],
+[data-theme="dark"] [class*="eventCard"],
+[data-theme="dark"] [class*="sessionCard"] {
+  background-color: var(--ac-bg-card) !important;
+  border-color: var(--ac-border) !important;
+  color: var(--ac-text-primary) !important;
+}
+
+[data-theme="dark"] [class*="panelTitle"],
+[data-theme="dark"] [class*="cardTitle"],
+[data-theme="dark"] [class*="profileName"],
+[data-theme="dark"] [class*="eventTitle"],
+[data-theme="dark"] [class*="mentorName"],
+[data-theme="dark"] [class*="pageTitle"],
+[data-theme="dark"] [class*="welcomeTitle"],
+[data-theme="dark"] [class*="statValue"],
+[data-theme="dark"] [class*="statNumber"],
+[data-theme="dark"] [class*="jobTitle"],
+[data-theme="dark"] h1, [data-theme="dark"] h2,
+[data-theme="dark"] h3, [data-theme="dark"] h4 {
+  color: var(--ac-text-primary) !important;
+}
+
+[data-theme="dark"] [class*="profileSub"],
+[data-theme="dark"] [class*="pageSub"],
+[data-theme="dark"] [class*="welcomeSubtitle"],
+[data-theme="dark"] [class*="statLabel"],
+[data-theme="dark"] [class*="statSubtext"],
+[data-theme="dark"] [class*="jobCompany"],
+[data-theme="dark"] [class*="mentorRole"],
+[data-theme="dark"] [class*="mentorBio"],
+[data-theme="dark"] [class*="infoLabel"],
+[data-theme="dark"] p, [data-theme="dark"] span {
+  color: var(--ac-text-secondary) !important;
+}
+
+[data-theme="dark"] [class*="infoVal"] {
+  color: var(--ac-text-primary) !important;
+}
+
+/* Skill Badges & Tags */
+[data-theme="dark"] [class*="skillBadge"],
+[data-theme="dark"] [class*="skillTag"],
+[data-theme="dark"] [class*="categoryTag"],
+[data-theme="dark"] [class*="certItem"],
+[data-theme="dark"] [class*="distRow"],
+[data-theme="dark"] [class*="activityItem"],
+[data-theme="dark"] [class*="insightItem"],
+[data-theme="dark"] [class*="urgentNotifCard"] {
+  background-color: #21262d !important;
+  border-color: var(--ac-border) !important;
+  color: var(--ac-text-primary) !important;
+}
+
+/* Misc inputs */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background-color: var(--ac-bg-input) !important;
+  color: var(--ac-text-primary) !important;
+  border-color: var(--ac-border) !important;
+}
+
+/* Ant Design modal / form overrides */
+[data-theme="dark"] .ant-modal-content,
+[data-theme="dark"] .ant-modal-header,
+[data-theme="dark"] .ant-modal-title {
+  background-color: #161b22 !important;
+  color: var(--ac-text-primary) !important;
+}
+
+[data-theme="dark"] .ant-input,
+[data-theme="dark"] .ant-select-selector {
+  background-color: var(--ac-bg-input) !important;
+  color: var(--ac-text-primary) !important;
+  border-color: var(--ac-border) !important;
+}
+
+[data-theme="dark"] .ant-form-item-label > label {
+  color: var(--ac-text-primary) !important;
+}
+
+/* Quick action / nav buttons */
+[data-theme="dark"] [class*="navBtn"],
+[data-theme="dark"] [class*="quickActionBtn"],
+[data-theme="dark"] [class*="actionCardBtn"],
+[data-theme="dark"] [class*="tabBtn"],
+[data-theme="dark"] [class*="secondaryBtn"],
+[data-theme="dark"] [class*="updateProfileBtn"],
+[data-theme="dark"] [class*="editBtn"],
+[data-theme="dark"] [class*="viewProfileBtn"],
+[data-theme="dark"] [class*="declineBtn"] {
+  background-color: #21262d !important;
+  border-color: var(--ac-border) !important;
+  color: var(--ac-text-primary) !important;
+}
+
+/* Danger zone & contributions in dark mode */
+[data-theme="dark"] [class*="dangerCard"] {
+  background-color: rgba(239, 68, 68, 0.08) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+[data-theme="dark"] [class*="contributionCard"],
+[data-theme="dark"] [class*="roadmapStep"],
+[data-theme="dark"] [class*="resumeBox"],
+[data-theme="dark"] [class*="companyBox"] {
+  background-color: #21262d !important;
+  border-color: var(--ac-border) !important;
+}
+
+[data-theme="dark"] [class*="proCompletionCard"] {
+  background-color: #0d2347 !important;
+}
+
+[data-theme="dark"] [class*="eventCardBox"] {
+  background-color: #21262d !important;
+}

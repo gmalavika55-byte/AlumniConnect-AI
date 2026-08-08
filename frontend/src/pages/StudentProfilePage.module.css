@@ -1,0 +1,230 @@
+/* Student Profile Page Styling */
+
+.profileHeaderCard {
+   background: linear-gradient(135deg, #071330 0%, #1b62d4 100%);
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  overflow: visible;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+.coverBanner {
+  height: 200px;
+  background: linear-gradient(135deg, #071330 0%, #1b62d4 100%);
+  position: relative;
+  border-radius: 16px 16px 0 0;
+}
+
+.profileHeaderContent {
+  padding: 0 28px 28px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: -60px;
+  position: relative;
+}
+
+.avatarWrapper {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.avatarCircle {
+  width: 120px;
+  height: 120px;
+  margin-top: -55px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #071330 0%, #1b62d4 100%);
+  border: 4px solid #ffffff;
+  color: #ffffff;
+  font-size: 34px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.profileName {
+  font-size: 22px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0 0 8px 0;
+  line-height: 1.2;
+}
+
+.profileSub {
+  font-size: 13px;
+  color: #c0d3ec;
+  margin: 0;
+}
+
+.actionBtnGroup {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.editBtn {
+  background-color: #ffffff;
+  color: #0f1e36;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 9px 18px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.uploadResumeBtn {
+  background-color: #022050;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 18px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.grid2Col {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+}
+
+.card {
+  background-color: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 12px;
+}
+
+.cardTitle {
+  font-size: 17px;
+  font-weight: 700;
+  color: #0f1e36;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.infoItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.infoLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.infoVal {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f1e36;
+}
+
+.skillPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.skillBadge {
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f1e36;
+}
+
+.profTag {
+  font-size: 10px;
+  font-weight: 700;
+  background-color: #e0edff;
+  color: #1b62d4;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.certList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.certItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #f1f5f9;
+}
+
+.resumeBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.addBtnSmall {
+  background-color: #e0edff;
+  color: #1b62d4;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+@media (max-width: 992px) {
+  .grid2Col {
+    grid-template-columns: 1fr;
+  }
+}

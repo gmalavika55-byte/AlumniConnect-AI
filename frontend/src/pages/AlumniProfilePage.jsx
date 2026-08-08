@@ -1,0 +1,379 @@
+import React, { useState, useRef } from 'react';
+import { message, Modal, Form, Input, Button, Tag } from 'antd';
+import {
+  FiEdit2, FiUpload, FiPlus, FiBookOpen, FiUser, FiBriefcase,
+  FiLink, FiAward, FiFileText, FiExternalLink, FiCheckCircle
+} from 'react-icons/fi';
+import { AlumniLayout } from '../components/alumni/AlumniLayout';
+
+export const AlumniProfilePage = () => {
+  const fileInputRef = useRef(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isAddSkillOpen, setIsAddSkillOpen] = useState(false);
+  const [newSkillInput, setNewSkillInput] = useState('');
+  const [editForm] = Form.useForm();
+
+  const [profile, setProfile] = useState({
+    name: 'Rahul Kumar',
+    gradYear: '2018',
+    dept: 'Computer Science & Engineering',
+    college: 'Karpagam College of Engineering',
+    role: 'Senior Software Engineer',
+    company: 'Google India',
+    location: 'Bangalore, India',
+    email: 'rahul.kumar@alumni.kce.ac.in',
+    phone: '+91 98765 12345',
+    bio: 'Alumni Class of 2018. Senior Software Engineer specializing in Distributed Systems, Cloud Architecture, and React performance optimization. Passionate about mentoring students and guiding career transitions.',
+    linkedin: 'linkedin.com/in/rahulkumar-alumni',
+    github: 'github.com/rahulkumar-dev',
+    resumeName: 'Rahul_Kumar_Resume_2026.pdf',
+    resumeSize: '1.4 MB'
+  });
+
+  const [skills, setSkills] = useState([
+    'Distributed Systems', 'React.js', 'System Design', 'Cloud Architecture', 'Go / Golang', 'Kubernetes', 'Python'
+  ]);
+
+  const [experienceList, setExperienceList] = useState([
+    { title: 'Senior Software Engineer', company: 'Google India', period: '2022 - Present', desc: 'Leading distributed caching infrastructure and high-throughput microservices for Google Maps.' },
+    { title: 'Software Development Engineer II', company: 'Amazon AWS', period: '2019 - 2022', desc: 'Designed automated deployment pipelines for AWS SageMaker backend services.' },
+    { title: 'Junior Frontend Engineer', company: 'Flipkart', period: '2018 - 2019', desc: 'Built responsive web checkout flows using React & Redux.' }
+  ]);
+
+  const handleAddSkillSubmit = () => {
+    if (!newSkillInput.trim()) {
+      message.error('Please enter a skill name');
+      return;
+    }
+    if (skills.includes(newSkillInput.trim())) {
+      message.warning('Skill already exists!');
+      return;
+    }
+    setSkills([...skills, newSkillInput.trim()]);
+    message.success(`Skill "${newSkillInput.trim()}" added successfully!`);
+    setNewSkillInput('');
+    setIsAddSkillOpen(false);
+  };
+
+  const handleResumeUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setProfile(prev => ({
+        ...prev,
+        resumeName: file.name,
+        resumeSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`
+      }));
+      message.success(`Resume "${file.name}" uploaded successfully!`);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      const values = await editForm.validateFields();
+      setProfile(prev => ({ ...prev, ...values }));
+      message.success('Profile details saved successfully!');
+      setIsEditOpen(false);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  return (
+    <AlumniLayout>
+      {/* Hidden File Input for Resume */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        accept=".pdf,.doc,.docx"
+        onChange={handleResumeUpload}
+      />
+
+ {/* Cover Banner & Profile Card */}
+<div
+  style={{
+    background: "linear-gradient(135deg, #071330 0%, #1b62d4 100%)",
+    borderRadius: 16,
+    overflow: "hidden",
+    marginBottom: 24,
+    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+  }}
+>
+  {/* Cover Banner */}
+  <div
+    style={{
+      height: 190,
+      background: "linear-gradient(135deg, #071330 0%, #1b62d4 100%)",
+    }}
+  />
+
+  {/* Profile Content */}
+  <div
+    style={{
+      padding: "0 30px 30px",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginTop: -70,
+    }}
+  >
+    {/* Left Side */}
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 20,
+      }}
+    >
+      {/* Avatar */}
+      <div
+        style={{
+          width: 110,
+          height: 110,
+          borderRadius: "50%",
+          background: "linear-gradient(135deg,#071330,#1b62d4)",
+          border: "5px solid #fff",
+          color: "#fff",
+          fontSize: 34,
+          fontWeight: 800,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "0 6px 18px rgba(0,0,0,.25)",
+          position: "relative",
+          zIndex: 10,
+          flexShrink: 0,
+        }}
+      >
+        RK
+      </div>
+
+      {/* Profile Details */}
+      <div style={{ marginTop: 35 }}>
+        <h1
+          style={{
+            fontSize: 28,
+            fontWeight: 800,
+            color: "#ffffff",
+            margin: 0,
+          }}
+        >
+          {profile.name}
+        </h1>
+
+        <p
+          style={{
+            fontSize: 14,
+            color: "rgba(255,255,255,0.85)",
+            marginTop: 8,
+            marginBottom: 0,
+          }}
+        >
+          {profile.role} at <strong>{profile.company}</strong> • Class of{" "}
+          {profile.gradYear} ({profile.dept})
+        </p>
+      </div>
+    </div>
+
+    {/* Right Side Buttons */}
+    <div style={{ display: "flex", gap: 12 }}>
+      <Button
+        icon={<FiEdit2 />}
+        style={{
+          height: 42,
+          borderRadius: 8,
+          fontWeight: 600,
+        }}
+        onClick={() => {
+          editForm.setFieldsValue(profile);
+          setIsEditOpen(true);
+        }}
+      >
+        Edit Profile
+      </Button>
+
+      <Button
+        type="primary"
+        icon={<FiUpload />}
+        style={{
+          background: "#2563eb",
+          borderColor: "#2563eb",
+          height: 42,
+          borderRadius: 8,
+          fontWeight: 600,
+        }}
+        onClick={() => fileInputRef.current?.click()}
+      >
+        Upload Resume
+      </Button>
+    </div>
+  </div>
+</div>
+
+      {/* 2 Column Main Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 24 }}>
+        {/* LEFT COLUMN */}
+        <div>
+          {/* Professional Information */}
+          <div style={{ backgroundColor: '#ffffff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, marginBottom: 24 }}>
+            <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f1e36', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FiBriefcase color="#1b62d4" /> Professional & Academic Info
+            </h3>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Current Role</span>
+                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: '#0f1e36' }}>{profile.role}</p>
+              </div>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Company</span>
+                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: '#1b62d4' }}>{profile.company}</p>
+              </div>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Graduation Year</span>
+                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: '#0f1e36' }}>Class of {profile.gradYear}</p>
+              </div>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Department</span>
+                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: '#0f1e36' }}>{profile.dept}</p>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #f1f5f9' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Bio / About</span>
+              <p style={{ margin: '4px 0 0 0', fontSize: 13.5, color: '#334155', lineHeight: 1.6 }}>{profile.bio}</p>
+            </div>
+          </div>
+
+          {/* Skills Section */}
+          <div style={{ backgroundColor: '#ffffff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f1e36', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <FiAward color="#1b62d4" /> Skills & Technical Expertise
+              </h3>
+              <Button
+                size="small"
+                type="link"
+                icon={<FiPlus />}
+                style={{ fontWeight: 700, color: '#1b62d4' }}
+                onClick={() => setIsAddSkillOpen(true)}
+              >
+                Add Skill
+              </Button>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {skills.map((skill, index) => (
+                <Tag
+                  key={index}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    backgroundColor: '#f1f5f9',
+                    borderColor: '#e2e8f0',
+                    color: '#0f1e36'
+                  }}
+                >
+                  {skill}
+                </Tag>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN */}
+        <div>
+          {/* Career Information Timeline */}
+          <div style={{ backgroundColor: '#ffffff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, marginBottom: 24 }}>
+            <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f1e36', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FiBriefcase color="#1b62d4" /> Career Journey & Experience
+            </h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {experienceList.map((exp, idx) => (
+                <div key={idx} style={{ padding: 14, backgroundColor: '#f8fafc', borderRadius: 10, border: '1px solid #f1f5f9' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <strong style={{ fontSize: 14, color: '#0f1e36' }}>{exp.title}</strong>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: '#1b62d4' }}>{exp.period}</span>
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>{exp.company}</div>
+                  <p style={{ margin: 0, fontSize: 12.5, color: '#475569', lineHeight: 1.5 }}>{exp.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Primary Resume Section */}
+          <div style={{ backgroundColor: '#ffffff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24 }}>
+            <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f1e36', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FiFileText color="#1b62d4" /> Primary Resume
+            </h3>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 12, padding: 16 }}>
+              <div>
+                <h4 style={{ margin: 0, fontSize: 13.5, color: '#0f1e36' }}>{profile.resumeName}</h4>
+                <span style={{ fontSize: 11, color: '#64748b' }}>{profile.resumeSize} • PDF</span>
+              </div>
+              <Button
+                icon={<FiUpload />}
+                size="small"
+                style={{ fontWeight: 600 }}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Change
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Add Skill Modal */}
+      <Modal
+        title="Add Technical Skill"
+        open={isAddSkillOpen}
+        onCancel={() => setIsAddSkillOpen(false)}
+        onOk={handleAddSkillSubmit}
+        okText="Add Skill"
+      >
+        <div style={{ marginTop: 12 }}>
+          <label style={{ fontSize: 13, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 8 }}>Skill Name</label>
+          <Input
+            placeholder="e.g. AWS Cloud, Machine Learning, GraphQL..."
+            value={newSkillInput}
+            onChange={(e) => setNewSkillInput(e.target.value)}
+            onPressEnter={handleAddSkillSubmit}
+          />
+        </div>
+      </Modal>
+
+      {/* Edit Profile Modal */}
+      <Modal
+        title="Edit Alumni Profile"
+        open={isEditOpen}
+        onCancel={() => setIsEditOpen(false)}
+        onOk={handleSaveProfile}
+        okText="Save Profile Changes"
+      >
+        <Form form={editForm} layout="vertical">
+          <Form.Item name="name" label="Full Name" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="role" label="Current Job Title" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="company" label="Company" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="dept" label="Department" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="bio" label="Bio / About">
+            <Input.TextArea rows={3} />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </AlumniLayout>
+  );
+};

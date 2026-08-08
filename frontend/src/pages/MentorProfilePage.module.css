@@ -1,0 +1,327 @@
+/* MentorProfilePage.module.css */
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: #1b62d4;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 20px;
+  transition: color 0.2s;
+}
+.backBtn:hover { color: #0f47a5; }
+
+/* ── Hero Card ── */
+.heroCard {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  padding: 28px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.heroTop {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.heroAvatar {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #071330 0%, #1b62d4 100%);
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(27, 98, 212, 0.2);
+}
+
+.heroInfo { flex: 1; }
+
+.heroName {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0f1e36;
+  margin: 0 0 4px 0;
+  line-height: 1.2;
+}
+
+.matchPill {
+  background: linear-gradient(135deg, #1b62d4, #3b82f6);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+}
+
+.heroRole {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0 0 4px 0;
+  display: flex;
+  align-items: center;
+}
+
+.heroLocation {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+}
+
+.ratingRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.ratingText {
+  font-size: 13px;
+  font-weight: 700;
+  color: #eab308;
+}
+
+/* ── Stats Row ── */
+.statsRow {
+  display: flex;
+  gap: 0;
+  border-top: 1px solid #f1f5f9;
+  border-bottom: 1px solid #f1f5f9;
+  margin: 20px 0;
+}
+
+.statBox {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 10px;
+  border-right: 1px solid #f1f5f9;
+}
+.statBox:last-child { border-right: none; }
+
+.statNum {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f1e36;
+}
+
+.statLbl {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-align: center;
+  margin-top: 3px;
+}
+
+/* ── CTA Row ── */
+.heroCta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ── Body Grid ── */
+.bodyGrid {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 24px;
+  align-items: start;
+}
+
+/* ── Generic Card ── */
+.card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.cardTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f1e36;
+  margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+}
+
+.bodyText {
+  font-size: 14px;
+  color: #334155;
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* ── Skills ── */
+.skillPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.skillBadge {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f1e36;
+}
+
+/* ── Expertise ── */
+.expertiseList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.expertiseItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  color: #334155;
+  font-weight: 500;
+}
+
+/* ── Reviews ── */
+.reviewList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reviewItem {
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.reviewHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.reviewAvatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #1b62d4;
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.reviewText {
+  font-size: 13px;
+  color: #475569;
+  font-style: italic;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ── Action Card ── */
+.actionCard {
+  background: linear-gradient(135deg, #eef5ff 0%, #dbeafe 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 16px;
+  padding: 22px;
+  margin-bottom: 20px;
+}
+
+.actionCardTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f1e36;
+  margin: 0 0 6px 0;
+}
+
+.actionCardDesc {
+  font-size: 13px;
+  color: #475569;
+  margin: 0 0 16px 0;
+  line-height: 1.5;
+}
+
+/* ── Buttons ── */
+.primaryBtn {
+  background: #1b62d4;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s;
+}
+.primaryBtn:hover { background: #0f47a5; }
+
+.secondaryBtn {
+  background: #ffffff;
+  color: #0f1e36;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: border-color 0.2s;
+}
+.secondaryBtn:hover { border-color: #94a3b8; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .bodyGrid {
+    grid-template-columns: 1fr;
+  }
+  .heroTop {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .statsRow {
+    flex-wrap: wrap;
+  }
+  .statBox {
+    border-right: none;
+    border-bottom: 1px solid #f1f5f9;
+    width: 50%;
+  }
+}

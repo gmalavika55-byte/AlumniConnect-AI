@@ -1,0 +1,184 @@
+/* Student Career Page Styling */
+
+.headerBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.pageTitle {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0f1e36;
+  margin: 0;
+}
+
+.pageSub {
+  font-size: 13.5px;
+  color: #64748b;
+  margin: 4px 0 0 0;
+}
+
+.careerGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+}
+
+.card {
+  background-color: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 12px;
+}
+
+.cardTitle {
+  font-size: 17px;
+  font-weight: 700;
+  color: #0f1e36;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.jobItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.jobItem:last-child {
+  border-bottom: none;
+}
+
+.matchPill {
+  background-color: #e0edff;
+  color: #1b62d4;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+.jobTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f1e36;
+  margin: 0 0 4px 0;
+}
+
+.jobCompany {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.primaryBtn {
+  background-color: #1b62d4;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondaryBtn {
+  background-color: #ffffff;
+  color: #0f1e36;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.roadmapList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.roadmapStep {
+  background-color: #f8fafc;
+  border-left: 4px solid #1b62d4;
+  padding: 14px 16px;
+  border-radius: 0 8px 8px 0;
+}
+
+.stepTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f1e36;
+  margin: 0 0 4px 0;
+}
+
+.stepDesc {
+  font-size: 12.5px;
+  color: #64748b;
+  margin: 0;
+}
+
+.companyGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.companyBox {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f1e36;
+}
+
+.quickActionsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.actionCardBtn {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f1e36;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.actionCardBtn:hover {
+  border-color: #1b62d4;
+  background-color: #e0edff;
+  color: #1b62d4;
+}
+
+@media (max-width: 992px) {
+  .careerGrid {
+    grid-template-columns: 1fr;
+  }
+}
