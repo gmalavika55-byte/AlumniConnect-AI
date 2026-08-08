@@ -3,6 +3,22 @@
    Applied when <html data-theme="dark"> is set
    =================================================== */
 
+/* Light Mode tokens (default) */
+:root {
+  --ac-bg-main: #f5f7fc;
+  --ac-bg-card: #ffffff;
+  --ac-bg-sidebar: #071330;
+  --ac-bg-header: #ffffff;
+  --ac-bg-input: #f1f5f9;
+  --ac-bg-hover: rgba(255, 255, 255, 0.06);
+  --ac-border: #e2e8f0;
+  --ac-text-primary: #0f1e36;
+  --ac-text-secondary: #64748b;
+  --ac-text-muted: #94a3b8;
+  --ac-brand: #1b62d4;
+  --ac-brand-bg: #e0edff;
+}
+
 [data-theme="dark"] {
   /* Backgrounds */
   --ac-bg-main: #0d1117;
@@ -25,23 +41,18 @@
   --ac-brand-bg: rgba(88, 166, 255, 0.1);
 }
 
-/* Light Mode tokens (default) */
-:root {
-  --ac-bg-main: #f5f7fc;
-  --ac-bg-card: #ffffff;
-  --ac-bg-sidebar: #071330;
-  --ac-bg-header: #ffffff;
-  --ac-bg-input: #f1f5f9;
-  --ac-bg-hover: rgba(255, 255, 255, 0.06);
-  --ac-border: #e2e8f0;
-  --ac-text-primary: #0f1e36;
-  --ac-text-secondary: #64748b;
-  --ac-text-muted: #94a3b8;
-  --ac-brand: #1b62d4;
-  --ac-brand-bg: #e0edff;
+/* ─── Apply tokens to layout shells ─── */
+
+/* Global body override */
+[data-theme="dark"] body {
+  background-color: var(--ac-bg-main) !important;
+  color: var(--ac-text-primary) !important;
 }
 
-/* ─── Apply tokens to layout shells ─── */
+[data-theme="dark"] [class*="sidebar"] {
+  background-color: var(--ac-bg-sidebar) !important;
+  border-right-color: var(--ac-border) !important;
+}
 
 /* Student / Alumni / Admin main content bg */
 [data-theme="dark"] .dashboardLayout,
@@ -119,7 +130,12 @@
 
 /* Skill Badges & Tags */
 [data-theme="dark"] [class*="skillBadge"],
-[data-theme="dark"] [class*="skillTag"],
+[data-theme="dark"] [class*="skillTag"] {
+  background-color: rgba(88, 166, 255, 0.12) !important;
+  border: 1px solid rgba(88, 166, 255, 0.25) !important;
+  color: #58a6ff !important;
+}
+
 [data-theme="dark"] [class*="categoryTag"],
 [data-theme="dark"] [class*="certItem"],
 [data-theme="dark"] [class*="distRow"],
@@ -194,4 +210,78 @@
 
 [data-theme="dark"] [class*="eventCardBox"] {
   background-color: #21262d !important;
+}
+
+/* Student Dashboard specific dark overrides */
+[data-theme="dark"] [class*="mentorItem"],
+[data-theme="dark"] [class*="eventItem"] {
+  border-bottom-color: var(--ac-border) !important;
+}
+
+[data-theme="dark"] [class*="jobItem"] {
+  background-color: var(--ac-bg-card) !important;
+  border-bottom-color: var(--ac-border) !important;
+}
+
+[data-theme="dark"] [class*="dateBadgeBox"],
+[data-theme="dark"] [class*="jobIconBadge"] {
+  background-color: #21262d !important;
+  color: var(--ac-text-primary) !important;
+}
+
+[data-theme="dark"] [class*="dateNumber"] {
+  color: var(--ac-text-primary) !important;
+}
+
+[data-theme="dark"] [class*="dateMonth"] {
+  color: var(--ac-text-secondary) !important;
+}
+
+[data-theme="dark"] [class*="jobTypePill"] {
+  background-color: #21262d !important;
+  color: var(--ac-brand) !important;
+}
+
+[data-theme="dark"] [class*="matchTag"] {
+  background-color: rgba(88, 166, 255, 0.15) !important;
+  color: #58a6ff !important;
+}
+
+[data-theme="dark"] [class*="greenTag"] {
+  background-color: rgba(46, 160, 67, 0.15) !important;
+  color: #3fb950 !important;
+}
+
+[data-theme="dark"] [class*="orangeTag"],
+[data-theme="dark"] [class*="jobTypeOrange"] {
+  background-color: rgba(217, 119, 6, 0.15) !important;
+  color: #fb923c !important;
+}
+
+[data-theme="dark"] [class*="findMentorBtn"],
+[data-theme="dark"] [class*="requestBtn"],
+[data-theme="dark"] [class*="browseJobsBtn"] {
+  background-color: var(--ac-brand) !important;
+  border: none !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] [class*="findMentorBtn"]:hover,
+[data-theme="dark"] [class*="requestBtn"]:hover,
+[data-theme="dark"] [class*="browseJobsBtn"]:hover {
+  background-color: #4096ff !important;
+}
+
+[data-theme="dark"] [class*="disabledBtn"] {
+  background-color: #161b22 !important;
+  color: var(--ac-text-muted) !important;
+  border-color: var(--ac-border) !important;
+}
+
+[data-theme="dark"] [class*="bellBtn"] {
+  color: var(--ac-text-secondary) !important;
+}
+
+[data-theme="dark"] [class*="bellBtn"]:hover {
+  color: var(--ac-text-primary) !important;
 }

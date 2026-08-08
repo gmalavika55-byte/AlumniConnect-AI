@@ -186,7 +186,7 @@ export const StudentSettingsPage = () => {
                   <p className={styles.settingDesc}>Select your preferred dashboard color theme. Applied globally.</p>
                 </div>
                 <Select
-                  value={theme}
+                  value={theme === 'dark' ? 'Dark' : 'Light'}
                   options={[
                     { value: 'Light', label: '☀️  Light Theme' },
                     { value: 'Dark', label: '🌙  Dark Theme' }

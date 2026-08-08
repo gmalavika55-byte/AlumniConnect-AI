@@ -3,18 +3,20 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { message, Modal } from 'antd';
 import {
   FiGrid, FiUser, FiCalendar, FiBriefcase,
-  FiUsers, FiBell, FiSettings, FiLogOut, FiSearch
+  FiUsers, FiBell, FiSettings, FiLogOut, FiSearch,
+  FiSun, FiMoon
 } from 'react-icons/fi';
 import { FaGraduationCap } from 'react-icons/fa';
 import { authService } from '../../services/authService';
-import { useTranslation } from '../../context/AppContext';
+import { useTranslation, useAppContext } from '../../context/AppContext';
 import styles from './StudentLayout.module.css';
 
 export const StudentLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
-const student = authService.getCurrentUser();
+  const { theme, setTheme } = useAppContext();
+  const student = authService.getCurrentUser();
   const handleLogout = () => {
     Modal.confirm({
       title: 'Confirm Logout',
@@ -100,6 +102,14 @@ const student = authService.getCurrentUser();
             >
               <FiBell />
               <span className={styles.bellBadge} />
+            </button>
+
+            <button
+              className={styles.bellBtn}
+              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            >
+              {theme === 'dark' ? <FiSun /> : <FiMoon />}
             </button>
 
            <div

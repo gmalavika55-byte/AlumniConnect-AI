@@ -379,11 +379,12 @@
 }
 
 .statCard {
-  background-color: #ffffff;
+  background-color: var(--ac-bg-card);
   border-radius: 14px;
   padding: 22px 20px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--ac-border);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  color: var(--ac-text-primary);
 }
 
 .statIconBadge {
@@ -410,7 +411,7 @@
 .statNumber {
   font-size: 30px;
   font-weight: 800;
-  color: #0f1e36;
+  color: var(--ac-text-primary);
   line-height: 1;
   margin-bottom: 6px;
 }
@@ -446,12 +447,13 @@
 
 /* Panel Card Styling */
 .panelCard {
-  background-color: #ffffff;
+  background-color: var(--ac-bg-card);
   border-radius: 16px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--ac-border);
   padding: 24px;
   margin-bottom: 28px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  color: var(--ac-text-primary);
 }
 
 .panelHeader {
@@ -464,7 +466,7 @@
 .panelTitle {
   font-size: 18px;
   font-weight: 700;
-  color: #0f1e36;
+  color: var(--ac-text-primary);
   margin: 0;
 }
 

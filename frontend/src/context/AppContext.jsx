@@ -66,15 +66,23 @@ export const useTranslation = () => {
 // ────────────────────────────────────────────
 export const AppProvider = ({ children }) => {
   const [theme, setThemeState] = useState(
-    () => localStorage.getItem('ac_theme') || 'Light'
+    () => {
+      const saved = localStorage.getItem('alumniConnectTheme');
+      if (saved) return saved.toLowerCase();
+      const legacy = localStorage.getItem('ac_theme');
+      if (legacy) return legacy.toLowerCase();
+      return 'light';
+    }
   );
   const [language, setLanguageState] = useState(
     () => localStorage.getItem('ac_language') || 'English'
   );
 
   const setTheme = (val) => {
-    setThemeState(val);
-    localStorage.setItem('ac_theme', val);
+    if (!val) return;
+    const normalized = val.toLowerCase();
+    setThemeState(normalized);
+    localStorage.setItem('alumniConnectTheme', normalized);
   };
 
   const setLanguage = (val) => {
@@ -85,7 +93,7 @@ export const AppProvider = ({ children }) => {
   // Apply dark / light class to <html> element
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === 'Dark') {
+    if (theme === 'dark') {
       root.setAttribute('data-theme', 'dark');
     } else {
       root.removeAttribute('data-theme');

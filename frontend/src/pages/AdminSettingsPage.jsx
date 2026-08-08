@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Form, Input, Select, Switch, Button, message, Table, Tag } from 'antd';
-import { FiUser, FiShield, FiGlobe, FiMoon, FiCheck, FiSave } from 'react-icons/fi';
+import { Form, Input, Select, Switch, Button, message, Table } from 'antd';
+import { FiUser, FiShield, FiGlobe, FiSave } from 'react-icons/fi';
 import { AdminLayout } from '../components/admin/AdminLayout';
 import { useAppContext } from '../context/AppContext';
 
@@ -43,7 +43,7 @@ export const AdminSettingsPage = () => {
       title: 'System Feature / Module',
       dataIndex: 'feature',
       key: 'feature',
-      render: (text) => <strong style={{ color: '#0f1e36' }}>{text}</strong>
+      render: (text) => <strong style={{ color: 'var(--ac-text-primary)' }}>{text}</strong>
     },
     {
       title: 'Admin Access',
@@ -84,17 +84,17 @@ export const AdminSettingsPage = () => {
     <AdminLayout>
       {/* Title Header */}
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0f1e36', margin: '0 0 4px 0' }}>Settings & Role Configuration</h1>
-        <p style={{ fontSize: 13.5, color: '#64748b', margin: 0 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 4px 0' }}>Settings & Role Configuration</h1>
+        <p style={{ fontSize: 13.5, color: 'var(--ac-text-secondary)', margin: 0 }}>
           Manage administrator profile credentials, role permissions, and global appearance preferences.
         </p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 24 }}>
         {/* 1. Admin Profile Settings Form */}
-        <div style={{ backgroundColor: '#ffffff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24 }}>
-          <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f1e36', margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <FiUser color="#1b62d4" /> Administrator Profile
+        <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', padding: 24 }}>
+          <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <FiUser color="var(--ac-brand)" /> Administrator Profile
           </h3>
 
           <Form
@@ -122,7 +122,7 @@ export const AdminSettingsPage = () => {
             <Button
               type="primary"
               icon={<FiSave />}
-              style={{ backgroundColor: '#1b62d4', height: 40, width: '100%', borderRadius: 8, fontWeight: 600 }}
+              style={{ backgroundColor: 'var(--ac-brand)', height: 40, width: '100%', borderRadius: 8, fontWeight: 600 }}
               onClick={handleProfileSave}
             >
               Update Admin Profile
@@ -131,20 +131,20 @@ export const AdminSettingsPage = () => {
         </div>
 
         {/* 2. Global Theme & Language Settings (AppContext) */}
-        <div style={{ backgroundColor: '#ffffff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24 }}>
-          <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f1e36', margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <FiGlobe color="#1b62d4" /> Appearance & Localization
+        <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', padding: 24 }}>
+          <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <FiGlobe color="var(--ac-brand)" /> Appearance & Localization
           </h3>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {/* Theme Selector */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 16, borderBottom: '1px solid #f1f5f9' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 16, borderBottom: '1px solid var(--ac-border)' }}>
               <div>
-                <strong style={{ fontSize: 14, color: '#0f1e36', display: 'block' }}>Interface Theme</strong>
-                <span style={{ fontSize: 12, color: '#64748b' }}>Switch between Light and Dark Navy theme globally.</span>
+                <strong style={{ fontSize: 14, color: 'var(--ac-text-primary)', display: 'block' }}>Interface Theme</strong>
+                <span style={{ fontSize: 12, color: 'var(--ac-text-secondary)' }}>Switch between Light and Dark Navy theme globally.</span>
               </div>
               <Select
-                value={theme}
+                value={theme === 'dark' ? 'Dark' : 'Light'}
                 options={[
                   { value: 'Light', label: '☀️ Light Theme' },
                   { value: 'Dark', label: '🌙 Dark Navy' }
@@ -158,10 +158,10 @@ export const AdminSettingsPage = () => {
             </div>
 
             {/* Language Selector */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 16, borderBottom: '1px solid #f1f5f9' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 16, borderBottom: '1px solid var(--ac-border)' }}>
               <div>
-                <strong style={{ fontSize: 14, color: '#0f1e36', display: 'block' }}>System Language</strong>
-                <span style={{ fontSize: 12, color: '#64748b' }}>Dynamic translation across sidebar & labels.</span>
+                <strong style={{ fontSize: 14, color: 'var(--ac-text-primary)', display: 'block' }}>System Language</strong>
+                <span style={{ fontSize: 12, color: 'var(--ac-text-secondary)' }}>Dynamic translation across sidebar & labels.</span>
               </div>
               <Select
                 value={language}
@@ -178,11 +178,11 @@ export const AdminSettingsPage = () => {
             </div>
 
             {/* Active Status Box */}
-            <div style={{ padding: 16, background: theme === 'Dark' ? '#161b22' : '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 13 }}>
-              <div style={{ fontWeight: 700, color: theme === 'Dark' ? '#58a6ff' : '#1b62d4', marginBottom: 4 }}>
+            <div style={{ padding: 16, background: theme === 'dark' ? 'var(--ac-bg-input)' : 'var(--ac-bg-main)', borderRadius: 12, border: '1px solid var(--ac-border)', fontSize: 13 }}>
+              <div style={{ fontWeight: 700, color: 'var(--ac-brand)', marginBottom: 4 }}>
                 Active Settings Summary
               </div>
-              <div style={{ color: theme === 'Dark' ? '#e6edf3' : '#334155' }}>
+              <div style={{ color: 'var(--ac-text-primary)' }}>
                 Current Theme: <strong>{theme} Mode</strong> • Language: <strong>{language}</strong>
               </div>
             </div>
@@ -191,11 +191,11 @@ export const AdminSettingsPage = () => {
       </div>
 
       {/* 3. Role Permissions Matrix Table */}
-      <div style={{ backgroundColor: '#ffffff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, marginTop: 24 }}>
-        <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f1e36', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <FiShield color="#1b62d4" /> Role Permission Control Matrix
+      <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', padding: 24, marginTop: 24 }}>
+        <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <FiShield color="var(--ac-brand)" /> Role Permission Control Matrix
         </h3>
-        <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 20px 0' }}>
+        <p style={{ fontSize: 13, color: 'var(--ac-text-secondary)', margin: '0 0 20px 0' }}>
           Configure feature access rights for Admin, Alumni, and Student roles across the platform.
         </p>
         <Table

@@ -92,7 +92,7 @@ export const StudentEventsPage = () => {
 
       {/* Tabs Row */}
       <div className={styles.eventsTabRow}>
-        {['Upcoming Events', 'Registered Events', 'Past Events', 'Timeline'].map(tab => (
+        {['Upcoming Events', 'Registered Events', 'Past Events'].map(tab => (
           <button
             key={tab}
             className={`${styles.tabBtn} ${activeTab === tab ? styles.activeTabBtn : ''}`}
