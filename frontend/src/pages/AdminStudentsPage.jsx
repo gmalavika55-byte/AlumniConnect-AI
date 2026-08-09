@@ -63,7 +63,7 @@ export const AdminStudentsPage = () => {
       title: 'Reg Number',
       dataIndex: 'registerNumber',
       key: 'registerNumber',
-      render: (text) => <span style={{ fontWeight: 700, color: '#1b62d4' }}>{text}</span>
+      render: (text) => <span style={{ fontWeight: 700, color: 'var(--ac-brand)' }}>{text}</span>
     },
     {
       title: 'Student Name',
@@ -71,8 +71,8 @@ export const AdminStudentsPage = () => {
       key: 'fullName',
       render: (name, record) => (
         <div>
-          <div style={{ fontWeight: 700, color: '#0f1e36' }}>{name}</div>
-          <div style={{ fontSize: 12, color: '#64748b' }}>{record.email}</div>
+          <div style={{ fontWeight: 700, color: 'var(--ac-text-primary)' }}>{name}</div>
+          <div style={{ fontSize: 12, color: 'var(--ac-text-secondary)' }}>{record.email}</div>
         </div>
       )
     },
@@ -114,7 +114,7 @@ export const AdminStudentsPage = () => {
           <Button
             type="text"
             icon={<FiEdit2 />}
-            style={{ color: '#1b62d4' }}
+            style={{ color: 'var(--ac-brand)' }}
             onClick={() => {
               setEditStudent(record);
               editForm.setFieldsValue(record);
@@ -140,8 +140,8 @@ export const AdminStudentsPage = () => {
       {/* Top Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0f1e36', margin: '0 0 4px 0' }}>Student Management</h1>
-          <p style={{ fontSize: 13.5, color: '#64748b', margin: 0 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 4px 0' }}>Student Management</h1>
+          <p style={{ fontSize: 13.5, color: 'var(--ac-text-secondary)', margin: 0 }}>
             Manage student enrollments, academic records, department allocation, and profiles.
           </p>
         </div>
@@ -149,7 +149,7 @@ export const AdminStudentsPage = () => {
         <Button
           type="primary"
           icon={<FiPlus />}
-          style={{ backgroundColor: '#1b62d4', height: 42, borderRadius: 8, fontWeight: 600 }}
+          style={{ backgroundColor: 'var(--ac-brand)', border: 'none', height: 42, borderRadius: 8, fontWeight: 600 }}
           onClick={() => setIsAddOpen(true)}
         >
           Add New Student
@@ -158,10 +158,10 @@ export const AdminStudentsPage = () => {
 
       {/* Filter Row */}
       <div style={{
-        backgroundColor: '#ffffff',
+        backgroundColor: 'var(--ac-bg-card)',
         borderRadius: 14,
         padding: '18px 24px',
-        border: '1px solid #e2e8f0',
+        border: '1px solid var(--ac-border)',
         marginBottom: 24,
         display: 'flex',
         gap: 16,
@@ -170,7 +170,7 @@ export const AdminStudentsPage = () => {
       }}>
         <div style={{ flex: 1, minWidth: 240 }}>
           <Input
-            prefix={<FiSearch style={{ color: '#94a3b8', marginRight: 6 }} />}
+            prefix={<FiSearch style={{ color: 'var(--ac-text-secondary)', marginRight: 6 }} />}
             placeholder="Search by student name, register number, or email..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
@@ -179,7 +179,7 @@ export const AdminStudentsPage = () => {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#64748b' }}>Department:</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ac-text-secondary)' }}>Department:</span>
           <Select
             value={deptFilter}
             onChange={setDeptFilter}
@@ -198,7 +198,7 @@ export const AdminStudentsPage = () => {
       </div>
 
       {/* Student Table */}
-      <div style={{ backgroundColor: '#ffffff', borderRadius: 14, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+      <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 14, border: '1px solid var(--ac-border)', overflow: 'hidden' }}>
         <Table
           columns={columns}
           dataSource={filteredStudents}
@@ -217,39 +217,39 @@ export const AdminStudentsPage = () => {
       >
         {viewStudent && (
           <div>
-            <div style={{ textAlign: 'center', paddingBottom: 20, borderBottom: '1px solid #f1f5f9' }}>
+            <div style={{ textAlign: 'center', paddingBottom: 20, borderBottom: '1px solid var(--ac-border)' }}>
               <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#071330', color: 'white', fontSize: 24, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto' }}>
                 {viewStudent.fullName.split(' ').map(n => n[0]).join('')}
               </div>
-              <h2 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 4px 0', color: '#0f1e36' }}>{viewStudent.fullName}</h2>
-              <span style={{ color: '#1b62d4', fontWeight: 700 }}>{viewStudent.registerNumber}</span>
+              <h2 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 4px 0', color: 'var(--ac-text-primary)' }}>{viewStudent.fullName}</h2>
+              <span style={{ color: 'var(--ac-brand)', fontWeight: 700 }}>{viewStudent.registerNumber}</span>
             </div>
 
             <div style={{ padding: '20px 0', display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Department</span>
-                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: '#0f1e36' }}>{viewStudent.department}</p>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Department</span>
+                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{viewStudent.department}</p>
               </div>
               <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Academic Batch</span>
-                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: '#0f1e36' }}>{viewStudent.batchYear}</p>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Academic Batch</span>
+                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{viewStudent.batchYear}</p>
               </div>
               <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Current CGPA</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Current CGPA</span>
                 <p style={{ margin: '2px 0 0 0', fontWeight: 700, color: '#059669' }}>{viewStudent.cgpa} / 10.0</p>
               </div>
               <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Email Address</span>
-                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: '#0f1e36' }}>{viewStudent.email}</p>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Email Address</span>
+                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{viewStudent.email}</p>
               </div>
               <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Mobile Number</span>
-                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: '#0f1e36' }}>{viewStudent.phone}</p>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Mobile Number</span>
+                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{viewStudent.phone}</p>
               </div>
             </div>
 
-            <div style={{ paddingTop: 16, borderTop: '1px solid #f1f5f9' }}>
-              <Button type="primary" icon={<FiDownload />} style={{ width: '100%', backgroundColor: '#1b62d4' }} onClick={() => message.success('Downloading student academic transcript PDF...')}>
+            <div style={{ paddingTop: 16, borderTop: '1px solid var(--ac-border)' }}>
+              <Button type="primary" icon={<FiDownload />} style={{ width: '100%', backgroundColor: 'var(--ac-brand)', border: 'none' }} onClick={() => message.success('Downloading student academic transcript PDF...')}>
                 Download Academic Transcript
               </Button>
             </div>

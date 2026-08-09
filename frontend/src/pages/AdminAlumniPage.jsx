@@ -66,8 +66,8 @@ export const AdminAlumniPage = () => {
             {name.split(' ').map(n => n[0]).join('')}
           </div>
           <div>
-            <div style={{ fontWeight: 700, color: '#0f1e36' }}>{name}</div>
-            <div style={{ fontSize: 12, color: '#64748b' }}>Class of {record.year} • {record.dept}</div>
+            <div style={{ fontWeight: 700, color: 'var(--ac-text-primary)' }}>{name}</div>
+            <div style={{ fontSize: 12, color: 'var(--ac-text-secondary)' }}>Class of {record.year} • {record.dept}</div>
           </div>
         </div>
       )
@@ -78,8 +78,8 @@ export const AdminAlumniPage = () => {
       key: 'company',
       render: (company, record) => (
         <div>
-          <div style={{ fontWeight: 700, color: '#0f1e36' }}>{record.designation}</div>
-          <div style={{ fontSize: 12, color: '#1b62d4', fontWeight: 600 }}>at {company}</div>
+          <div style={{ fontWeight: 700, color: 'var(--ac-text-primary)' }}>{record.designation}</div>
+          <div style={{ fontSize: 12, color: 'var(--ac-brand)', fontWeight: 600 }}>at {company}</div>
         </div>
       )
     },
@@ -155,8 +155,8 @@ export const AdminAlumniPage = () => {
       {/* Page Title Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0f1e36', margin: '0 0 4px 0' }}>Alumni Verification & Management</h1>
-          <p style={{ fontSize: 13.5, color: '#64748b', margin: 0 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 4px 0' }}>Alumni Verification & Management</h1>
+          <p style={{ fontSize: 13.5, color: 'var(--ac-text-secondary)', margin: 0 }}>
             Verify graduation certificates, approve alumni accounts, and monitor institutional alumni records.
           </p>
         </div>
@@ -164,10 +164,10 @@ export const AdminAlumniPage = () => {
 
       {/* Filter Row */}
       <div style={{
-        backgroundColor: '#ffffff',
+        backgroundColor: 'var(--ac-bg-card)',
         borderRadius: 14,
         padding: '18px 24px',
-        border: '1px solid #e2e8f0',
+        border: '1px solid var(--ac-border)',
         marginBottom: 24,
         display: 'flex',
         gap: 16,
@@ -176,7 +176,7 @@ export const AdminAlumniPage = () => {
       }}>
         <div style={{ flex: 1, minWidth: 240 }}>
           <Input
-            prefix={<FiSearch style={{ color: '#94a3b8', marginRight: 6 }} />}
+            prefix={<FiSearch style={{ color: 'var(--ac-text-secondary)', marginRight: 6 }} />}
             placeholder="Search by alumni name, company, or department..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
@@ -185,7 +185,7 @@ export const AdminAlumniPage = () => {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#64748b' }}>Status:</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ac-text-secondary)' }}>Status:</span>
           <Select
             value={statusFilter}
             onChange={setStatusFilter}
@@ -201,7 +201,7 @@ export const AdminAlumniPage = () => {
       </div>
 
       {/* Table */}
-      <div style={{ backgroundColor: '#ffffff', borderRadius: 14, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+      <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 14, border: '1px solid var(--ac-border)', overflow: 'hidden' }}>
         <Table
           columns={columns}
           dataSource={filteredAlumni}
@@ -220,31 +220,31 @@ export const AdminAlumniPage = () => {
       >
         {viewAlumni && (
           <div>
-            <div style={{ textAlign: 'center', paddingBottom: 20, borderBottom: '1px solid #f1f5f9' }}>
+            <div style={{ textAlign: 'center', paddingBottom: 20, borderBottom: '1px solid var(--ac-border)' }}>
               <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg, #071330 0%, #1b62d4 100%)', color: 'white', fontSize: 24, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto' }}>
                 {viewAlumni.name.split(' ').map(n => n[0]).join('')}
               </div>
-              <h2 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 4px 0', color: '#0f1e36' }}>{viewAlumni.name}</h2>
-              <p style={{ color: '#1b62d4', fontWeight: 600, margin: 0 }}>{viewAlumni.designation} at <strong>{viewAlumni.company}</strong></p>
+              <h2 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 4px 0', color: 'var(--ac-text-primary)' }}>{viewAlumni.name}</h2>
+              <p style={{ color: 'var(--ac-brand)', fontWeight: 600, margin: 0 }}>{viewAlumni.designation} at <strong>{viewAlumni.company}</strong></p>
             </div>
 
             <div style={{ padding: '20px 0', display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Graduation Year & Degree</span>
-                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: '#0f1e36' }}>Class of {viewAlumni.year} • B.E. {viewAlumni.dept}</p>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Graduation Year & Degree</span>
+                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>Class of {viewAlumni.year} • B.E. {viewAlumni.dept}</p>
               </div>
               <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Verification Document</span>
-                <div style={{ marginTop: 6, padding: '12px 16px', background: '#f8fafc', border: '1px border-dashed #cbd5e1', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Verification Document</span>
+                <div style={{ marginTop: 6, padding: '12px 16px', background: 'var(--ac-bg-input)', border: '1px border-dashed #cbd5e1', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <FiFileText size={18} color="#1b62d4" />
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#0f1e36' }}>{viewAlumni.certificate}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ac-text-primary)' }}>{viewAlumni.certificate}</span>
                   </div>
                   <Button type="link" size="small" onClick={() => message.info('Opening certificate preview...')}>View PDF</Button>
                 </div>
               </div>
               <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Status</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Status</span>
                 <div style={{ marginTop: 4 }}>
                   <Tag color={viewAlumni.status === 'Verified' ? 'success' : viewAlumni.status === 'Pending' ? 'warning' : 'error'} style={{ fontWeight: 700 }}>
                     {viewAlumni.status.toUpperCase()}
@@ -253,7 +253,7 @@ export const AdminAlumniPage = () => {
               </div>
             </div>
 
-            <div style={{ paddingTop: 16, borderTop: '1px solid #f1f5f9', display: 'flex', gap: 12 }}>
+            <div style={{ paddingTop: 16, borderTop: '1px solid var(--ac-border)', display: 'flex', gap: 12 }}>
               <Button
                 type="primary"
                 style={{ flex: 1, backgroundColor: '#16a34a', borderColor: '#16a34a' }}

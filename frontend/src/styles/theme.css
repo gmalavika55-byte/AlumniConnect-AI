@@ -285,3 +285,202 @@
 [data-theme="dark"] [class*="bellBtn"]:hover {
   color: var(--ac-text-primary) !important;
 }
+
+/* Strict Flat and Clean UI overrides for Dark Mode (Alumni & Student) */
+[data-theme="dark"] button,
+[data-theme="dark"] [class*="Btn"],
+[data-theme="dark"] .ant-btn,
+[data-theme="dark"] .ant-btn-primary,
+[data-theme="dark"] .ant-btn-default {
+  box-shadow: none !important;
+  text-shadow: none !important;
+  background-image: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease !important;
+}
+
+[data-theme="dark"] [class*="card"],
+[data-theme="dark"] [class*="panelCard"],
+[data-theme="dark"] [class*="statCard"],
+[data-theme="dark"] [class*="welcomeBar"],
+[data-theme="dark"] [class*="eventCardBox"],
+[data-theme="dark"] [class*="contributionCard"] {
+  box-shadow: none !important;
+  background-image: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* High-contrast button text visibility and colors in Dark Mode */
+[data-theme="dark"] button,
+[data-theme="dark"] .ant-btn {
+  color: var(--ac-text-primary) !important;
+}
+
+[data-theme="dark"] button span,
+[data-theme="dark"] .ant-btn span {
+  color: var(--ac-text-primary) !important;
+}
+
+[data-theme="dark"] button svg,
+[data-theme="dark"] .ant-btn svg {
+  color: var(--ac-text-primary) !important;
+}
+
+/* Hover/active states for standard buttons */
+[data-theme="dark"] button:hover,
+[data-theme="dark"] .ant-btn:hover,
+[data-theme="dark"] button:hover span,
+[data-theme="dark"] .ant-btn:hover span {
+  color: #ffffff !important;
+  background-color: var(--ac-bg-hover) !important;
+  border-color: var(--ac-text-muted) !important;
+}
+
+[data-theme="dark"] button:hover svg,
+[data-theme="dark"] .ant-btn:hover svg {
+  color: #ffffff !important;
+}
+
+/* Primary actions and high contrast white text buttons */
+[data-theme="dark"] .ant-btn-primary,
+[data-theme="dark"] .ant-btn-primary span,
+[data-theme="dark"] [class*="primaryBtn"],
+[data-theme="dark"] [class*="primaryBtn"] span,
+[data-theme="dark"] button[style*="background-color"],
+[data-theme="dark"] button[style*="background-color"] span,
+[data-theme="dark"] button[style*="background"],
+[data-theme="dark"] button[style*="background"] span {
+  color: #ffffff !important;
+  background-color: var(--ac-brand) !important;
+  border-color: var(--ac-brand) !important;
+}
+
+[data-theme="dark"] .ant-btn-primary svg,
+[data-theme="dark"] [class*="primaryBtn"] svg,
+[data-theme="dark"] button[style*="background-color"] svg,
+[data-theme="dark"] button[style*="background"] svg {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .ant-btn-primary:hover,
+[data-theme="dark"] [class*="primaryBtn"]:hover {
+  color: #ffffff !important;
+  opacity: 0.9 !important;
+}
+
+/* Danger actions (Logout / Decline) */
+[data-theme="dark"] .ant-btn-dangerous,
+[data-theme="dark"] .ant-btn-dangerous span,
+[data-theme="dark"] .ant-btn-dangerous svg,
+[data-theme="dark"] .ant-btn-primary.ant-btn-dangerous,
+[data-theme="dark"] .ant-btn-primary.ant-btn-dangerous span,
+[data-theme="dark"] .ant-btn-primary.ant-btn-dangerous svg,
+[data-theme="dark"] button[class*="danger"],
+[data-theme="dark"] button[class*="danger"] span,
+[data-theme="dark"] button[class*="danger"] svg,
+[data-theme="dark"] button[class*="decline"],
+[data-theme="dark"] button[class*="decline"] span,
+[data-theme="dark"] button[class*="decline"] svg {
+  color: #ffffff !important;
+  background-color: #ff4d4f !important;
+  border-color: #ff4d4f !important;
+}
+
+[data-theme="dark"] .ant-btn-dangerous:hover,
+[data-theme="dark"] .ant-btn-primary.ant-btn-dangerous:hover,
+[data-theme="dark"] button[class*="danger"]:hover,
+[data-theme="dark"] button[class*="decline"]:hover {
+  background-color: #ff7875 !important;
+  border-color: #ff7875 !important;
+  color: #ffffff !important;
+}
+
+/* ─── Admin Module Dark Mode Overrides ─── */
+
+/* Admin Dashboard stat icon background badges */
+[data-theme="dark"] [class*="blueIconBg"] {
+  background-color: rgba(88, 166, 255, 0.15) !important;
+  color: #58a6ff !important;
+}
+
+[data-theme="dark"] [class*="purpleIconBg"] {
+  background-color: rgba(139, 92, 246, 0.15) !important;
+  color: #a78bfa !important;
+}
+
+[data-theme="dark"] [class*="orangeIconBg"] {
+  background-color: rgba(234, 88, 12, 0.15) !important;
+  color: #fb923c !important;
+}
+
+[data-theme="dark"] [class*="pinkIconBg"] {
+  background-color: rgba(219, 39, 119, 0.15) !important;
+  color: #f472b6 !important;
+}
+
+[data-theme="dark"] [class*="greenIconBg"] {
+  background-color: rgba(22, 163, 74, 0.15) !important;
+  color: #4ade80 !important;
+}
+
+/* Activity icon boxes in dark mode */
+[data-theme="dark"] [class*="activityGreenBg"] {
+  background-color: rgba(22, 163, 74, 0.15) !important;
+  color: #4ade80 !important;
+}
+
+[data-theme="dark"] [class*="activityBlueBg"] {
+  background-color: rgba(88, 166, 255, 0.15) !important;
+  color: #58a6ff !important;
+}
+
+[data-theme="dark"] [class*="activityOrangeBg"] {
+  background-color: rgba(234, 88, 12, 0.15) !important;
+  color: #fb923c !important;
+}
+
+/* Activity pills in dark mode */
+[data-theme="dark"] [class*="pillGreen"] {
+  background-color: rgba(22, 163, 74, 0.15) !important;
+  color: #4ade80 !important;
+}
+
+[data-theme="dark"] [class*="pillBlue"] {
+  background-color: rgba(88, 166, 255, 0.15) !important;
+  color: #58a6ff !important;
+}
+
+[data-theme="dark"] [class*="pillOrange"] {
+  background-color: rgba(234, 88, 12, 0.15) !important;
+  color: #fb923c !important;
+}
+
+/* Placement tag */
+[data-theme="dark"] [class*="placementTag"] {
+  background-color: rgba(88, 166, 255, 0.15) !important;
+  color: #58a6ff !important;
+}
+
+/* Action link text */
+[data-theme="dark"] [class*="logBtn"],
+[data-theme="dark"] [class*="actionLink"] {
+  color: var(--ac-brand) !important;
+}
+
+/* Admin layout userName / userBadge in topHeader */
+[data-theme="dark"] [class*="topHeader"] [class*="userName"] {
+  color: var(--ac-text-primary) !important;
+}
+
+[data-theme="dark"] [class*="topHeader"] [class*="userBadge"] {
+  color: var(--ac-text-secondary) !important;
+}
+
+/* Stat card button overrides in dark (inline-styled buttons in stat cards) */
+[data-theme="dark"] [class*="statCard"] button {
+  background-color: var(--ac-bg-input) !important;
+  border-color: var(--ac-border) !important;
+  color: var(--ac-text-primary) !important;
+}

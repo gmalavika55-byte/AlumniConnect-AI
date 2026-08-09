@@ -1,71 +1,23 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Tag, Button, message, Space, Modal } from 'antd';
-import { FiUsers, FiCheck, FiX, FiEye, FiClock, FiStar, FiBookOpen } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Tag, Button, message, Modal } from 'antd';
+import { FiUsers, FiCheck, FiX, FiEye, FiClock, FiStar, FiBookOpen, FiCalendar } from 'react-icons/fi';
 import { AlumniLayout } from '../components/alumni/AlumniLayout';
+import { useAppContext } from '../context/AppContext';
 
 export const AlumniMentorshipPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { alumniRequests: requests, setAlumniRequests: setRequests } = useAppContext();
 
-  // Requests state
-  const [requests, setRequests] = useState([
-    {
-      id: 101,
-      studentName: 'John Mathew',
-      registerNumber: '21CS085',
-      dept: 'Computer Science & Engineering',
-      semester: 'Semester 5',
-      cgpa: '8.85',
-      matchPct: '98% MATCH',
-      topic: 'System Design & Scalable Frontend Architecture',
-      careerGoal: 'Aspiring Full Stack Engineer aiming for Big Tech interviews.',
-      skills: ['React.js', 'System Design', 'Algorithms', 'Node.js'],
-      status: 'Pending',
-      requestDate: 'Today, 02:30 PM'
-    },
-    {
-      id: 102,
-      studentName: 'Ananya Sharma',
-      registerNumber: '21CS099',
-      dept: 'Information Technology',
-      semester: 'Semester 5',
-      cgpa: '9.12',
-      matchPct: '95% MATCH',
-      topic: 'Machine Learning Pipeline Optimization & PyTorch',
-      careerGoal: 'Seeking guidance for AI/ML research internships and projects.',
-      skills: ['Python', 'Machine Learning', 'PyTorch', 'Data Structures'],
-      status: 'Pending',
-      requestDate: 'Yesterday, 05:15 PM'
-    },
-    {
-      id: 103,
-      studentName: 'Karthik Raja',
-      registerNumber: '22EC042',
-      dept: 'Electronics & Communication',
-      semester: 'Semester 3',
-      cgpa: '8.40',
-      matchPct: '88% MATCH',
-      topic: 'Embedded Systems & Cloud IoT Integration',
-      careerGoal: 'Building smart hardware IoT prototypes with cloud backends.',
-      skills: ['C++', 'Embedded C', 'AWS IoT', 'Microcontrollers'],
-      status: 'Accepted',
-      requestDate: 'July 28, 2026'
-    },
-    {
-      id: 104,
-      studentName: 'Devendra Patel',
-      registerNumber: '23ME015',
-      dept: 'Mechanical Engineering',
-      semester: 'Semester 1',
-      cgpa: '7.85',
-      matchPct: '82% MATCH',
-      topic: 'CAD Design & Manufacturing Automation',
-      careerGoal: 'Preparing for Core Mechanical design roles.',
-      skills: ['SolidWorks', 'CAD', 'Python Basics'],
-      status: 'Declined',
-      requestDate: 'July 25, 2026'
+  // Set active tab based on React Router navigation state, default to 'Pending'
+  const [activeTab, setActiveTab] = useState('Pending');
+
+  useEffect(() => {
+    if (location.state && location.state.tab) {
+      setActiveTab(location.state.tab);
     }
-  ]);
+  }, [location.state]);
 
   const handleAccept = (req) => {
     setRequests(requests.map(r => r.id === req.id ? { ...r, status: 'Accepted' } : r));
@@ -85,127 +37,215 @@ export const AlumniMentorshipPage = () => {
     });
   };
 
+  const handleComplete = (req) => {
+    const formattedDate = new Date().toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+    setRequests(requests.map(r => r.id === req.id ? { ...r, status: 'Completed', completionDate: formattedDate } : r));
+    message.success(`Mentorship session with ${req.studentName} marked as Completed!`);
+  };
+
+  // Get records filtered by active tab
+  const getFilteredRequests = () => {
+    if (activeTab === 'Pending') {
+      return requests.filter(r => r.status === 'Pending');
+    } else if (activeTab === 'Accepted') {
+      return requests.filter(r => r.status === 'Accepted');
+    } else {
+      return requests.filter(r => r.status === 'Completed');
+    }
+  };
+
+  const filteredRequests = getFilteredRequests();
+
   return (
     <AlumniLayout>
       {/* Title Header */}
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0f1e36', margin: '0 0 4px 0' }}>Mentorship Requests</h1>
-        <p style={{ fontSize: 13.5, color: '#64748b', margin: 0 }}>
-          Review and respond to 1-on-1 mentorship session requests submitted by current students.
+        <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 4px 0' }}>Mentorship Hub</h1>
+        <p style={{ fontSize: 13.5, color: 'var(--ac-text-secondary)', margin: 0 }}>
+          Manage your active student matches, review pending requests, or browse past connections.
         </p>
       </div>
 
-      {/* Requests Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 24 }}>
-        {requests.map(req => (
-          <div key={req.id} style={{
-            backgroundColor: '#ffffff',
-            borderRadius: 16,
-            border: '1px solid #e2e8f0',
-            padding: 24,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
-          }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <span style={{
-                  background: 'linear-gradient(135deg, #1b62d4, #3b82f6)',
-                  color: '#ffffff',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  padding: '3px 10px',
-                  borderRadius: 20,
-                  letterSpacing: 0.5
-                }}>
-                  {req.matchPct}
-                </span>
-                <Tag color={req.status === 'Accepted' ? 'success' : req.status === 'Pending' ? 'warning' : 'error'} style={{ fontWeight: 700 }}>
-                  {req.status.toUpperCase()}
-                </Tag>
-              </div>
+      {/* Tab Switcher Header */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 24, borderBottom: '1px solid var(--ac-border)', paddingBottom: 12, flexWrap: 'wrap' }}>
+        {[
+          { id: 'Pending', label: 'Pending Requests', count: requests.filter(r => r.status === 'Pending').length },
+          { id: 'Accepted', label: 'Accepted / Active Mentorships', count: requests.filter(r => r.status === 'Accepted').length },
+          { id: 'History', label: 'Past History', count: requests.filter(r => r.status === 'Completed').length }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            style={{
+              padding: '8px 18px',
+              borderRadius: 8,
+              border: activeTab === tab.id ? '1px solid var(--ac-brand)' : '1px solid var(--ac-border)',
+              backgroundColor: activeTab === tab.id ? 'var(--ac-brand)' : 'var(--ac-bg-card)',
+              color: activeTab === tab.id ? '#ffffff' : 'var(--ac-text-primary)',
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontSize: 13.5,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              transition: 'all 0.2s ease'
+            }}
+          >
+            {tab.label}
+            <span style={{
+              fontSize: 11,
+              fontWeight: 700,
+              backgroundColor: activeTab === tab.id ? 'rgba(255, 255, 255, 0.25)' : 'var(--ac-bg-input)',
+              color: activeTab === tab.id ? '#ffffff' : 'var(--ac-text-secondary)',
+              padding: '2px 6px',
+              borderRadius: 10
+            }}>
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </div>
 
-              {/* Student Header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-                <div style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: '50%',
-                  backgroundColor: '#071330',
-                  color: '#ffffff',
-                  fontWeight: 800,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 16
-                }}>
-                  {req.studentName.split(' ').map(n => n[0]).join('')}
-                </div>
-                <div>
-                  <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f1e36', margin: 0 }}>{req.studentName}</h3>
-                  <div style={{ fontSize: 12, color: '#64748b' }}>{req.registerNumber} • {req.dept} ({req.semester})</div>
-                </div>
-              </div>
-
-              {/* Requested Topic */}
-              <div style={{ padding: 12, backgroundColor: '#f8fafc', borderRadius: 10, border: '1px solid #f1f5f9', marginBottom: 14 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Requested Topic</span>
-                <p style={{ margin: '2px 0 0 0', fontSize: 13.5, fontWeight: 700, color: '#0f1e36' }}>{req.topic}</p>
-              </div>
-
-              {/* Career Goal */}
-              <p style={{ fontSize: 13, color: '#475569', margin: '0 0 14px 0', lineHeight: 1.5 }}>
-                <strong>Career Goal:</strong> {req.careerGoal}
-              </p>
-
-              {/* Skill Badges */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
-                {req.skills.map((s, idx) => (
-                  <span key={idx} style={{ fontSize: 11, fontWeight: 600, backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', color: '#0f1e36', padding: '3px 8px', borderRadius: 6 }}>
-                    {s}
+      {/* Render Requests Lists / Cards */}
+      {filteredRequests.length === 0 ? (
+        <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', padding: 48, textAlign: 'center', color: 'var(--ac-text-secondary)' }}>
+          <FiUsers size={48} color="var(--ac-text-muted)" style={{ marginBottom: 16 }} />
+          <h3 style={{ fontSize: 16, color: 'var(--ac-text-primary)', margin: '0 0 4px 0' }}>No records found</h3>
+          <p style={{ fontSize: 13.5, margin: 0 }}>There are currently no items under the {activeTab === 'Pending' ? 'Pending Requests' : activeTab === 'Accepted' ? 'Accepted / Active Mentorships' : 'Past History'} section.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 24 }}>
+          {filteredRequests.map(req => (
+            <div key={req.id} style={{
+              backgroundColor: 'var(--ac-bg-card)',
+              borderRadius: 16,
+              border: '1px solid var(--ac-border)',
+              padding: 24,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+            }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <span style={{
+                    background: 'linear-gradient(135deg, #1b62d4, #3b82f6)',
+                    color: '#ffffff',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: '3px 10px',
+                    borderRadius: 20,
+                    letterSpacing: 0.5
+                  }}>
+                    {req.matchPct}
                   </span>
-                ))}
+                  <Tag color={req.status === 'Accepted' ? 'success' : req.status === 'Pending' ? 'warning' : 'default'} style={{ fontWeight: 700 }}>
+                    {req.status === 'Completed' ? 'COMPLETED' : req.status.toUpperCase()}
+                  </Tag>
+                </div>
+
+                {/* Student Header */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                  <div style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--ac-bg-input)',
+                    border: '1px solid var(--ac-border)',
+                    color: 'var(--ac-text-primary)',
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 16
+                  }}>
+                    {req.studentName.split(' ').map(n => n[0]).join('')}
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ac-text-primary)', margin: 0 }}>{req.studentName}</h3>
+                    <div style={{ fontSize: 12, color: 'var(--ac-text-secondary)' }}>{req.registerNumber} • {req.dept} ({req.semester})</div>
+                  </div>
+                </div>
+
+                {/* Requested Topic */}
+                <div style={{ padding: 12, backgroundColor: 'var(--ac-bg-input)', borderRadius: 10, border: '1px solid var(--ac-border)', marginBottom: 14 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-muted)', textTransform: 'uppercase' }}>Requested Topic</span>
+                  <p style={{ margin: '2px 0 0 0', fontSize: 13.5, fontWeight: 700, color: 'var(--ac-text-primary)' }}>{req.topic}</p>
+                </div>
+
+                {/* Career Goal */}
+                <p style={{ fontSize: 13, color: 'var(--ac-text-secondary)', margin: '0 0 14px 0', lineHeight: 1.5 }}>
+                  <strong>Career Goal:</strong> {req.careerGoal}
+                </p>
+
+                {/* Skill Badges */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+                  {req.skills.map((s, idx) => (
+                    <span key={idx} style={{ fontSize: 11, fontWeight: 600, backgroundColor: 'var(--ac-bg-input)', border: '1px solid var(--ac-border)', color: 'var(--ac-text-primary)', padding: '3px 8px', borderRadius: 6 }}>
+                      {s}
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Action Buttons */}
-            <div style={{ paddingTop: 16, borderTop: '1px solid #f1f5f9', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              {/* View Profile MUST navigate to complete student profile page! */}
-              <Button
-                type="default"
-                icon={<FiEye />}
-                style={{ flex: 1, fontWeight: 600 }}
-                onClick={() => navigate(`/alumni/student/${req.id}`, { state: { student: req } })}
-              >
-                View Profile
-              </Button>
+              {/* Action Buttons */}
+              <div style={{ paddingTop: 16, borderTop: '1px solid var(--ac-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                <Button
+                  type="default"
+                  icon={<FiEye />}
+                  style={{ fontWeight: 600, height: 38 }}
+                  onClick={() => navigate(`/alumni/student/${req.id}`, { state: { student: req } })}
+                >
+                  View Profile
+                </Button>
 
-              {req.status === 'Pending' && (
-                <>
+                {req.status === 'Pending' && (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Button
+                      type="primary"
+                      icon={<FiCheck />}
+                      style={{ backgroundColor: '#16a34a', borderColor: '#16a34a', fontWeight: 600, height: 38 }}
+                      onClick={() => handleAccept(req)}
+                    >
+                      Accept
+                    </Button>
+                    <Button
+                      type="primary"
+                      danger
+                      icon={<FiX />}
+                      style={{ fontWeight: 600, height: 38 }}
+                      onClick={() => handleDecline(req)}
+                    >
+                      Decline
+                    </Button>
+                  </div>
+                )}
+
+                {req.status === 'Accepted' && (
                   <Button
                     type="primary"
                     icon={<FiCheck />}
-                    style={{ backgroundColor: '#16a34a', borderColor: '#16a34a', fontWeight: 600 }}
-                    onClick={() => handleAccept(req)}
+                    style={{ backgroundColor: 'var(--ac-brand)', borderColor: 'var(--ac-brand)', fontWeight: 600, height: 38 }}
+                    onClick={() => handleComplete(req)}
                   >
-                    Accept
+                    Complete Session
                   </Button>
-                  <Button
-                    type="primary"
-                    danger
-                    icon={<FiX />}
-                    style={{ fontWeight: 600 }}
-                    onClick={() => handleDecline(req)}
-                  >
-                    Decline
-                  </Button>
-                </>
-              )}
+                )}
+
+                {req.status === 'Completed' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--ac-text-secondary)' }}>
+                    <FiCalendar /> <span>Completed: {req.completionDate}</span>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </AlumniLayout>
   );
 };

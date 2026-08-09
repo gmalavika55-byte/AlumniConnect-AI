@@ -83,7 +83,7 @@ export const AlumniStudentProfilePage = () => {
       </button>
 
       {/* Header Profile Hero */}
-      <div style={{ backgroundColor: '#ffffff', borderRadius: 16, border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+      <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', overflow: 'hidden', marginBottom: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
         <div style={{ height: 140, background: 'linear-gradient(135deg, #071330 0%, #1b62d4 100%)' }} />
         <div style={{ padding: '0 28px 24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: -44 }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 20 }}>
@@ -104,8 +104,8 @@ export const AlumniStudentProfilePage = () => {
               {student.studentName.split(' ').map(n => n[0]).join('')}
             </div>
             <div>
-              <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0f1e36', margin: '0 0 4px 0' }}>{student.studentName}</h1>
-              <p style={{ fontSize: 13.5, color: '#64748b', margin: 0 }}>
+              <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 4px 0' }}>{student.studentName}</h1>
+              <p style={{ fontSize: 13.5, color: 'var(--ac-text-secondary)', margin: 0 }}>
                 {student.registerNumber} • {student.dept} ({student.semester})
               </p>
             </div>
@@ -138,50 +138,50 @@ export const AlumniStudentProfilePage = () => {
         {/* LEFT COLUMN */}
         <div>
           {/* Academic Information */}
-          <div style={{ backgroundColor: '#ffffff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, marginBottom: 24 }}>
-            <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f1e36', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', padding: 24, marginBottom: 24 }}>
+            <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
               <FiBookOpen color="#1b62d4" /> Academic Profile & Performance
             </h3>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Register Number</span>
-                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: '#0f1e36' }}>{student.registerNumber}</p>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-muted)', textTransform: 'uppercase' }}>Register Number</span>
+                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{student.registerNumber}</p>
               </div>
               <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Current CGPA</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-muted)', textTransform: 'uppercase' }}>Current CGPA</span>
                 <p style={{ margin: '2px 0 0 0', fontWeight: 700, color: '#059669' }}>{student.cgpa}</p>
               </div>
               <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Department</span>
-                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: '#0f1e36' }}>{student.dept}</p>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-muted)', textTransform: 'uppercase' }}>Department</span>
+                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{student.dept}</p>
               </div>
               <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Academic Batch</span>
-                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: '#0f1e36' }}>{student.semester}</p>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-muted)', textTransform: 'uppercase' }}>Academic Batch</span>
+                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{student.semester}</p>
               </div>
             </div>
 
-            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #f1f5f9' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Student Bio</span>
-              <p style={{ margin: '4px 0 0 0', fontSize: 13.5, color: '#334155', lineHeight: 1.6 }}>{student.bio}</p>
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--ac-border)' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-muted)', textTransform: 'uppercase' }}>Student Bio</span>
+              <p style={{ margin: '4px 0 0 0', fontSize: 13.5, color: 'var(--ac-text-secondary)', lineHeight: 1.6 }}>{student.bio}</p>
             </div>
           </div>
 
           {/* Requested Mentorship Goal */}
-          <div style={{ backgroundColor: '#ffffff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, marginBottom: 24 }}>
-            <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f1e36', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', padding: 24, marginBottom: 24 }}>
+            <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
               <FiBriefcase color="#1b62d4" /> Mentorship Goals & Requested Topic
             </h3>
 
-            <div style={{ padding: 14, backgroundColor: '#f8fafc', borderRadius: 10, border: '1px solid #f1f5f9', marginBottom: 14 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Requested Session Topic</span>
-              <p style={{ margin: '2px 0 0 0', fontSize: 14, fontWeight: 700, color: '#0f1e36' }}>{student.topic}</p>
+            <div style={{ padding: 14, backgroundColor: 'var(--ac-bg-input)', borderRadius: 10, border: '1px solid #f1f5f9', marginBottom: 14 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-muted)', textTransform: 'uppercase' }}>Requested Session Topic</span>
+              <p style={{ margin: '2px 0 0 0', fontSize: 14, fontWeight: 700, color: 'var(--ac-text-primary)' }}>{student.topic}</p>
             </div>
 
             <div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Career Goal & Expectations</span>
-              <p style={{ margin: '4px 0 0 0', fontSize: 13.5, color: '#334155', lineHeight: 1.6 }}>{student.careerGoal}</p>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-muted)', textTransform: 'uppercase' }}>Career Goal & Expectations</span>
+              <p style={{ margin: '4px 0 0 0', fontSize: 13.5, color: 'var(--ac-text-secondary)', lineHeight: 1.6 }}>{student.careerGoal}</p>
             </div>
           </div>
         </div>
@@ -189,14 +189,14 @@ export const AlumniStudentProfilePage = () => {
         {/* RIGHT COLUMN */}
         <div>
           {/* Skills Badges */}
-          <div style={{ backgroundColor: '#ffffff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, marginBottom: 24 }}>
-            <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f1e36', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', padding: 24, marginBottom: 24 }}>
+            <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
               <FiAward color="#1b62d4" /> Technical Skills
             </h3>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {student.skills?.map((skill, idx) => (
-                <Tag key={idx} style={{ padding: '6px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, backgroundColor: '#f1f5f9', color: '#0f1e36' }}>
+                <Tag key={idx} style={{ padding: '6px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, backgroundColor: 'var(--ac-bg-input)', color: 'var(--ac-text-primary)' }}>
                   {skill}
                 </Tag>
               ))}
@@ -204,15 +204,15 @@ export const AlumniStudentProfilePage = () => {
           </div>
 
           {/* Primary Resume Box */}
-          <div style={{ backgroundColor: '#ffffff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24 }}>
-            <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f1e36', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', padding: 24 }}>
+            <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
               <FiFileText color="#1b62d4" /> Attached Resume
             </h3>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 12, padding: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'var(--ac-bg-input)', border: '1px dashed #cbd5e1', borderRadius: 12, padding: 16 }}>
               <div>
-                <h4 style={{ margin: 0, fontSize: 13.5, color: '#0f1e36' }}>{student.resumeName}</h4>
-                <span style={{ fontSize: 11, color: '#64748b' }}>{student.resumeSize} • PDF</span>
+                <h4 style={{ margin: 0, fontSize: 13.5, color: 'var(--ac-text-primary)' }}>{student.resumeName}</h4>
+                <span style={{ fontSize: 11, color: 'var(--ac-text-secondary)' }}>{student.resumeSize} • PDF</span>
               </div>
               <Button
                 type="primary"

@@ -90,104 +90,43 @@ export const AdminSettingsPage = () => {
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 24 }}>
-        {/* 1. Admin Profile Settings Form */}
-        <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', padding: 24 }}>
-          <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <FiUser color="var(--ac-brand)" /> Administrator Profile
-          </h3>
+      {/* 1. Admin Profile Settings Form */}
+      <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', padding: 24, marginBottom: 24 }}>
+        <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <FiUser color="var(--ac-brand)" /> Administrator Profile
+        </h3>
 
-          <Form
-            form={profileForm}
-            layout="vertical"
-            initialValues={{
-              name: 'Dr. Sarah Jenkins',
-              email: 'sarah.jenkins@kce.ac.in',
-              role: 'System Administrator',
-              dept: 'Institutional Administration'
-            }}
+        <Form
+          form={profileForm}
+          layout="vertical"
+          initialValues={{
+            name: 'Dr. Sarah Jenkins',
+            email: 'sarah.jenkins@kce.ac.in',
+            role: 'System Administrator',
+            dept: 'Institutional Administration'
+          }}
+        >
+          <Form.Item name="name" label="Full Name" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="email" label="Admin Email Address" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="role" label="Administrative Role">
+            <Input disabled />
+          </Form.Item>
+          <Form.Item name="dept" label="Department / Office">
+            <Input />
+          </Form.Item>
+          <Button
+            type="primary"
+            icon={<FiSave />}
+            style={{ backgroundColor: 'var(--ac-brand)', border: 'none', height: 40, width: '100%', borderRadius: 8, fontWeight: 600 }}
+            onClick={handleProfileSave}
           >
-            <Form.Item name="name" label="Full Name" rules={[{ required: true }]}>
-              <Input />
-            </Form.Item>
-            <Form.Item name="email" label="Admin Email Address" rules={[{ required: true }]}>
-              <Input />
-            </Form.Item>
-            <Form.Item name="role" label="Administrative Role">
-              <Input disabled />
-            </Form.Item>
-            <Form.Item name="dept" label="Department / Office">
-              <Input />
-            </Form.Item>
-            <Button
-              type="primary"
-              icon={<FiSave />}
-              style={{ backgroundColor: 'var(--ac-brand)', height: 40, width: '100%', borderRadius: 8, fontWeight: 600 }}
-              onClick={handleProfileSave}
-            >
-              Update Admin Profile
-            </Button>
-          </Form>
-        </div>
-
-        {/* 2. Global Theme & Language Settings (AppContext) */}
-        <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', padding: 24 }}>
-          <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <FiGlobe color="var(--ac-brand)" /> Appearance & Localization
-          </h3>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {/* Theme Selector */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 16, borderBottom: '1px solid var(--ac-border)' }}>
-              <div>
-                <strong style={{ fontSize: 14, color: 'var(--ac-text-primary)', display: 'block' }}>Interface Theme</strong>
-                <span style={{ fontSize: 12, color: 'var(--ac-text-secondary)' }}>Switch between Light and Dark Navy theme globally.</span>
-              </div>
-              <Select
-                value={theme === 'dark' ? 'Dark' : 'Light'}
-                options={[
-                  { value: 'Light', label: '☀️ Light Theme' },
-                  { value: 'Dark', label: '🌙 Dark Navy' }
-                ]}
-                onChange={(val) => {
-                  setTheme(val);
-                  message.success(`Global Theme changed to ${val}`);
-                }}
-                style={{ width: 160 }}
-              />
-            </div>
-
-            {/* Language Selector */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 16, borderBottom: '1px solid var(--ac-border)' }}>
-              <div>
-                <strong style={{ fontSize: 14, color: 'var(--ac-text-primary)', display: 'block' }}>System Language</strong>
-                <span style={{ fontSize: 12, color: 'var(--ac-text-secondary)' }}>Dynamic translation across sidebar & labels.</span>
-              </div>
-              <Select
-                value={language}
-                options={[
-                  { value: 'English', label: 'English (US)' },
-                  { value: 'Tamil', label: 'Tamil (தமிழ்)' }
-                ]}
-                onChange={(val) => {
-                  setLanguage(val);
-                  message.success(`Language updated to ${val}`);
-                }}
-                style={{ width: 160 }}
-              />
-            </div>
-
-            {/* Active Status Box */}
-            <div style={{ padding: 16, background: theme === 'dark' ? 'var(--ac-bg-input)' : 'var(--ac-bg-main)', borderRadius: 12, border: '1px solid var(--ac-border)', fontSize: 13 }}>
-              <div style={{ fontWeight: 700, color: 'var(--ac-brand)', marginBottom: 4 }}>
-                Active Settings Summary
-              </div>
-              <div style={{ color: 'var(--ac-text-primary)' }}>
-                Current Theme: <strong>{theme} Mode</strong> • Language: <strong>{language}</strong>
-              </div>
-            </div>
-          </div>
-        </div>
+            Update Admin Profile
+          </Button>
+        </Form>
       </div>
 
       {/* 3. Role Permissions Matrix Table */}

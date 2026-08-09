@@ -1,85 +1,103 @@
 import React, { useState } from 'react';
-import { message, Modal, Rate, Tag } from 'antd';
+import { message, Tag } from 'antd';
 import { FiUsers, FiCalendar, FiVideo, FiMessageSquare, FiStar, FiClock, FiCheckCircle } from 'react-icons/fi';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { RequestMentorshipModal } from '../components/student/RequestMentorshipModal';
 import { JoinMeetingModal } from '../components/student/JoinMeetingModal';
 import { LeaveFeedbackModal } from '../components/student/LeaveFeedbackModal';
+import { useAppContext } from '../context/AppContext';
 import styles from './StudentMentorshipPage.module.css';
 
 export const StudentMentorshipPage = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('Available Mentors');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState((location.state && location.state.tab) || 'Available Mentors');
   const [selectedMentor, setSelectedMentor] = useState(null);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [activeSession, setActiveSession] = useState(null);
   const [isMeetingOpen, setIsMeetingOpen] = useState(false);
   const [feedbackSession, setFeedbackSession] = useState(null);
 
-  const mentors = [
-    {
-      id: 1,
-      name: 'Priya Sankar',
-      role: 'Senior Software Engineer',
-      company: 'Google India',
-      match: '98% MATCH',
-      rating: 4.9,
-      bio: 'Ex-KCE alumni (Class of 2019). Specialized in Distributed Systems, React architecture, and big tech interview strategies.',
-      skills: ['React', 'System Design', 'Cloud', 'Algorithms']
-    },
-    {
-      id: 2,
-      name: 'Arun Kumar',
-      role: 'Staff ML Scientist',
-      company: 'Amazon AWS',
-      match: '92% MATCH',
-      rating: 4.8,
-      bio: 'Alumni Class of 2018. Passionate about guiding students in Natural Language Processing, Machine Learning, and Python optimization.',
-      skills: ['Python', 'Deep Learning', 'NLP', 'PyTorch']
-    },
-    {
-      id: 3,
-      name: 'Divya Rajan',
-      role: 'Lead Cloud Architect',
-      company: 'Flipkart',
-      match: '87% MATCH',
-      rating: 4.7,
-      bio: 'Alumni Class of 2020. Helps mentees master AWS microservices, DevOps automation, and scalable backend design.',
-      skills: ['AWS', 'Kubernetes', 'Go', 'DevOps']
-    }
-  ];
-
-  const [activeMentorships, setActiveMentorships] = useState([
-    {
-      id: 101,
-      mentorName: 'Priya Sankar',
-      topic: 'System Design & Scalable Frontend Architecture',
-      date: 'Today',
-      time: '05:00 PM - 06:00 PM',
-      status: 'Ready to Join'
-    }
-  ]);
-
-  const [pastHistory, setPastHistory] = useState([
-    {
-      id: 201,
-      mentorName: 'Arun Kumar',
-      topic: 'Resume Review & ML Career Guidance',
-      date: 'July 24, 2026',
-      rating: 5,
-      feedback: 'Incredible session! Arun reviewed my resume line-by-line and shared invaluable Machine Learning project ideas.'
-    }
-  ]);
+  const {
+    searchQuery,
+    mentors,
+    requests,
+    setRequests,
+    activeMentorships,
+    meetingsHistory
+  } = useAppContext();
 
   const handleRequestClick = (mentor) => {
     setSelectedMentor(mentor);
     setIsRequestModalOpen(true);
   };
 
-  const handleRequestSuccess = (newReq) => {
-    message.success('Request recorded in your Mentorship dashboard.');
+  const handleRequestSuccess = (reqData) => {
+    const mentor = mentors.find(m => m.id === reqData.mentorId);
+    if (!mentor) return;
+
+    const alreadyRequested = requests.some(r => r.mentorId === mentor.id);
+    if (alreadyRequested) {
+      const existing = requests.find(r => r.mentorId === mentor.id);
+      message.info(`Already requested. Status: ${existing.status}`);
+      return;
+    }
+
+    const newRequest = {
+      id: Date.now(),
+      mentorId: mentor.id,
+      mentorName: mentor.name,
+      role: mentor.role,
+      company: mentor.company,
+      date: reqData.date || 'Today',
+      status: 'Pending'
+    };
+    setRequests([...requests, newRequest]);
   };
+
+  // ── Filters based on Global Search Query ──
+  const filteredMentors = mentors.filter(m => {
+    if (searchQuery.trim() === '') return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      m.name.toLowerCase().includes(q) ||
+      m.role.toLowerCase().includes(q) ||
+      m.company.toLowerCase().includes(q) ||
+      m.bio.toLowerCase().includes(q) ||
+      m.skills.some(s => s.toLowerCase().includes(q))
+    );
+  });
+
+  const filteredRequests = requests.filter(r => {
+    if (searchQuery.trim() === '') return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      r.mentorName.toLowerCase().includes(q) ||
+      r.role.toLowerCase().includes(q) ||
+      r.company.toLowerCase().includes(q)
+    );
+  });
+
+  const filteredActive = activeMentorships.filter(s => {
+    if (searchQuery.trim() === '') return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      s.mentorName.toLowerCase().includes(q) ||
+      s.role.toLowerCase().includes(q) ||
+      s.company.toLowerCase().includes(q)
+    );
+  });
+
+  const filteredPast = meetingsHistory.filter(s => {
+    if (searchQuery.trim() === '') return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      s.mentorName.toLowerCase().includes(q) ||
+      s.topic.toLowerCase().includes(q) ||
+      s.status.toLowerCase().includes(q)
+    );
+  });
 
   return (
     <StudentLayout>
@@ -92,7 +110,7 @@ export const StudentMentorshipPage = () => {
 
       {/* Tabs Row */}
       <div className={styles.tabRow}>
-        {['Available Mentors', 'Active Mentorships', 'Meeting History'].map(tab => (
+        {['Available Mentors', 'Mentorship Requests', 'Active Mentorships', 'Meeting History'].map(tab => (
           <button
             key={tab}
             className={`${styles.tabBtn} ${activeTab === tab ? styles.activeTabBtn : ''}`}
@@ -105,110 +123,192 @@ export const StudentMentorshipPage = () => {
 
       {/* 1. Available Mentors Tab */}
       {activeTab === 'Available Mentors' && (
-        <div className={styles.mentorGrid}>
-          {mentors.map(mentor => (
-            <div key={mentor.id} className={styles.mentorCard}>
-              <div className={styles.mentorHeader}>
-                <div className={styles.avatarCircle}>
-                  {mentor.name.split(' ').map(n => n[0]).join('')}
-                </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <h3 className={styles.mentorName}>{mentor.name}</h3>
-                    <span className={styles.matchPill}>{mentor.match}</span>
+        <>
+          {filteredMentors.length > 0 ? (
+            <div className={styles.mentorGrid}>
+              {filteredMentors.map(mentor => {
+                const request = requests.find(r => r.mentorId === mentor.id);
+                const isRequested = !!request;
+
+                return (
+                  <div key={mentor.id} className={styles.mentorCard}>
+                    <div className={styles.mentorHeader}>
+                        <div className={styles.avatarCircle}>
+                          {mentor.name.split(' ').map(n => n[0]).join('')}
+                        </div>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <h3 className={styles.mentorName}>{mentor.name}</h3>
+                            <span className={styles.matchPill}>{mentor.match}</span>
+                          </div>
+                          <p className={styles.mentorRole}>{mentor.role} at <strong>{mentor.company}</strong></p>
+                          <div style={{ fontSize: 12, color: '#eab308', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                            <FiStar /> {mentor.rating} / 5.0
+                          </div>
+                        </div>
+                      </div>
+
+                    <p className={styles.mentorBio}>{mentor.bio}</p>
+
+                    <div className={styles.skillsRow}>
+                      {mentor.skills.map((s, idx) => (
+                        <span key={idx} className={styles.skillTag}>{s}</span>
+                      ))}
+                    </div>
+
+                    <div className={styles.cardFooter}>
+                      <button
+                        className={styles.secondaryBtn}
+                        onClick={() => navigate(`/student/mentor/${mentor.id}`, { state: { mentor } })}
+                      >
+                        View Profile
+                      </button>
+                      <button
+                        className={`${styles.primaryBtn} ${isRequested ? styles.disabledBtn : ''}`}
+                        disabled={isRequested}
+                        onClick={() => handleRequestClick(mentor)}
+                      >
+                        {isRequested ? `Requested (${request.status})` : 'Request Session'}
+                      </button>
+                    </div>
                   </div>
-                  <p className={styles.mentorRole}>{mentor.role} at <strong>{mentor.company}</strong></p>
-                  <div style={{ fontSize: 12, color: '#eab308', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                    <FiStar /> {mentor.rating} / 5.0
-                  </div>
-                </div>
-              </div>
-
-              <p className={styles.mentorBio}>{mentor.bio}</p>
-
-              <div className={styles.skillsRow}>
-                {mentor.skills.map((s, idx) => (
-                  <span key={idx} className={styles.skillTag}>{s}</span>
-                ))}
-              </div>
-
-              <div className={styles.cardFooter}>
-                <button
-                  className={styles.secondaryBtn}
-                  onClick={() => navigate(`/student/mentor/${mentor.id}`, { state: { mentor } })}
-                >
-                  View Profile
-                </button>
-                <button
-                  className={styles.primaryBtn}
-                  onClick={() => handleRequestClick(mentor)}
-                >
-                  Request Session
-                </button>
-              </div>
+                );
+              })}
             </div>
-          ))}
+          ) : (
+            <div className={styles.emptyState}>
+              <FiUsers size={48} className={styles.emptyIcon} />
+              <h3>No mentors found</h3>
+              <p>We couldn't find any mentors matching "{searchQuery}". Try a different keyword!</p>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* 2. Mentorship Requests Tab */}
+      {activeTab === 'Mentorship Requests' && (
+        <div>
+          {filteredRequests.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {filteredRequests.map(req => {
+                const statusColor = req.status === 'Accepted' ? 'green' : req.status === 'Rejected' ? 'red' : 'gold';
+                return (
+                  <div key={req.id} className={styles.sessionCard}>
+                    <div>
+                      <h3 style={{ margin: '0 0 4px 0', fontSize: 16, color: 'var(--ac-text-primary)', fontWeight: 700 }}>
+                        {req.mentorName}
+                      </h3>
+                      <p style={{ margin: '0 0 6px 0', fontSize: 13, color: 'var(--ac-text-secondary)' }}>
+                        {req.role} • <strong>{req.company}</strong>
+                      </p>
+                      <span style={{ fontSize: 12, color: 'var(--ac-text-muted)', fontWeight: 500 }}>
+                        <FiClock style={{ marginRight: 4 }} /> Requested {req.date}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                      <Tag color={statusColor} style={{ fontSize: 13, padding: '4px 12px', fontWeight: 600, borderRadius: 6 }}>
+                        {req.status}
+                      </Tag>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className={styles.emptyState}>
+              <FiCalendar size={48} className={styles.emptyIcon} />
+              <h3>No requests found</h3>
+              <p>Try searching for a different mentor name or company.</p>
+            </div>
+          )}
         </div>
       )}
 
-      {/* 2. Active Mentorships Tab */}
+      {/* 3. Active Mentorships Tab */}
       {activeTab === 'Active Mentorships' && (
         <div>
-          {activeMentorships.map(session => (
-            <div key={session.id} className={styles.sessionCard}>
-              <div>
-                <h3 style={{ margin: '0 0 4px 0', fontSize: 16, color: '#0f1e36' }}>
-                  Session with {session.mentorName}
-                </h3>
-                <p style={{ margin: '0 0 6px 0', fontSize: 13, color: '#64748b' }}>
-                  <strong>Topic:</strong> {session.topic}
-                </p>
-                <span style={{ fontSize: 12, color: '#1b62d4', fontWeight: 600 }}>
-                  <FiClock style={{ marginRight: 4 }} /> {session.date} ({session.time})
-                </span>
-              </div>
+          {filteredActive.length > 0 ? (
+            filteredActive.map(session => (
+              <div key={session.id} className={styles.sessionCard}>
+                <div>
+                  <h3 style={{ margin: '0 0 4px 0', fontSize: 16, color: 'var(--ac-text-primary)', fontWeight: 700 }}>
+                    {session.mentorName}
+                  </h3>
+                  <p style={{ margin: '0 0 6px 0', fontSize: 13, color: 'var(--ac-text-secondary)' }}>
+                    {session.role} • <strong>{session.company}</strong>
+                  </p>
+                  <div style={{ display: 'flex', gap: 16, fontSize: 12.5, color: 'var(--ac-text-muted)', marginTop: 8 }}>
+                    <span><strong>Start Date:</strong> {session.startDate}</span>
+                    {session.nextMeeting && (
+                      <span style={{ color: 'var(--ac-brand)', fontWeight: 600 }}>
+                        <strong>Next Meeting:</strong> {session.nextMeeting}
+                      </span>
+                    )}
+                  </div>
+                </div>
 
-              <button
-                className={styles.primaryBtn}
-                style={{ flex: 'none', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 8 }}
-                onClick={() => {
-                  setActiveSession(session);
-                  setIsMeetingOpen(true);
-                }}
-              >
-                <FiVideo /> Join Live Call
-              </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <Tag color="blue" style={{ fontSize: 12, padding: '3px 10px', fontWeight: 600, borderRadius: 4 }}>
+                    Active
+                  </Tag>
+                  <button
+                    className={styles.primaryBtn}
+                    style={{ flex: 'none', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 8 }}
+                    onClick={() => {
+                      setActiveSession(session);
+                      setIsMeetingOpen(true);
+                    }}
+                  >
+                    <FiVideo /> Join Live Call
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className={styles.emptyState}>
+              <FiCalendar size={48} className={styles.emptyIcon} />
+              <h3>No active mentorships found</h3>
+              <p>Connect with a mentor by sending a request and waiting for their acceptance.</p>
             </div>
-          ))}
+          )}
         </div>
       )}
 
-      {/* 3. Meeting History Tab */}
+      {/* 4. Meeting History Tab */}
       {activeTab === 'Meeting History' && (
         <div>
-          {pastHistory.map(history => (
-            <div key={history.id} className={styles.sessionCard}>
-              <div>
-                <h3 style={{ margin: '0 0 4px 0', fontSize: 16, color: '#0f1e36' }}>
-                  Completed Session with {history.mentorName}
-                </h3>
-                <p style={{ margin: '0 0 4px 0', fontSize: 13, color: '#64748b' }}>
-                  <strong>Topic:</strong> {history.topic} • {history.date}
-                </p>
-                <div style={{ fontSize: 13, color: '#334155', fontStyle: 'italic', marginTop: 8 }}>
-                  "{history.feedback}"
+          {filteredPast.length > 0 ? (
+            filteredPast.map(history => (
+              <div key={history.id} className={styles.sessionCard}>
+                <div>
+                  <h3 style={{ margin: '0 0 4px 0', fontSize: 16, color: 'var(--ac-text-primary)', fontWeight: 700 }}>
+                    {history.mentorName}
+                  </h3>
+                  <p style={{ margin: '0 0 4px 0', fontSize: 13, color: 'var(--ac-text-secondary)' }}>
+                    <strong>Session Topic:</strong> {history.topic} • {history.date}
+                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#22c55e', fontWeight: 600, marginTop: 6 }}>
+                    <FiCheckCircle /> Completed
+                  </div>
                 </div>
-              </div>
 
-              <button
-                className={styles.secondaryBtn}
-                style={{ flex: 'none', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 6 }}
-                onClick={() => setFeedbackSession(history)}
-              >
-                <FiMessageSquare /> Leave Feedback
-              </button>
+                <button
+                  className={styles.secondaryBtn}
+                  style={{ flex: 'none', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 6 }}
+                  onClick={() => setFeedbackSession(history)}
+                >
+                  <FiMessageSquare /> Leave Feedback
+                </button>
+              </div>
+            ))
+          ) : (
+            <div className={styles.emptyState}>
+              <FiCalendar size={48} className={styles.emptyIcon} />
+              <h3>No session history found</h3>
+              <p>Try searching with another keyword.</p>
             </div>
-          ))}
+          )}
         </div>
       )}
 

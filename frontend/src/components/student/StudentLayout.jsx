@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { message, Modal } from 'antd';
 import {
-  FiGrid, FiUser, FiCalendar, FiBriefcase,
+  FiGrid, FiUser, FiCalendar,
   FiUsers, FiBell, FiSettings, FiLogOut, FiSearch,
   FiSun, FiMoon
 } from 'react-icons/fi';
@@ -15,8 +15,31 @@ export const StudentLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
-  const { theme, setTheme } = useAppContext();
+  const { theme, setTheme, searchQuery, setSearchQuery, mentors, events } = useAppContext();
   const student = authService.getCurrentUser();
+
+  const [showDropdown, setShowDropdown] = useState(false);
+  const searchContainerRef = useRef(null);
+
+  // Clear search query whenever pathname changes
+  useEffect(() => {
+    setSearchQuery('');
+    setShowDropdown(false);
+  }, [location.pathname, setSearchQuery]);
+
+  // Close search dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const handleLogout = () => {
     Modal.confirm({
       title: 'Confirm Logout',
@@ -36,10 +59,30 @@ export const StudentLayout = ({ children }) => {
     { labelKey: 'dashboard',   path: '/student/dashboard',  icon: FiGrid },
     { labelKey: 'myProfile',   path: '/student/profile',    icon: FiUser },
     { labelKey: 'events',      path: '/student/events',     icon: FiCalendar },
-    { labelKey: 'career',      path: '/student/career',     icon: FiBriefcase },
     { labelKey: 'mentorships', path: '/student/mentorship', icon: FiUsers },
     { labelKey: 'settings',    path: '/student/settings',   icon: FiSettings }
   ];
+
+  // ── Global Search Filters ──
+  const query = searchQuery.trim().toLowerCase();
+  const matchedMentors = query
+    ? mentors.filter(m =>
+        m.name.toLowerCase().includes(query) ||
+        m.role.toLowerCase().includes(query) ||
+        m.company.toLowerCase().includes(query) ||
+        m.skills.some(s => s.toLowerCase().includes(query))
+      )
+    : [];
+
+  const matchedEvents = query
+    ? events.filter(e =>
+        e.title.toLowerCase().includes(query) ||
+        e.category.toLowerCase().includes(query) ||
+        e.venue.toLowerCase().includes(query)
+      )
+    : [];
+
+  const hasMatches = matchedMentors.length > 0 || matchedEvents.length > 0;
 
   return (
     <div className={styles.dashboardLayout}>
@@ -85,13 +128,69 @@ export const StudentLayout = ({ children }) => {
       <div className={styles.mainContainer}>
         {/* Top Header */}
         <header className={styles.topHeader}>
-          <div className={styles.headerSearchContainer}>
+          <div className={styles.headerSearchContainer} ref={searchContainerRef}>
             <FiSearch className={styles.searchIcon} />
             <input
               type="text"
               placeholder="Search mentorships, alumni, or events..."
               className={styles.searchInput}
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setShowDropdown(true);
+              }}
+              onFocus={() => setShowDropdown(true)}
             />
+
+            {showDropdown && searchQuery.trim() !== '' && (
+              <div className={styles.searchDropdown}>
+                {hasMatches ? (
+                  <>
+                    {matchedMentors.length > 0 && (
+                      <div className={styles.searchGroup}>
+                        <div className={styles.searchGroupTitle}>Mentors</div>
+                        {matchedMentors.map(m => (
+                          <div
+                            key={m.id}
+                            className={styles.searchItem}
+                            onClick={() => {
+                              navigate('/student/mentorship');
+                              setSearchQuery('');
+                              setShowDropdown(false);
+                            }}
+                          >
+                            <div className={styles.searchItemTitle}>{m.name}</div>
+                            <div className={styles.searchItemSub}>{m.role} at {m.company}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {matchedEvents.length > 0 && (
+                      <div className={styles.searchGroup}>
+                        <div className={styles.searchGroupTitle}>Events</div>
+                        {matchedEvents.map(e => (
+                          <div
+                            key={e.id}
+                            className={styles.searchItem}
+                            onClick={() => {
+                              navigate('/student/events');
+                              setSearchQuery('');
+                              setShowDropdown(false);
+                            }}
+                          >
+                            <div className={styles.searchItemTitle}>{e.title}</div>
+                            <div className={styles.searchItemSub}>{e.category} • {e.venue}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className={styles.noResults}>No results found</div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className={styles.headerRight}>
@@ -112,32 +211,28 @@ export const StudentLayout = ({ children }) => {
               {theme === 'dark' ? <FiSun /> : <FiMoon />}
             </button>
 
-           <div
-  className={styles.userInfoBox}
-  onClick={() => navigate('/student/profile')}
->
-  <div style={{ textAlign: 'right' }}>
-    <div className={styles.userName}>
-      {student?.name}
-    </div>
+            <div
+              className={styles.userInfoBox}
+              onClick={() => navigate('/student/profile')}
+            >
+              <div style={{ textAlign: 'right' }}>
+                <div className={styles.userName}>
+                  {student?.name}
+                </div>
 
-    <div className={styles.userBadge}>
-      STUDENT, YEAR {student?.yearOfStudy}
-    </div>
-  </div>
+                <div className={styles.userBadge}>
+                  STUDENT, YEAR {student?.yearOfStudy}
+                </div>
+              </div>
 
-  <div className={styles.userAvatar}>
-    {student?.name
-      ?.split(" ")
-      .map(word => word.charAt(0))
-      .join("")
-      .toUpperCase()}
-  </div>
-</div>
+              <div className={styles.userAvatar}>
+                {student?.name ? student.name.split(' ').map(n => n[0]).join('') : 'ST'}
+              </div>
+            </div>
           </div>
         </header>
 
-        {/* Dynamic Main Content */}
+        {/* Content View */}
         <main className={styles.contentContainer}>
           {children}
         </main>

@@ -12,7 +12,8 @@ import {
   FiSearch,
   FiBell,
   FiSun,
-  FiMoon
+  FiMoon,
+  FiHeart
 } from 'react-icons/fi';
 import { FaGraduationCap } from 'react-icons/fa';
 import { authService } from '../../services/authService';
@@ -42,10 +43,11 @@ export const AdminLayout = ({ children, onSearch }) => {
 
   const navItems = [
     { labelKey: 'dashboard', path: '/admin/dashboard', icon: FiGrid },
-    { labelKey: 'userManagement', path: '/admin/users', icon: FiUsers },
     { labelKey: 'studentManagement', path: '/admin/students', icon: FiUsers },
     { labelKey: 'alumniManagement', path: '/admin/alumni', icon: FiUserCheck },
+    { labelKey: 'mentorshipManagement', path: '/admin/mentorship', icon: FiUsers },
     { labelKey: 'eventManagement', path: '/admin/events', icon: FiCalendar },
+    { labelKey: 'fundraisingManagement', path: '/admin/fundraising', icon: FiHeart },
     { labelKey: 'reportsAnalytics', path: '/admin/reports', icon: FiFileText },
     { labelKey: 'settingsRoles', path: '/admin/settings', icon: FiSettings }
   ];

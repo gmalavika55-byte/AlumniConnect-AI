@@ -8,7 +8,6 @@ import { RegisterPage } from '../pages/RegisterPage';
 import { StudentDashboard } from '../pages/StudentDashboard';
 import { StudentProfilePage } from '../pages/StudentProfilePage';
 import { StudentEventsPage } from '../pages/StudentEventsPage';
-import { StudentCareerPage } from '../pages/StudentCareerPage';
 import { StudentMentorshipPage } from '../pages/StudentMentorshipPage';
 import { StudentSettingsPage } from '../pages/StudentSettingsPage';
 import { MentorProfilePage } from '../pages/MentorProfilePage';
@@ -20,17 +19,17 @@ import { AlumniMentorshipPage } from '../pages/AlumniMentorshipPage';
 import { AlumniStudentProfilePage } from '../pages/AlumniStudentProfilePage';
 import { AlumniEventsPage } from '../pages/AlumniEventsPage';
 import { AlumniFundraisingPage } from '../pages/AlumniFundraisingPage';
-import { AlumniNotificationsPage } from '../pages/AlumniNotificationsPage';
 import { AlumniSettingsPage } from '../pages/AlumniSettingsPage';
 
 // Admin Module Pages
 import { AdminDashboard } from '../pages/AdminDashboard';
-import { AdminUsersPage } from '../pages/AdminUsersPage';
 import { AdminStudentsPage } from '../pages/AdminStudentsPage';
 import { AdminAlumniPage } from '../pages/AdminAlumniPage';
 import { AdminEventsPage } from '../pages/AdminEventsPage';
 import { AdminReportsPage } from '../pages/AdminReportsPage';
 import { AdminSettingsPage } from '../pages/AdminSettingsPage';
+import { AdminMentorshipPage } from '../pages/AdminMentorshipPage';
+import { AdminFundraisingPage } from '../pages/AdminFundraisingPage';
 
 import { ProtectedRoute } from './ProtectedRoute';
 
@@ -52,7 +51,6 @@ export const AppRoutes = () => {
         <Route path="/student/dashboard" element={<StudentDashboard />} />
         <Route path="/student/profile" element={<StudentProfilePage />} />
         <Route path="/student/events" element={<StudentEventsPage />} />
-        <Route path="/student/career" element={<StudentCareerPage />} />
         <Route path="/student/mentorship" element={<StudentMentorshipPage />} />
         <Route path="/student/mentor/:id" element={<MentorProfilePage />} />
         <Route path="/student/settings" element={<StudentSettingsPage />} />
@@ -64,15 +62,15 @@ export const AppRoutes = () => {
         <Route path="/alumni/student/:id" element={<AlumniStudentProfilePage />} />
         <Route path="/alumni/events" element={<AlumniEventsPage />} />
         <Route path="/alumni/fundraising" element={<AlumniFundraisingPage />} />
-        <Route path="/alumni/notifications" element={<AlumniNotificationsPage />} />
         <Route path="/alumni/settings" element={<AlumniSettingsPage />} />
 
         {/* Admin Module Routes */}
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/users" element={<AdminUsersPage />} />
         <Route path="/admin/students" element={<AdminStudentsPage />} />
         <Route path="/admin/alumni" element={<AdminAlumniPage />} />
+        <Route path="/admin/mentorship" element={<AdminMentorshipPage />} />
         <Route path="/admin/events" element={<AdminEventsPage />} />
+        <Route path="/admin/fundraising" element={<AdminFundraisingPage />} />
         <Route path="/admin/reports" element={<AdminReportsPage />} />
         <Route path="/admin/settings" element={<AdminSettingsPage />} />
       </Route>

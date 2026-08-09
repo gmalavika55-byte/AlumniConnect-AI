@@ -215,40 +215,40 @@ export const AlumniProfilePage = () => {
         {/* LEFT COLUMN */}
         <div>
           {/* Professional Information */}
-          <div style={{ backgroundColor: '#ffffff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, marginBottom: 24 }}>
-            <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f1e36', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', padding: 24, marginBottom: 24 }}>
+            <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
               <FiBriefcase color="#1b62d4" /> Professional & Academic Info
             </h3>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Current Role</span>
-                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: '#0f1e36' }}>{profile.role}</p>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-muted)', textTransform: 'uppercase' }}>Current Role</span>
+                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{profile.role}</p>
               </div>
               <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Company</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-muted)', textTransform: 'uppercase' }}>Company</span>
                 <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: '#1b62d4' }}>{profile.company}</p>
               </div>
               <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Graduation Year</span>
-                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: '#0f1e36' }}>Class of {profile.gradYear}</p>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-muted)', textTransform: 'uppercase' }}>Graduation Year</span>
+                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>Class of {profile.gradYear}</p>
               </div>
               <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Department</span>
-                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: '#0f1e36' }}>{profile.dept}</p>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-muted)', textTransform: 'uppercase' }}>Department</span>
+                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{profile.dept}</p>
               </div>
             </div>
 
-            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #f1f5f9' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Bio / About</span>
-              <p style={{ margin: '4px 0 0 0', fontSize: 13.5, color: '#334155', lineHeight: 1.6 }}>{profile.bio}</p>
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--ac-border)' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-muted)', textTransform: 'uppercase' }}>Bio / About</span>
+              <p style={{ margin: '4px 0 0 0', fontSize: 13.5, color: 'var(--ac-text-secondary)', lineHeight: 1.6 }}>{profile.bio}</p>
             </div>
           </div>
 
           {/* Skills Section */}
-          <div style={{ backgroundColor: '#ffffff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, marginBottom: 24 }}>
+          <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', padding: 24, marginBottom: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f1e36', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ac-text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <FiAward color="#1b62d4" /> Skills & Technical Expertise
               </h3>
               <Button
@@ -271,9 +271,9 @@ export const AlumniProfilePage = () => {
                     borderRadius: 8,
                     fontSize: 13,
                     fontWeight: 600,
-                    backgroundColor: '#f1f5f9',
+                    backgroundColor: 'var(--ac-bg-input)',
                     borderColor: '#e2e8f0',
-                    color: '#0f1e36'
+                    color: 'var(--ac-text-primary)'
                   }}
                 >
                   {skill}
@@ -286,35 +286,35 @@ export const AlumniProfilePage = () => {
         {/* RIGHT COLUMN */}
         <div>
           {/* Career Information Timeline */}
-          <div style={{ backgroundColor: '#ffffff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, marginBottom: 24 }}>
-            <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f1e36', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', padding: 24, marginBottom: 24 }}>
+            <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
               <FiBriefcase color="#1b62d4" /> Career Journey & Experience
             </h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {experienceList.map((exp, idx) => (
-                <div key={idx} style={{ padding: 14, backgroundColor: '#f8fafc', borderRadius: 10, border: '1px solid #f1f5f9' }}>
+                <div key={idx} style={{ padding: 14, backgroundColor: 'var(--ac-bg-input)', borderRadius: 10, border: '1px solid #f1f5f9' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                    <strong style={{ fontSize: 14, color: '#0f1e36' }}>{exp.title}</strong>
+                    <strong style={{ fontSize: 14, color: 'var(--ac-text-primary)' }}>{exp.title}</strong>
                     <span style={{ fontSize: 11, fontWeight: 600, color: '#1b62d4' }}>{exp.period}</span>
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>{exp.company}</div>
-                  <p style={{ margin: 0, fontSize: 12.5, color: '#475569', lineHeight: 1.5 }}>{exp.desc}</p>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ac-text-secondary)', marginBottom: 6 }}>{exp.company}</div>
+                  <p style={{ margin: 0, fontSize: 12.5, color: 'var(--ac-text-secondary)', lineHeight: 1.5 }}>{exp.desc}</p>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Primary Resume Section */}
-          <div style={{ backgroundColor: '#ffffff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24 }}>
-            <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f1e36', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', padding: 24 }}>
+            <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
               <FiFileText color="#1b62d4" /> Primary Resume
             </h3>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 12, padding: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'var(--ac-bg-input)', border: '1px dashed #cbd5e1', borderRadius: 12, padding: 16 }}>
               <div>
-                <h4 style={{ margin: 0, fontSize: 13.5, color: '#0f1e36' }}>{profile.resumeName}</h4>
-                <span style={{ fontSize: 11, color: '#64748b' }}>{profile.resumeSize} • PDF</span>
+                <h4 style={{ margin: 0, fontSize: 13.5, color: 'var(--ac-text-primary)' }}>{profile.resumeName}</h4>
+                <span style={{ fontSize: 11, color: 'var(--ac-text-secondary)' }}>{profile.resumeSize} • PDF</span>
               </div>
               <Button
                 icon={<FiUpload />}
@@ -338,7 +338,7 @@ export const AlumniProfilePage = () => {
         okText="Add Skill"
       >
         <div style={{ marginTop: 12 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 8 }}>Skill Name</label>
+          <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--ac-text-secondary)', display: 'block', marginBottom: 8 }}>Skill Name</label>
           <Input
             placeholder="e.g. AWS Cloud, Machine Learning, GraphQL..."
             value={newSkillInput}

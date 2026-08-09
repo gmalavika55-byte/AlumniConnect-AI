@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { message, Modal } from 'antd';
 import {
@@ -23,7 +23,44 @@ export const AlumniLayout = ({ children, onSearch }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
-  const { theme, setTheme } = useAppContext();
+  const { theme, setTheme, searchQuery, setSearchQuery, alumniNotifications, setAlumniNotifications, alumniRequests } = useAppContext();
+
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+  const notifContainerRef = useRef(null);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const searchContainerRef = useRef(null);
+
+  // Clear search query whenever pathname changes
+  useEffect(() => {
+    setSearchQuery('');
+    setShowSearchDropdown(false);
+  }, [location.pathname, setSearchQuery]);
+
+  // Close notifications dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notifContainerRef.current && !notifContainerRef.current.contains(event.target)) {
+        setShowNotifDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Close search dropdown on click outside
+  useEffect(() => {
+    const handleSearchClickOutside = (event) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+        setShowSearchDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleSearchClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleSearchClickOutside);
+    };
+  }, []);
 
   const handleLogout = () => {
     Modal.confirm({
@@ -46,9 +83,40 @@ export const AlumniLayout = ({ children, onSearch }) => {
     { labelKey: 'mentorshipRequests', path: '/alumni/mentorship', icon: FiUsers },
     { labelKey: 'myEvents', path: '/alumni/events', icon: FiCalendar },
     { labelKey: 'fundraising', path: '/alumni/fundraising', icon: FiHeart },
-    { labelKey: 'notifications', path: '/alumni/notifications', icon: FiBell },
     { labelKey: 'settings', path: '/alumni/settings', icon: FiSettings }
   ];
+
+  const unreadCount = alumniNotifications.filter(n => !n.read).length;
+
+  // ── Alumni Global Search Filters ──
+  const query = (searchQuery || '').trim().toLowerCase();
+
+  // Search mentorship students (from shared context)
+  const matchedStudents = query
+    ? alumniRequests.filter(r =>
+        r.studentName.toLowerCase().includes(query) ||
+        r.dept.toLowerCase().includes(query) ||
+        r.topic.toLowerCase().includes(query) ||
+        r.skills.some(s => s.toLowerCase().includes(query))
+      )
+    : [];
+
+  // Search events — inline alumni event list (titles, categories, locations)
+  const alumniEventList = [
+    { id: 1, title: 'Global Alumni Meetup 2026',        category: 'Reunion & Keynote',   location: 'Grand Ballroom & Zoom' },
+    { id: 2, title: 'Machine Learning & LLM Masterclass', category: 'Technical Workshop', location: 'CS Lab 3 & Meet' },
+    { id: 3, title: 'Cloud Architecture & DevOps Webinar', category: 'Webinar',           location: 'Zoom Virtual Hall' }
+  ];
+
+  const matchedEvents = query
+    ? alumniEventList.filter(e =>
+        e.title.toLowerCase().includes(query) ||
+        e.category.toLowerCase().includes(query) ||
+        e.location.toLowerCase().includes(query)
+      )
+    : [];
+
+  const hasMatches = matchedStudents.length > 0 || matchedEvents.length > 0;
 
   return (
     <div className={styles.dashboardLayout}>
@@ -91,25 +159,126 @@ export const AlumniLayout = ({ children, onSearch }) => {
       <div className={styles.mainContainer}>
         {/* Top Header */}
         <header className={styles.topHeader}>
-          <div className={styles.headerSearchContainer}>
+          <div className={styles.headerSearchContainer} ref={searchContainerRef}>
             <FiSearch className={styles.searchIcon} />
             <input
               type="text"
-              placeholder="Search mentorships, students, events, or fundraising..."
+              placeholder="Search students, events, mentorships, fundraising..."
               className={styles.searchInput}
-              onChange={(e) => onSearch && onSearch(e.target.value)}
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setShowSearchDropdown(true);
+              }}
+              onFocus={() => setShowSearchDropdown(true)}
             />
+
+            {showSearchDropdown && (searchQuery || '').trim() !== '' && (
+              <div className={styles.searchDropdown}>
+                {hasMatches ? (
+                  <>
+                    {matchedStudents.length > 0 && (
+                      <div className={styles.searchGroup}>
+                        <div className={styles.searchGroupTitle}>Mentorship Students</div>
+                        {matchedStudents.map(r => (
+                          <div
+                            key={r.id}
+                            className={styles.searchItem}
+                            onClick={() => {
+                              navigate('/alumni/mentorship');
+                              setSearchQuery('');
+                              setShowSearchDropdown(false);
+                            }}
+                          >
+                            <div className={styles.searchItemTitle}>{r.studentName}</div>
+                            <div className={styles.searchItemSub}>{r.dept} • {r.topic}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {matchedEvents.length > 0 && (
+                      <div className={styles.searchGroup}>
+                        <div className={styles.searchGroupTitle}>Events</div>
+                        {matchedEvents.map(e => (
+                          <div
+                            key={e.id}
+                            className={styles.searchItem}
+                            onClick={() => {
+                              navigate('/alumni/events');
+                              setSearchQuery('');
+                              setShowSearchDropdown(false);
+                            }}
+                          >
+                            <div className={styles.searchItemTitle}>{e.title}</div>
+                            <div className={styles.searchItemSub}>{e.category} • {e.location}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className={styles.noResults}>No results found</div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className={styles.headerRight}>
-            <button
-              className={styles.bellBtn}
-              title="Notifications"
-              onClick={() => navigate('/alumni/notifications')}
-            >
-              <FiBell />
-              <span className={styles.bellBadge} />
-            </button>
+            {/* Notification Bell Dropdown Container */}
+            <div className={styles.notifContainer} ref={notifContainerRef}>
+              <button
+                className={styles.bellBtn}
+                title="Notifications"
+                onClick={() => setShowNotifDropdown(!showNotifDropdown)}
+              >
+                <FiBell />
+                {unreadCount > 0 && <span className={styles.bellBadge} />}
+              </button>
+
+              {showNotifDropdown && (
+                <div className={styles.notifDropdown}>
+                  <div className={styles.notifDropdownHeader}>
+                    <h4>Notifications</h4>
+                    {unreadCount > 0 && (
+                      <span
+                        className={styles.markAllLink}
+                        onClick={() => {
+                          setAlumniNotifications(prev => prev.map(n => ({ ...n, read: true })));
+                          message.success('All notifications marked as read');
+                        }}
+                      >
+                        Mark all read
+                      </span>
+                    )}
+                  </div>
+                  <div className={styles.notifList}>
+                    {alumniNotifications.length > 0 ? (
+                      alumniNotifications.map(notif => (
+                        <div
+                          key={notif.id}
+                          className={`${styles.notifItem} ${notif.read ? styles.notifRead : styles.notifUnread}`}
+                          onClick={() => {
+                            setAlumniNotifications(prev =>
+                              prev.map(n => n.id === notif.id ? { ...n, read: true } : n)
+                            );
+                          }}
+                        >
+                          <div className={styles.notifItemHeader}>
+                            <strong className={styles.notifTitle}>{notif.title}</strong>
+                            {!notif.read && <span className={styles.newBadge}>New</span>}
+                          </div>
+                          <p className={styles.notifDesc}>{notif.desc}</p>
+                          <span className={styles.notifTime}>{notif.time}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className={styles.notifEmpty}>No notifications</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <button
               className={styles.bellBtn}

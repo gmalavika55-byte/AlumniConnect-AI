@@ -33,7 +33,7 @@ export const CreateEventModal = ({ visible, onClose, onAddEvent }) => {
         <Button key="cancel" onClick={onClose}>
           Cancel
         </Button>,
-        <Button key="submit" type="primary" style={{ backgroundColor: '#1b62d4' }} onClick={handleFinish}>
+        <Button key="submit" type="primary" style={{ backgroundColor: 'var(--ac-brand)', border: 'none' }} onClick={handleFinish}>
           Create Event
         </Button>
       ]}
@@ -90,6 +90,26 @@ export const CreateEventModal = ({ visible, onClose, onAddEvent }) => {
           label="Guest Speaker / Organization"
         >
           <Input placeholder="e.g. Priya Sankar (Sr. SWE, Google)" />
+        </Form.Item>
+
+        <Form.Item
+          name="organizer"
+          label="Event Organizer"
+          rules={[{ required: true }]}
+        >
+          <Select options={[
+            { value: 'Dr. Sarah Jenkins (Admin)', label: 'Dr. Sarah Jenkins (Admin)' },
+            { value: 'Arun Kumar (Alumni)', label: 'Arun Kumar (Alumni)' },
+            { value: 'Priya Sankar (Alumni)', label: 'Priya Sankar (Alumni)' }
+          ]} placeholder="Select event organizer" />
+        </Form.Item>
+
+        <Form.Item
+          name="capacity"
+          label="Max Capacity (seats)"
+          rules={[{ required: true }]}
+        >
+          <Input type="number" placeholder="e.g. 150" />
         </Form.Item>
 
         <Form.Item

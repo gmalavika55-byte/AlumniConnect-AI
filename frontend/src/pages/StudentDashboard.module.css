@@ -372,7 +372,7 @@
 /* 2-Column Main Dashboard Grid */
 .dashboardGrid {
   display: grid;
-  grid-template-columns: 1fr 340px;
+  grid-template-columns: 1.4fr 1fr;
   gap: 28px;
 }
 

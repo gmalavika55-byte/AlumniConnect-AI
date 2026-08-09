@@ -210,13 +210,13 @@
 .userName {
   font-size: 14px;
   font-weight: 700;
-  color: #0f1e36;
+  color: var(--ac-text-primary);
   line-height: 1.2;
 }
 
 .userBadge {
   font-size: 11px;
-  color: #64748b;
+  color: var(--ac-text-secondary);
 }
 
 .userAvatar {
