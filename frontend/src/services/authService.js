@@ -22,7 +22,7 @@ login: async ({ email, password, remember }) => {
 
   localStorage.setItem(
     "alumni_auth_token",
-    "demo-token"
+    data.token
   );
 
   if (remember) {
@@ -37,32 +37,45 @@ login: async ({ email, password, remember }) => {
     user: data.user
   };
 },
-  // Fake register service
   register: async (registerPayload) => {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    const userRole = registerPayload.role || 'student';
-    const userData = {
-      name: registerPayload.fullName || 'New Member',
+    const isAlumni = registerPayload.role === 'alumni';
+    const endpoint = isAlumni ? "/auth/alumni/register" : "/auth/student/register";
+    
+    const payload = isAlumni ? {
+      registerNo: registerPayload.regNumber,
+      name: registerPayload.fullName,
       email: registerPayload.email,
-      role: userRole.charAt(0).toUpperCase() + userRole.slice(1),
-      graduationYear: registerPayload.graduationYear || 2026,
-      department: registerPayload.department || 'Computer Science',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-      stats: userRole === 'alumni' 
-        ? { activeMentees: 0, eventsHosted: 0, networkSize: 10, contributions: '$0' }
-        : { mentorsConnected: 0, eventsAttended: 0, applicationsSubmitted: 0, savedResources: 0 }
+      password: registerPayload.password,
+      department: registerPayload.department,
+      batch: registerPayload.batch,
+      availableForMentorship: "Yes"
+    } : {
+      registerNo: registerPayload.regNumber,
+      name: registerPayload.fullName,
+      email: registerPayload.email,
+      password: registerPayload.password,
+      department: registerPayload.department,
+      course: registerPayload.course || "B.E.",
+      yearOfStudy: registerPayload.year ? parseInt(registerPayload.year) : 3,
+      batch: registerPayload.batch
     };
 
-    const token = `fake-jwt-token-${userRole}-${Date.now()}`;
-    localStorage.setItem('alumni_auth_token', token);
-    localStorage.setItem('alumni_user_data', JSON.stringify(userData));
+    const response = await api.post(endpoint, payload);
+    
+    const loginResponse = await api.post("/auth/login", {
+      email: registerPayload.email,
+      password: registerPayload.password
+    });
+    
+    const data = loginResponse.data;
+    localStorage.setItem("alumni_user_data", JSON.stringify(data.user));
+    localStorage.setItem("alumni_auth_token", data.token);
 
     return {
       success: true,
-      token,
-      user: userData,
-      role: userRole,
+      token: data.token,
+      user: data.user,
+      role: data.role
     };
   },
 

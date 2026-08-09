@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Form, Input, Select, Button, message } from 'antd';
 import { useNavigate, Link } from 'react-router-dom';
 import { FaGraduationCap } from 'react-icons/fa';
+import { authService } from '../services/authService';
 import styles from './RegisterPage.module.css';
 
 const { Option } = Select;
@@ -15,26 +16,20 @@ export const RegisterPage = () => {
     setLoading(true);
     try {
       console.log('Registration Values:', values);
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      message.success('Registration successful! Redirecting to dashboard...');
-      
-      // Store token placeholder
-      localStorage.setItem('alumni_auth_token', `token-user-${Date.now()}`);
-      localStorage.setItem(
-        'alumni_user_data',
-        JSON.stringify({
-          name: values.fullName,
-          email: values.email,
-          role: 'Member',
-          idNumber: values.regNumber,
-          department: values.department,
-          graduationYear: values.batch,
-        })
-      );
-
-      navigate('/student/dashboard');
+      // Call authService to trigger secure API register + login flow
+      const result = await authService.register({
+        ...values,
+        role: values.role || 'student'
+      });
+      if (result.success) {
+        message.success('Registration successful! Redirecting to dashboard...');
+        const userRole = result.role.toLowerCase();
+        if (userRole === 'admin') navigate('/admin/dashboard');
+        else if (userRole === 'alumni') navigate('/alumni/dashboard');
+        else navigate('/student/dashboard');
+      }
     } catch (error) {
-      message.error('Registration failed. Please check your details.');
+      message.error(error.response?.data || 'Registration failed. Please check your details.');
     } finally {
       setLoading(false);
     }

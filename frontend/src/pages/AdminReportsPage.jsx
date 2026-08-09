@@ -183,7 +183,7 @@ export const AdminReportsPage = () => {
           <FiCpu color="var(--ac-brand)" /> Career Analytics
         </h2>
 
-        {/* Row 1: Industry & Sector and Career Role Distribution side-by-side */}
+        {/* Row 1: Industry & Sector and Specialization Skills side-by-side */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 30, marginBottom: 30 }}>
           {/* B. Industry / Sector Distribution */}
           <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 12, border: '1px solid var(--ac-border)', padding: 24 }}>
@@ -205,70 +205,6 @@ export const AdminReportsPage = () => {
             </div>
           </div>
 
-          {/* C. Career Role Distribution */}
-          <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 12, border: '1px solid var(--ac-border)', padding: 24 }}>
-            <h3 style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--ac-text-primary)', marginBottom: 16 }}>
-              Career Role Distribution
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {roles.map((r, idx) => (
-                <div key={idx}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontWeight: 600, color: 'var(--ac-text-primary)', marginBottom: 4 }}>
-                    <span>{r.role}</span>
-                    <span>{r.count} ({r.percentage}%)</span>
-                  </div>
-                  <div style={{ height: 8, background: 'var(--ac-bg-input)', borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${r.percentage}%`, background: 'var(--ac-text-secondary)' }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Row 2: Career Distribution by Graduation Batch (Full-width) */}
-        <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 12, border: '1px solid var(--ac-border)', padding: 24, marginBottom: 30 }}>
-          <h3 style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--ac-text-primary)', marginBottom: 16 }}>
-            Career Distribution by Graduation Batch
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 15 }}>
-            {batchTrends.map((t, idx) => (
-              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--ac-bg-input)', borderRadius: 8, border: '1px solid var(--ac-border)', fontSize: 13 }}>
-                <div>
-                  <span style={{ fontWeight: 700, color: 'var(--ac-text-primary)' }}>Class of {t.batch}</span>
-                  <div style={{ fontSize: 12, color: 'var(--ac-text-secondary)', marginTop: 2 }}>{t.role} ({t.company})</div>
-                </div>
-                <Tag color="blue" style={{ margin: 0 }}>{t.sector}</Tag>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Row 3: Top Companies and Skills Analysis side-by-side */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 30, marginBottom: 30 }}>
-          {/* Top Companies */}
-          <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 12, border: '1px solid var(--ac-border)', padding: 24 }}>
-            <h3 style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--ac-text-primary)', marginBottom: 16 }}>
-              Top Alumni Employer Organizations
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {companies.map((c, idx) => {
-                const pct = ((c.count / overview.total) * 100).toFixed(1);
-                return (
-                  <div key={idx}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontWeight: 600, color: 'var(--ac-text-primary)', marginBottom: 4 }}>
-                      <span>{c.company}</span>
-                      <span>{c.count} ({pct}%)</span>
-                    </div>
-                    <div style={{ height: 8, background: 'var(--ac-bg-input)', borderRadius: 4, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct}%`, background: 'var(--ac-brand)' }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
           {/* Skills Analysis */}
           <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 12, border: '1px solid var(--ac-border)', padding: 24 }}>
             <h3 style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--ac-text-primary)', marginBottom: 16 }}>
@@ -284,7 +220,7 @@ export const AdminReportsPage = () => {
           </div>
         </div>
 
-        {/* Row 4: Department-wise Career Outcomes Table (Full-width) */}
+        {/* Row 2: Department-wise Career Placement Outcomes Matrix Table (Full-width) */}
         <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 12, border: '1px solid var(--ac-border)', padding: 24, marginBottom: 30 }}>
           <h3 style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--ac-text-primary)', marginBottom: 12 }}>
             Department-wise Career Placement Outcomes Matrix

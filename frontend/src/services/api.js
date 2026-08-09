@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // API Axios Instance Placeholder
 const api = axios.create({
-  baseURL: 'http://localhost:8101',
+  baseURL: 'http://localhost:8080',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

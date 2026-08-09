@@ -25,14 +25,14 @@ export const AdminDashboard = () => {
 
   // Export system data helper
   const handleExportData = () => {
-    const headers = ['Category', 'Total Count', 'Growth Rate', 'Status'];
+    const headers = ['Category', 'Total Count', 'Status'];
     const rows = [
-      ['Students', '8432', '+12%', 'Active'],
-      ['Alumni', '24109', '+5%', 'Verified'],
-      ['Mentorships', '1245', '+18%', 'Active'],
-      ['Events', '48', '-2%', 'Published'],
-      ['Donations', '3000000', '+24%', 'Received'],
-      ['Placement Rate', '94.2%', '+4%', 'Target Met']
+      ['Students', '8432', 'Active'],
+      ['Alumni', '24109', 'Verified'],
+      ['Mentorships', '1245',  'Active'],
+      ['Events', '48',  'Published'],
+      ['Donations', '3000000',  'Received'],
+      ['Placement Rate', '94.2%',  'Target Met']
     ];
     downloadCsv('AlumniConnect_System_Report.csv', rows, headers);
     message.success('System report CSV exported successfully!');
@@ -80,9 +80,6 @@ export const AdminDashboard = () => {
             <div className={`${styles.statIconBadge} ${styles.blueIconBg}`}>
               <FiUsers />
             </div>
-            <span className={styles.trendPill}>
-              <FiTrendingUp style={{ marginRight: 2 }} /> +12%
-            </span>
           </div>
           <div className={styles.statLabel}>TOTAL STUDENTS</div>
           <div className={styles.statValue}>8,432</div>
@@ -101,9 +98,6 @@ export const AdminDashboard = () => {
             <div className={`${styles.statIconBadge} ${styles.purpleIconBg}`}>
               <FiUsers />
             </div>
-            <span className={styles.trendPill}>
-              <FiTrendingUp style={{ marginRight: 2 }} /> +5%
-            </span>
           </div>
           <div className={styles.statLabel}>TOTAL ALUMNI</div>
           <div className={styles.statValue}>24,109</div>
@@ -122,18 +116,15 @@ export const AdminDashboard = () => {
             <div className={`${styles.statIconBadge} ${styles.blueIconBg}`}>
               <FiZap />
             </div>
-            <span className={styles.trendPill}>
-              <FiTrendingUp style={{ marginRight: 2 }} /> +18%
-            </span>
           </div>
           <div className={styles.statLabel}>MENTORSHIPS</div>
           <div className={styles.statValue}>1,245</div>
           <button
             className={styles.cardActionBtn}
-            onClick={() => setIsCreateEventOpen(true)}
+            onClick={() => navigate('/admin/mentorship')}
             style={{ marginTop: 10, width: '100%', padding: '6px 12px', fontSize: 12, borderRadius: 6, border: '1px solid #0284c7', backgroundColor: '#e0f2fe', color: '#0369a1', fontWeight: 600, cursor: 'pointer' }}
           >
-            Create Event
+            View Mentorships
           </button>
         </div>
 
@@ -143,18 +134,15 @@ export const AdminDashboard = () => {
             <div className={`${styles.statIconBadge} ${styles.orangeIconBg}`}>
               <FiCalendar />
             </div>
-            <span className={`${styles.trendPill} ${styles.trendDownPill}`}>
-              <FiTrendingDown style={{ marginRight: 2 }} /> -2%
-            </span>
           </div>
           <div className={styles.statLabel}>TOTAL EVENTS</div>
           <div className={styles.statValue}>48</div>
           <button
             className={styles.cardActionBtn}
-            onClick={() => navigate('/admin/reports')}
+            onClick={() => navigate('/admin/events')}
             style={{ marginTop: 10, width: '100%', padding: '6px 12px', fontSize: 12, borderRadius: 6, border: '1px solid #d97706', backgroundColor: '#fef3c7', color: '#b45309', fontWeight: 600, cursor: 'pointer' }}
           >
-            View Reports
+            View Events
           </button>
         </div>
 
@@ -164,18 +152,15 @@ export const AdminDashboard = () => {
             <div className={`${styles.statIconBadge} ${styles.pinkIconBg}`}>
               <FiHeart />
             </div>
-            <span className={styles.trendPill}>
-              <FiTrendingUp style={{ marginRight: 2 }} /> +24%
-            </span>
           </div>
           <div className={styles.statLabel}>DONATIONS</div>
           <div className={styles.statValue}>₹3M</div>
           <button
             className={styles.cardActionBtn}
-            onClick={handleExportData}
+            onClick={() => navigate('/admin/fundraising')}
             style={{ marginTop: 10, width: '100%', padding: '6px 12px', fontSize: 12, borderRadius: 6, border: '1px solid #db2777', backgroundColor: '#fce7f3', color: '#be185d', fontWeight: 600, cursor: 'pointer' }}
           >
-            Export Data
+            View Donations
           </button>
         </div>
 
@@ -185,9 +170,6 @@ export const AdminDashboard = () => {
             <div className={`${styles.statIconBadge} ${styles.greenIconBg}`}>
               <FiBriefcase />
             </div>
-            <span className={styles.trendPill}>
-              <FiTrendingUp style={{ marginRight: 2 }} /> +4%
-            </span>
           </div>
           <div className={styles.statLabel}>PLACEMENT RATE</div>
           <div className={styles.statValue}>94.2%</div>
