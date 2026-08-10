@@ -6,7 +6,7 @@ import com.alumniconnect.mentorship.entity.MentorshipRequest;
 import java.util.List;
 
 @Repository
-public interface MentorshipRequestRepository extends JpaRepository<MentorshipRequest, Integer> {
+public interface MentorshipRequestRepository extends JpaRepository<MentorshipRequest, Long> {
     List<MentorshipRequest> findByStudentId(Integer studentId);
     List<MentorshipRequest> findByAlumniId(Integer alumniId);
     List<MentorshipRequest> findByStatus(String status);

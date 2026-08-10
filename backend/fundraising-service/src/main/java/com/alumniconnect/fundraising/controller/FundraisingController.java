@@ -26,13 +26,13 @@ public class FundraisingController {
     }
 
     @DeleteMapping("/delete/{id}")
-    public String deleteFundraising(@PathVariable Integer id) {
+    public String deleteFundraising(@PathVariable Long id) {
         fundraisingService.deleteFundraising(id);
         return "Fundraising deleted successfully";
     }
 
     @GetMapping("/get/{id}")
-    public Fundraising getFundraisingById(@PathVariable Integer id) {
+    public Fundraising getFundraisingById(@PathVariable Long id) {
         return fundraisingService.getFundraisingById(id);
     }
 

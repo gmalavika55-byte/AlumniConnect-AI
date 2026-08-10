@@ -26,13 +26,13 @@ public class MentorshipController {
     }
 
     @DeleteMapping("/delete/{id}")
-    public String deleteMentorship(@PathVariable Integer id) {
+    public String deleteMentorship(@PathVariable Long id) {
         mentorshipService.deleteMentorship(id);
         return "Mentorship Request deleted successfully";
     }
 
     @GetMapping("/get/{id}")
-    public MentorshipRequest getMentorshipById(@PathVariable Integer id) {
+    public MentorshipRequest getMentorshipById(@PathVariable Long id) {
         return mentorshipService.getMentorshipById(id);
     }
 

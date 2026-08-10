@@ -3,12 +3,14 @@ import { Form, Input, Button, Checkbox, message } from 'antd';
 import { useNavigate, Link } from 'react-router-dom';
 import { FaGraduationCap } from 'react-icons/fa';
 import { authService } from '../services/authService';
+import { useAppContext } from '../context/AppContext';
 import styles from './LoginPage.module.css';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const { refreshData } = useAppContext();
 
   const rememberEmail = localStorage.getItem('alumni_remember_email') || '';
 
@@ -23,9 +25,11 @@ export const LoginPage = () => {
 
       if (response.success) {
         message.success(`Logged in successfully!`);
-        if (response.role === 'admin') {
+        await refreshData();
+        const role = response.role ? response.role.toLowerCase() : '';
+        if (role === 'admin') {
           navigate('/admin/dashboard');
-        } else if (response.role === 'alumni') {
+        } else if (role === 'alumni') {
           navigate('/alumni/dashboard');
         } else {
           navigate('/student/dashboard');

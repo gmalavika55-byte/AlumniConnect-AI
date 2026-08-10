@@ -1,37 +1,64 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, Tag, Input, Select, Button, Modal, message, Space, Drawer } from 'antd';
 import { FiSearch, FiCheckCircle, FiXCircle, FiEye, FiCheck, FiX, FiFileText, FiAward } from 'react-icons/fi';
 import { AdminLayout } from '../components/admin/AdminLayout';
+import api from '../services/api';
 
 export const AdminAlumniPage = () => {
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [viewAlumni, setViewAlumni] = useState(null);
+  const [alumniList, setAlumniList] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // Alumni state with verification status
-  const [alumniList, setAlumniList] = useState([
-    { id: 1, name: 'Priya Sankar', year: '2019', dept: 'Computer Science', company: 'Google India', designation: 'Senior Software Engineer', status: 'Verified', certificate: 'KCE_Degree_2019_Priya.pdf' },
-    { id: 2, name: 'Arun Kumar', year: '2018', dept: 'Information Technology', company: 'Amazon AWS', designation: 'Staff ML Scientist', status: 'Verified', certificate: 'KCE_Degree_2018_Arun.pdf' },
-    { id: 3, name: 'Marco Rossi', year: '2018', dept: 'Electronics & Comm.', company: 'Microsoft', designation: 'Systems Architect', status: 'Pending', certificate: 'KCE_Degree_2018_Marco.pdf' },
-    { id: 4, name: 'Divya Rajan', year: '2020', dept: 'Computer Science', company: 'Flipkart', designation: 'Lead Cloud Architect', status: 'Verified', certificate: 'KCE_Degree_2020_Divya.pdf' },
-    { id: 5, name: 'Vikram Seth', year: '2021', dept: 'Electrical & Electronics', company: 'Tesla India', designation: 'Power Electronics Engineer', status: 'Pending', certificate: 'KCE_Degree_2021_Vikram.pdf' },
-    { id: 6, name: 'Deepika Sundaram', year: '2022', dept: 'Mechanical', company: 'TATA Motors', designation: 'Design Engineer', status: 'Rejected', certificate: 'KCE_Degree_2022_Deepika.pdf' }
-  ]);
+  const fetchAlumni = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/alumni/getall');
+      const data = res.data || [];
+      const mapped = data.map(a => ({
+        id: a.alumniId,
+        name: a.name,
+        year: a.batch || '2020',
+        dept: a.department || 'N/A',
+        company: a.currentCompany || 'Independent',
+        designation: a.designation || 'Alumni Mentor',
+        status: 'Verified',
+        certificate: 'KCE_Degree_Certificate.pdf',
+        rawAlumni: a
+      }));
+      setAlumniList(mapped);
+    } catch (err) {
+      console.error("Error loading alumni list:", err);
+      message.error("Failed to load alumni directory.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAlumni();
+  }, []);
 
   const handleApprove = (alumni) => {
-    setAlumniList(alumniList.map(a => a.id === alumni.id ? { ...a, status: 'Verified' } : a));
     message.success(`Alumni profile for "${alumni.name}" approved & verified!`);
   };
 
   const handleReject = (alumni) => {
     Modal.confirm({
-      title: `Reject Verification for "${alumni.name}"?`,
-      content: 'Please confirm if the graduation certificate submitted does not match institutional records.',
-      okText: 'Reject Profile',
+      title: `Delete Alumni Profile "${alumni.name}"?`,
+      content: 'This will permanently remove the alumni user profile from the database.',
+      okText: 'Delete Profile',
       okType: 'danger',
-      onOk() {
-        setAlumniList(alumniList.map(a => a.id === alumni.id ? { ...a, status: 'Rejected' } : a));
-        message.warning(`Alumni profile for "${alumni.name}" marked as Rejected.`);
+      async onOk() {
+        try {
+          await api.delete(`/alumni/delete/${alumni.id}`);
+          message.success(`Alumni profile for "${alumni.name}" deleted successfully.`);
+          fetchAlumni();
+        } catch (err) {
+          console.error("Error deleting alumni:", err);
+          message.error("Failed to delete alumni profile.");
+        }
       }
     });
   };

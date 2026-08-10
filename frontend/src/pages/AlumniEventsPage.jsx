@@ -1,114 +1,79 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tag, Button, Modal, message } from 'antd';
 import { FiPlus, FiCalendar, FiClock, FiMapPin, FiUsers, FiEye, FiCheck, FiX, FiCheckCircle } from 'react-icons/fi';
 import { AlumniLayout } from '../components/alumni/AlumniLayout';
 import { CreateEventModal } from '../components/admin/CreateEventModal';
+import { useAppContext } from '../context/AppContext';
+import { authService } from '../services/authService';
+import api from '../services/api';
 
 export const AlumniEventsPage = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [activeTab, setActiveTab] = useState('ForYou');
 
-  const [events, setEvents] = useState([
-    {
-      id: 1,
-      title: 'Global Alumni Meetup 2026',
-      category: 'Reunion & Keynote',
-      date: 'September 15, 2026',
-      time: '06:00 PM - 09:00 PM IST',
-      location: 'Grand Ballroom & Zoom Virtual Hall',
-      speaker: 'Rahul Kumar (Sr. SWE, Google India)',
-      creator: 'Rahul Kumar',
-      attendees: 142,
-      status: 'Upcoming',
-      description: 'Annual global networking meetup bringing together alumni across big tech, startups, and research to mentor graduating students.',
-      registered: false
-    },
-    {
-      id: 2,
-      title: 'Machine Learning & LLM Masterclass',
-      category: 'Technical Workshop',
-      date: 'August 28, 2026',
-      time: '04:00 PM - 06:00 PM IST',
-      location: 'Computer Science Lab 3 & Meet',
-      speaker: 'Arun Kumar (Staff ML Scientist, AWS)',
-      creator: 'Arun Kumar',
-      attendees: 88,
-      status: 'Upcoming',
-      description: 'Hands-on practical session covering PyTorch transformer fine-tuning and deploying ML microservices.',
-      registered: false
-    },
-    {
-      id: 3,
-      title: 'Cloud Architecture & DevOps Webinar',
-      category: 'Webinar',
-      date: 'July 20, 2026',
-      time: '05:00 PM - 07:00 PM IST',
-      location: 'Zoom Virtual Hall',
-      speaker: 'Divya Rajan (Lead Architect, Flipkart)',
-      creator: 'Divya Rajan',
-      attendees: 115,
-      status: 'Completed',
-      description: 'Deep dive into Kubernetes cluster management and CI/CD automation pipelines.',
-      registered: false
-    }
-  ]);
+  const { events, refreshData } = useAppContext();
+  const user = authService.getCurrentUser();
 
   const isPast = (e) => {
-    if (e.status === 'Completed') return true;
-    const eDate = new Date(e.date);
-    return eDate < new Date();
+    if (!e.eventDate) return false;
+    return new Date(e.eventDate) < new Date();
   };
 
-  const handleAddEvent = (newEvent) => {
-    const eventWithCreator = {
-      ...newEvent,
-      id: Date.now(),
-      creator: 'Rahul Kumar',
-      speaker: 'Rahul Kumar (Sr. SWE, Google India)',
-      attendees: 0,
-      registered: false,
-      status: 'Upcoming'
+  const handleAddEvent = async (newEvent) => {
+    if (!user) return;
+    const payload = {
+      title: newEvent.title,
+      category: newEvent.category || 'Technical Workshop',
+      description: newEvent.description,
+      eventDate: newEvent.date ? newEvent.date.toISOString() : new Date().toISOString(),
+      startTime: newEvent.startTime || '04:00 PM',
+      endTime: newEvent.endTime || '06:00 PM',
+      venue: newEvent.location || 'Virtual',
+      organizer: user.name || 'Alumni Mentor',
+      status: 'UPCOMING'
     };
-    setEvents([eventWithCreator, ...events]);
-    message.success('Event created successfully!');
-    setIsCreateOpen(false);
+
+    try {
+      await api.post('/event/add', payload);
+      message.success('Event created successfully!');
+      setIsCreateOpen(false);
+      refreshData();
+    } catch (err) {
+      console.error("Error creating event:", err);
+      message.error("Failed to create event.");
+    }
   };
 
-  const handleRegister = (eventId) => {
-    setEvents(events.map(e => {
-      if (e.id === eventId) {
-        return {
-          ...e,
-          registered: true,
-          attendees: e.attendees + 1
-        };
-      }
-      return e;
-    }));
-    message.success('Successfully registered for the event!');
+  const handleRegister = async (eventId) => {
+    if (!user) return;
+    try {
+      const payload = {
+        eventId: eventId,
+        alumniId: user.alumniId,
+        studentId: null,
+        registrationDate: new Date().toISOString()
+      };
+      await api.post('/event/register', payload);
+      message.success('Successfully registered for the event!');
+      refreshData();
+    } catch (err) {
+      console.error("Error registering for event:", err);
+      message.error("Failed to register.");
+    }
   };
 
   const handleCancelRegistration = (eventId) => {
-    setEvents(events.map(e => {
-      if (e.id === eventId) {
-        return {
-          ...e,
-          registered: false,
-          attendees: Math.max(0, e.attendees - 1)
-        };
-      }
-      return e;
-    }));
-    message.info('Registration cancelled.');
+    message.info('Cancel registration is currently not supported by the backend.');
   };
 
   // Filtered lists based on active tab
   const getFilteredEvents = () => {
+    const userName = user?.name || '';
     if (activeTab === 'ForYou') {
-      return events.filter(e => e.creator !== 'Rahul Kumar' && !isPast(e));
+      return events.filter(e => e.organizer !== userName && !isPast(e));
     } else if (activeTab === 'Created') {
-      return events.filter(e => e.creator === 'Rahul Kumar' && !isPast(e));
+      return events.filter(e => e.organizer === userName && !isPast(e));
     } else if (activeTab === 'Registered') {
       return events.filter(e => e.registered === true && !isPast(e));
     } else {
@@ -139,11 +104,11 @@ export const AlumniEventsPage = () => {
         </Button>
       </div>
 
-      {/* Tabs Selector Switcher */}
+  {/* Tabs Selector Switcher */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 24, borderBottom: '1px solid var(--ac-border)', paddingBottom: 12, flexWrap: 'wrap' }}>
         {[
-          { id: 'ForYou', label: 'Events For You', count: events.filter(e => e.creator !== 'Rahul Kumar' && !isPast(e)).length },
-          { id: 'Created', label: 'Created Events', count: events.filter(e => e.creator === 'Rahul Kumar' && !isPast(e)).length },
+          { id: 'ForYou', label: 'Events For You', count: events.filter(e => e.organizer !== (user?.name || '') && !isPast(e)).length },
+          { id: 'Created', label: 'Created Events', count: events.filter(e => e.organizer === (user?.name || '') && !isPast(e)).length },
           { id: 'Registered', label: 'Registered Events', count: events.filter(e => e.registered === true && !isPast(e)).length },
           { id: 'Past', label: 'Past Events', count: events.filter(e => isPast(e)).length }
         ].map(tab => (

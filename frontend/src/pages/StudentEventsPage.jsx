@@ -5,6 +5,8 @@ import { FiCalendar, FiClock, FiMapPin, FiCheckCircle } from 'react-icons/fi';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { EventRegisterModal } from '../components/student/EventRegisterModal';
 import { useAppContext } from '../context/AppContext';
+import { authService } from '../services/authService';
+import api from '../services/api';
 import styles from './StudentEventsPage.module.css';
 
 export const StudentEventsPage = () => {
@@ -14,15 +16,31 @@ export const StudentEventsPage = () => {
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [detailsEvent, setDetailsEvent] = useState(null);
 
-  const { searchQuery, events, setEvents } = useAppContext();
+  const { searchQuery, events, refreshData } = useAppContext();
 
   const handleRegisterClick = (eventItem) => {
     setSelectedEvent(eventItem);
     setIsRegisterOpen(true);
   };
 
-  const handleRegisterSuccess = (eventId) => {
-    setEvents(prev => prev.map(e => e.id === eventId ? { ...e, registered: true } : e));
+  const handleRegisterSuccess = async (eventId) => {
+    const student = authService.getCurrentUser();
+    if (!student) return;
+
+    try {
+      const payload = {
+        eventId: eventId,
+        studentId: student.studentId,
+        alumniId: null,
+        registrationDate: new Date().toISOString()
+      };
+      await api.post('/event/register', payload);
+      message.success('Registration successful!');
+      refreshData();
+    } catch (err) {
+      console.error("Error registering for event:", err);
+      message.error("Failed to register for event.");
+    }
   };
 
   // ── Search & Tab Filtering ──

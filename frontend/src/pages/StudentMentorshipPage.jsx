@@ -7,6 +7,8 @@ import { RequestMentorshipModal } from '../components/student/RequestMentorshipM
 import { JoinMeetingModal } from '../components/student/JoinMeetingModal';
 import { LeaveFeedbackModal } from '../components/student/LeaveFeedbackModal';
 import { useAppContext } from '../context/AppContext';
+import { authService } from '../services/authService';
+import api from '../services/api';
 import styles from './StudentMentorshipPage.module.css';
 
 export const StudentMentorshipPage = () => {
@@ -25,7 +27,8 @@ export const StudentMentorshipPage = () => {
     requests,
     setRequests,
     activeMentorships,
-    meetingsHistory
+    meetingsHistory,
+    refreshData
   } = useAppContext();
 
   const handleRequestClick = (mentor) => {
@@ -33,27 +36,27 @@ export const StudentMentorshipPage = () => {
     setIsRequestModalOpen(true);
   };
 
-  const handleRequestSuccess = (reqData) => {
+  const handleRequestSuccess = async (reqData) => {
     const mentor = mentors.find(m => m.id === reqData.mentorId);
     if (!mentor) return;
+    const student = authService.getCurrentUser();
+    if (!student) return;
 
-    const alreadyRequested = requests.some(r => r.mentorId === mentor.id);
-    if (alreadyRequested) {
-      const existing = requests.find(r => r.mentorId === mentor.id);
-      message.info(`Already requested. Status: ${existing.status}`);
-      return;
+    try {
+      const payload = {
+        studentId: student.studentId,
+        alumniId: mentor.id,
+        status: 'PENDING',
+        remarks: `${reqData.topic}: ${reqData.purpose}`,
+        requestDate: new Date().toISOString()
+      };
+      await api.post('/mentorship/add', payload);
+      message.success(`Mentorship request submitted successfully to ${mentor.name}!`);
+      refreshData();
+    } catch (err) {
+      console.error("Error creating mentorship request:", err);
+      message.error("Failed to send mentorship request.");
     }
-
-    const newRequest = {
-      id: Date.now(),
-      mentorId: mentor.id,
-      mentorName: mentor.name,
-      role: mentor.role,
-      company: mentor.company,
-      date: reqData.date || 'Today',
-      status: 'Pending'
-    };
-    setRequests([...requests, newRequest]);
   };
 
   // ── Filters based on Global Search Query ──

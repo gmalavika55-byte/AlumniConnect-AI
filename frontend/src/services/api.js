@@ -28,6 +28,7 @@ api.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('alumni_auth_token');
       localStorage.removeItem('alumni_user_data');
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }

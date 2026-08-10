@@ -1,9 +1,8 @@
-import React from 'react';
-import { Button, Tag, Table, message } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Button, Tag, Table, message, Spin } from 'antd';
 import { FiDownload, FiBriefcase, FiCpu, FiUsers } from 'react-icons/fi';
 import { AdminLayout } from '../components/admin/AdminLayout';
 import { downloadCsv } from '../utils/exportCsv';
-import { mockAlumni } from '../data/mockAlumni';
 import {
   calculateAlumniOverview,
   calculateSectorDistribution,
@@ -14,55 +13,142 @@ import {
   calculateSkillDistribution,
   calculateLocationDistribution
 } from '../utils/analyticsHelper';
+import api from '../services/api';
 
 export const AdminReportsPage = () => {
-  // 1. Calculate dynamic career analytics from mockAlumni
-  const overview = calculateAlumniOverview(mockAlumni);
-  const sectors = calculateSectorDistribution(mockAlumni);
-  const roles = calculateRoleDistribution(mockAlumni);
-  const companies = calculateTopCompanies(mockAlumni);
-  const batchTrends = calculateBatchTrends(mockAlumni);
-  const departmentOutcomes = calculateDepartmentOutcomes(mockAlumni);
-  const skills = calculateSkillDistribution(mockAlumni);
-  const locations = calculateLocationDistribution(mockAlumni);
+  const [loading, setLoading] = useState(true);
+  const [overview, setOverview] = useState({ total: 0, uniqueCompanies: 0, uniqueRoles: 0, uniqueDepts: 0 });
+  const [sectors, setSectors] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [companies, setCompanies] = useState([]);
+  const [batchTrends, setBatchTrends] = useState([]);
+  const [departmentOutcomes, setDepartmentOutcomes] = useState([]);
+  const [skills, setSkills] = useState([]);
+  const [locations, setLocations] = useState([]);
 
-  // Centralized placement drive records used dynamically
-  const placementCompanies = [
+  const [placementStats, setPlacementStats] = useState({
+    overallPlacementRate: '94.2%',
+    studentsPlaced: '856 / 1,200',
+    avgPackage: '₹12.8 LPA',
+    highestPackage: '₹32.0 LPA',
+    drivesCount: '124 Companies'
+  });
+
+  const [placementCompanies, setPlacementCompanies] = useState([
     { key: '1', company: 'Google DeepMind', hired: 8, package: '₹32.0 LPA', year: '2026 Drive' },
     { key: '2', company: 'Stripe Payments', hired: 15, package: '₹22.0 LPA', year: '2026 Drive' },
     { key: '3', company: 'Amazon AWS', hired: 42, package: '₹18.5 LPA', year: '2026 Drive' },
     { key: '4', company: 'Wipro Digital', hired: 78, package: '₹6.5 LPA', year: '2025/26 Cycle' },
     { key: '5', company: 'Infosys Systems', hired: 112, package: '₹5.8 LPA', year: '2025/26 Cycle' }
-  ];
+  ]);
 
-  // CSV Report Generator (Uses dynamically calculated data fields)
+  const fetchAnalytics = async () => {
+    try {
+      setLoading(true);
+      
+      const careerRes = await api.get('/career/getall');
+      const careerData = careerRes.data || {};
+
+      const placementRes = await api.get('/placement/getall');
+      const placementData = placementRes.data || {};
+
+      const alumniRes = await api.get('/alumni/getall');
+      const allAlumni = alumniRes.data || [];
+
+      const localOverview = calculateAlumniOverview(allAlumni);
+      const localBatchTrends = calculateBatchTrends(allAlumni);
+      const localDeptOutcomes = calculateDepartmentOutcomes(allAlumni);
+      const localLocations = calculateLocationDistribution(allAlumni);
+
+      setOverview(localOverview);
+      setBatchTrends(localBatchTrends);
+      setDepartmentOutcomes(localDeptOutcomes);
+      setLocations(localLocations);
+
+      if (careerData.sectorDistribution) {
+        const totalAlumni = careerData.totalAlumniProfiles || allAlumni.length || 1;
+        const mappedSectors = Object.keys(careerData.sectorDistribution).map(k => ({
+          sector: k,
+          count: careerData.sectorDistribution[k],
+          percentage: ((careerData.sectorDistribution[k] / totalAlumni) * 100).toFixed(1)
+        })).sort((a,b) => b.count - a.count);
+        setSectors(mappedSectors);
+      }
+
+      if (careerData.roleDistribution) {
+        const totalAlumni = careerData.totalAlumniProfiles || allAlumni.length || 1;
+        const mappedRoles = Object.keys(careerData.roleDistribution).map(k => ({
+          role: k,
+          count: careerData.roleDistribution[k],
+          percentage: ((careerData.roleDistribution[k] / totalAlumni) * 100).toFixed(1)
+        })).sort((a,b) => b.count - a.count);
+        setRoles(mappedRoles);
+      }
+
+      if (careerData.employerOrganizations) {
+        const mappedCompanies = Object.keys(careerData.employerOrganizations).map(k => ({
+          company: k,
+          count: careerData.employerOrganizations[k]
+        })).sort((a,b) => b.count - a.count);
+        setCompanies(mappedCompanies);
+      }
+
+      if (careerData.skillsDistribution) {
+        const mappedSkills = Object.keys(careerData.skillsDistribution).map(k => ({
+          skill: k,
+          count: careerData.skillsDistribution[k]
+        })).sort((a,b) => b.count - a.count);
+        setSkills(mappedSkills);
+      }
+
+      if (placementData.overallPlacementRate !== undefined) {
+        setPlacementStats({
+          overallPlacementRate: `${placementData.overallPlacementRate}%`,
+          studentsPlaced: `${placementData.totalAlumniPlaced} / ${placementData.totalStudentsCount}`,
+          avgPackage: `₹${placementData.averageSalaryPackage} LPA`,
+          highestPackage: `₹${placementData.highestSalaryPackage} LPA`,
+          drivesCount: `${placementData.placementDrivesCount} Companies`
+        });
+      }
+
+      if (placementData.placementDrives && placementData.placementDrives.length > 0) {
+        const mappedDrives = placementData.placementDrives.map((d, idx) => ({
+          key: String(idx + 1),
+          company: d.company || 'Unknown',
+          hired: d.hired || d.studentsHired || 0,
+          package: `₹${d.package || d.salaryPackage} LPA`,
+          year: d.year || d.driveYear || '2026 Drive'
+        }));
+        setPlacementCompanies(mappedDrives);
+      }
+
+    } catch (err) {
+      console.error("Error loading analytics data:", err);
+      message.error("Failed to load institutional reports.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, []);
+
   const handleExportFullAnalytics = () => {
     const headers = ['Metric / Segment', 'Field Name / Category', 'Aggregated Outcome'];
     const rows = [
-      ['Placement Metrics', 'Overall Placement Rate', '94.2%'],
-      ['Placement Metrics', 'Students Placed', '856 / 1200'],
-      ['Placement Metrics', 'Average Salary Package', '₹12.8 LPA'],
-      ['Placement Metrics', 'Highest Salary Package', '₹32.0 LPA'],
-      ['Placement Metrics', 'Placement Drives', '124 Companies'],
-      // Department placement rates
-      ['Placement Rate', 'Computer Science & Engineering', '98.5%'],
-      ['Placement Rate', 'Information Technology', '96.2%'],
-      ['Placement Rate', 'Electronics & Communication', '92.4%'],
-      ['Placement Rate', 'Electrical & Electronics', '88.0%'],
-      ['Placement Rate', 'Mechanical Engineering', '84.5%'],
-      ['Placement Rate', 'Civil Engineering', '81.0%'],
-      // Career overview
+      ['Placement Metrics', 'Overall Placement Rate', placementStats.overallPlacementRate],
+      ['Placement Metrics', 'Students Placed', placementStats.studentsPlaced],
+      ['Placement Metrics', 'Average Salary Package', placementStats.avgPackage],
+      ['Placement Metrics', 'Highest Salary Package', placementStats.highestPackage],
+      ['Placement Metrics', 'Placement Drives', placementStats.drivesCount],
       ['Career Overview', 'Total Profiles Evaluated', `${overview.total}`],
       ['Career Overview', 'Unique Active Companies', `${overview.uniqueCompanies}`],
       ['Career Overview', 'Distinct Job Roles', `${overview.uniqueRoles}`],
       ['Career Overview', 'Departments Represented', `${overview.uniqueDepts}`],
-      // Dynamic Sector outcomes
       ...sectors.map(s => ['Alumni Sector Distribution', s.sector, `${s.count} (${s.percentage}%)`]),
-      // Dynamic roles
       ...roles.map(r => ['Top Career Roles', r.role, `${r.count} (${r.percentage}%)`]),
-      // Top skills
       ...skills.map(sk => ['Professional Specialization Skills', sk.skill, `${sk.count} occurrences`]),
-      // Top locations
       ...locations.map(loc => ['Placement Locations', loc.location, `${loc.count} alumni`])
     ];
 
@@ -70,22 +156,17 @@ export const AdminReportsPage = () => {
     message.success('Official KCE Institutional Report exported successfully!');
   };
 
-  // Determine top values dynamically for the AI insights summary
   const primarySectorName = sectors[0]?.sector || 'N/A';
-  const primarySectorPct = sectors[0]?.percentage || '0.0';
   const primaryRoleName = roles[0]?.role || 'N/A';
   const topSkillName = skills[0]?.skill || 'N/A';
-  const primaryCityName = locations[0]?.location || 'N/A';
 
   return (
     <AdminLayout>
-      {/* 1. Header block */}
-      <div style={{ borderBottom: '2px solid var(--ac-border)', paddingBottom: 16, marginBottom: 30, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: 'var(--ac-brand)', textTransform: 'uppercase' }}>KCE College Report</span>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '4px 0 0 0' }}>Institutional Reports & Outcomes</h1>
-          <p style={{ fontSize: 13, color: 'var(--ac-text-secondary)', margin: '4px 0 0 0' }}>
-            Official reporting summary generated for the College Academic Council on August 9, 2026.
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--ac-text-primary)' }}>Institutional Reports</h1>
+          <p style={{ fontSize: 13.5, color: 'var(--ac-text-secondary)', marginTop: 4 }}>
+            Aggregated career and placement analytics for {new Date().getFullYear()}
           </p>
         </div>
         <Button
@@ -110,23 +191,23 @@ export const AdminReportsPage = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 20, padding: '16px 20px', background: 'var(--ac-bg-input)', borderRadius: 12, border: '1px solid var(--ac-border)', marginBottom: 24, textAlign: 'center' }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Overall Placement Rate</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#16a34a', marginTop: 4 }}>94.2%</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#16a34a', marginTop: 4 }}>{placementStats.overallPlacementRate}</div>
           </div>
           <div style={{ borderLeft: '1px solid var(--ac-border)' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Students Placed</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--ac-text-primary)', marginTop: 4 }}>856 / 1,200</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--ac-text-primary)', marginTop: 4 }}>{placementStats.studentsPlaced}</div>
           </div>
           <div style={{ borderLeft: '1px solid var(--ac-border)' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Average Salary Package</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--ac-text-primary)', marginTop: 4 }}>₹12.8 LPA</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--ac-text-primary)', marginTop: 4 }}>{placementStats.avgPackage}</div>
           </div>
           <div style={{ borderLeft: '1px solid var(--ac-border)' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Highest Salary Package</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--ac-brand)', marginTop: 4 }}>₹32.0 LPA</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--ac-brand)', marginTop: 4 }}>{placementStats.highestPackage}</div>
           </div>
           <div style={{ borderLeft: '1px solid var(--ac-border)' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Placement Drives</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--ac-text-primary)', marginTop: 4 }}>124 Companies</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--ac-text-primary)', marginTop: 4 }}>{placementStats.drivesCount}</div>
           </div>
         </div>
 

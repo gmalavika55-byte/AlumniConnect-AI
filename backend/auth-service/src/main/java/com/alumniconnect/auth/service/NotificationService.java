@@ -6,7 +6,7 @@ import com.alumniconnect.auth.entity.Notification;
 public interface NotificationService {
     Notification addNotification(Notification notification);
     Notification updateNotification(Notification notification);
-    void deleteNotification(Integer notificationId);
-    Notification getNotificationById(Integer notificationId);
+    void deleteNotification(Long notificationId);
+    Notification getNotificationById(Long notificationId);
     List<Notification> getAllNotifications();
 }

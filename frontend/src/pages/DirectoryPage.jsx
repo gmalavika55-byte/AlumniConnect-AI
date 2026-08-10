@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   Filter, 
@@ -17,7 +17,9 @@ import {
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
 import { Input } from '../components/common/Input';
-import { mockAlumni } from '../data/mockAlumni';
+import { message } from 'antd';
+import { authService } from '../services/authService';
+import api from '../services/api';
 
 export const DirectoryPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -27,8 +29,43 @@ export const DirectoryPage = () => {
   const [selectedMentorModal, setSelectedMentorModal] = useState(null);
   const [requestNotes, setRequestNotes] = useState('');
   const [requestSent, setRequestSent] = useState(false);
+  const [alumniList, setAlumniList] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const filteredAlumni = mockAlumni.filter((item) => {
+  const fetchAlumni = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/alumni/getall');
+      const data = res.data || [];
+      const mapped = data.map(a => ({
+        id: a.alumniId,
+        name: a.name,
+        role: a.designation || 'Software Engineer',
+        company: a.currentCompany || 'Independent',
+        batch: a.batch || 'N/A',
+        department: a.department || 'General',
+        location: a.location || 'India',
+        matchScore: 95,
+        skills: a.skills ? a.skills.split(',').map(s => s.trim()) : [],
+        avatar: a.profilePhoto || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&auto=format&fit=crop&q=80',
+        bio: a.bio || 'Alumni connect verified profile.',
+        verified: true,
+        availableForMentorship: a.availableForMentorship === 'Yes'
+      }));
+      setAlumniList(mapped);
+    } catch (err) {
+      console.error("Error loading alumni directory", err);
+      message.error("Failed to load alumni directory.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAlumni();
+  }, []);
+
+  const filteredAlumni = alumniList.filter((item) => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -44,12 +81,31 @@ export const DirectoryPage = () => {
     setRequestNotes('');
   };
 
-  const handleSendRequest = (e) => {
+  const handleSendRequest = async (e) => {
     e.preventDefault();
-    setRequestSent(true);
-    setTimeout(() => {
-      setSelectedMentorModal(null);
-    }, 1800);
+    const student = authService.getCurrentUser();
+    if (!student) {
+      message.error("You must be logged in as a student to connect.");
+      return;
+    }
+
+    try {
+      const payload = {
+        studentId: student.studentId,
+        alumniId: selectedMentorModal.id,
+        status: 'PENDING',
+        remarks: requestNotes,
+        requestDate: new Date().toISOString()
+      };
+      await api.post('/mentorship/add', payload);
+      setRequestSent(true);
+      setTimeout(() => {
+        setSelectedMentorModal(null);
+      }, 1800);
+    } catch (err) {
+      console.error("Error sending connection request:", err);
+      message.error("Failed to send mentorship request.");
+    }
   };
 
   return (

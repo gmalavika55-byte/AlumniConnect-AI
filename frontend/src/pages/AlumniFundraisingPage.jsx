@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tag, Button, Modal, Form, Input, Select, InputNumber, message } from 'antd';
 import { FiHeart, FiAward, FiShare2, FiDollarSign, FiCheckCircle, FiClock } from 'react-icons/fi';
 import { AlumniLayout } from '../components/alumni/AlumniLayout';
 import { useAppContext } from '../context/AppContext';
+import { authService } from '../services/authService';
+import api from '../services/api';
 
 export const AlumniFundraisingPage = () => {
   const [isContributeOpen, setIsContributeOpen] = useState(false);
@@ -10,65 +12,82 @@ export const AlumniFundraisingPage = () => {
 
   // Summary state from AppContext
   const { alumniDonations: totalDonations, setAlumniDonations: setTotalDonations } = useAppContext();
-  const [supportedCount, setSupportedCount] = useState(3);
-  const [volunteerHours, setVolunteerHours] = useState(28);
+  const [supportedCount, setSupportedCount] = useState(0);
+  const [campaigns, setCampaigns] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const [campaigns, setCampaigns] = useState([
-    {
-      id: 1,
-      title: 'Student Need-Based Excellence Scholarship 2026',
-      target: 500000,
-      raised: 380000,
-      donorsCount: 142,
-      category: 'Scholarship',
-      description: 'Funding full tuition scholarships for 10 high-achieving underprivileged computer science & engineering students.'
-    },
-    {
-      id: 2,
-      title: 'Campus High-Performance AI Innovation Lab',
-      target: 1200000,
-      raised: 920000,
-      donorsCount: 88,
-      category: 'Infrastructure',
-      description: 'Procuring 8 GPU workstations (NVIDIA RTX 4090) for campus AI research and student hackathons.'
-    },
-    {
-      id: 3,
-      title: 'Alumni Student Emergency Relief Fund',
-      target: 300000,
-      raised: 240000,
-      donorsCount: 65,
-      category: 'Relief',
-      description: 'Providing immediate medical and financial assistance to students facing emergency family hardship.'
+  const user = authService.getCurrentUser();
+  const alumniId = user?.alumniId;
+
+  const fetchFundraisingData = async () => {
+    if (!alumniId) return;
+    setLoading(true);
+    try {
+      const campRes = await api.get('/fundraising/getall');
+      const camps = campRes.data || [];
+      const mappedCamps = camps.map(c => ({
+        id: c.fundId,
+        title: c.title,
+        target: Number(c.targetAmount || 0),
+        raised: Number(c.collectedAmount || 0),
+        category: 'Institutional',
+        description: c.description
+      }));
+      setCampaigns(mappedCamps);
+
+      const histRes = await api.get(`/fundraising/donations/alumni/${alumniId}`);
+      const list = histRes.data || [];
+      const mappedHistory = list.map(d => ({
+        id: d.donationId,
+        campaign: d.fundraising?.title || 'Giving Contribution',
+        amount: Number(d.amount || 0),
+        date: d.donationDate ? new Date(d.donationDate).toLocaleDateString() : 'N/A',
+        status: d.paymentStatus || 'Completed'
+      }));
+      setHistory(mappedHistory);
+      setSupportedCount(new Set(list.map(d => d.fundraising?.fundId)).size);
+
+      const total = list.reduce((sum, d) => sum + Number(d.amount || 0), 0);
+      setTotalDonations(total);
+    } catch (err) {
+      console.error("Error loading fundraising details", err);
+      message.error("Failed to load fundraising details.");
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
-  const [history, setHistory] = useState([
-    { id: 101, campaign: 'Student Need-Based Excellence Scholarship', amount: 20000, date: 'June 15, 2026', status: 'Completed' },
-    { id: 102, campaign: 'Campus High-Performance AI Innovation Lab', amount: 15000, date: 'May 04, 2026', status: 'Completed' },
-    { id: 103, campaign: 'Alumni Student Emergency Relief Fund', amount: 10000, date: 'March 18, 2026', status: 'Completed' }
-  ]);
+  useEffect(() => {
+    fetchFundraisingData();
+  }, [alumniId]);
 
   const handleContributeSubmit = async () => {
     try {
       const values = await contributeForm.validateFields();
       const amountNum = parseFloat(values.amount);
-      setTotalDonations(prev => prev + amountNum);
+      const selectedCamp = campaigns.find(c => c.title === values.campaign);
+      if (!selectedCamp) {
+        message.error("Please select a valid campaign.");
+        return;
+      }
 
-      const newHistoryItem = {
-        id: Date.now(),
-        campaign: values.campaign,
+      const payload = {
         amount: amountNum,
-        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        status: 'Completed'
+        donationDate: new Date().toISOString(),
+        paymentStatus: 'SUCCESS',
+        alumniId: alumniId,
+        fundraising: { fundId: selectedCamp.id }
       };
 
-      setHistory([newHistoryItem, ...history]);
+      await api.post('/fundraising/donate', payload);
       message.success(`Thank you! Your contribution of ₹${amountNum.toLocaleString()} was successful!`);
       contributeForm.resetFields();
       setIsContributeOpen(false);
+      fetchFundraisingData();
     } catch (err) {
-      console.log(err);
+      console.error("Error processing donation:", err);
+      message.error("Failed to submit donation.");
     }
   };
 

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, Tag, Input, Button, Modal, Form, Select, Space, Progress, message } from 'antd';
 import { FiPlus, FiSearch, FiDollarSign, FiCalendar, FiHeart, FiTrendingUp } from 'react-icons/fi';
 import { AdminLayout } from '../components/admin/AdminLayout';
 import { useAppContext } from '../context/AppContext';
+import api from '../services/api';
 
 export const AdminFundraisingPage = () => {
   const { alumniDonations } = useAppContext();
@@ -10,41 +11,75 @@ export const AdminFundraisingPage = () => {
   const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);
   const [campaignForm] = Form.useForm();
   const [activeTab, setActiveTab] = useState('campaigns');
+  const [campaigns, setCampaigns] = useState([]);
+  const [donations, setDonations] = useState([]);
 
-  // Campaigns list state
-  const [campaigns, setCampaigns] = useState([
-    { id: 1, name: 'AI Innovation Lab Fund', description: 'Upgrading the institutional AI lab with high-end workstation GPUs for advanced research.', goal: 500000, raised: 320000, startDate: '2026-06-01', endDate: '2026-09-30', status: 'Active' },
-    { id: 2, name: 'Student Scholarship Program 2026', description: 'Financial aid support for meritorious students from economically weaker sections.', goal: 1000000, raised: 650000 + alumniDonations, startDate: '2026-05-15', endDate: '2026-12-31', status: 'Active' },
-    { id: 3, name: 'New Sports Complex Construction', description: 'Funding the extension of the campus indoor badminton court and gymnasium.', goal: 800000, raised: 800000, startDate: '2026-01-10', endDate: '2026-07-30', status: 'Completed' }
-  ]);
+  const fetchFundraisingData = async () => {
+    try {
+      const campRes = await api.get('/fundraising/getall');
+      const camps = campRes.data || [];
+      const mappedCamps = camps.map(c => ({
+        id: c.fundId,
+        name: c.title,
+        description: c.description,
+        goal: Number(c.targetAmount || 0),
+        raised: Number(c.collectedAmount || 0),
+        startDate: c.startDate || 'N/A',
+        endDate: c.endDate || 'N/A',
+        status: c.status || 'Active'
+      }));
+      setCampaigns(mappedCamps);
 
-  // Donations list state
-  const [donations, setDonations] = useState([
-    { id: 'TXN100234', donorName: 'Rahul Kumar', donorType: 'Alumni', campaign: 'Student Scholarship Program 2026', amount: 15000, date: '2026-08-05', status: 'Completed' },
-    { id: 'TXN100235', donorName: 'Arun Kumar', donorType: 'Alumni', campaign: 'AI Innovation Lab Fund', amount: 35000, date: '2026-08-04', status: 'Completed' },
-    { id: 'TXN100236', donorName: 'Priya Sankar', donorType: 'Alumni', campaign: 'Student Scholarship Program 2026', amount: 20000, date: '2026-08-01', status: 'Completed' },
-    { id: 'TXN100237', donorName: 'Dr. Sarah Jenkins', donorType: 'Corporate Partner', campaign: 'AI Innovation Lab Fund', amount: 100000, date: '2026-07-28', status: 'Completed' }
-  ]);
+      // Load all alumni to resolve donor names
+      const alumniRes = await api.get('/alumni/getall');
+      const alumniList = alumniRes.data || [];
+
+      const donRes = await api.get('/fundraising/donations/all');
+      const dons = donRes.data || [];
+      const mappedDons = dons.map(d => {
+        const donor = alumniList.find(a => String(a.alumniId) === String(d.alumniId));
+        return {
+          id: `TXN${d.donationId}`,
+          donorName: d.alumni?.name || donor?.name || `Alumni #${d.alumniId}`,
+          donorType: 'Alumni',
+          campaign: d.fundraising?.title || 'Giving Campaign',
+          amount: Number(d.amount || 0),
+          date: d.donationDate ? new Date(d.donationDate).toLocaleDateString() : 'N/A',
+          status: d.paymentStatus || 'Completed'
+        };
+      });
+      setDonations(mappedDons);
+    } catch (err) {
+      console.error("Error loading fundraising details:", err);
+      message.error("Failed to load fundraising details.");
+    }
+  };
+
+  useEffect(() => {
+    fetchFundraisingData();
+  }, []);
 
   const handleCreateCampaign = async () => {
     try {
       const values = await campaignForm.validateFields();
-      const newCampaign = {
-        id: Date.now(),
-        name: values.name,
+      const payload = {
+        title: values.name,
         description: values.description,
-        goal: Number(values.goal),
-        raised: 0,
-        startDate: values.startDate || '2026-08-09',
+        targetAmount: Number(values.goal),
+        collectedAmount: 0,
+        startDate: values.startDate || new Date().toISOString().split('T')[0],
         endDate: values.endDate || '2026-12-31',
         status: 'Active'
       };
-      setCampaigns([newCampaign, ...campaigns]);
+
+      await api.post('/fundraising/add', payload);
       message.success(`Campaign "${values.name}" created successfully!`);
       campaignForm.resetFields();
       setIsCampaignModalOpen(false);
+      fetchFundraisingData();
     } catch (err) {
-      console.log(err);
+      console.error("Error creating campaign:", err);
+      message.error("Failed to create campaign.");
     }
   };
 

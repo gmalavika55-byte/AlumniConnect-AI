@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Form, Input, Select, Switch, Button, message, Table } from 'antd';
 import { FiUser, FiShield, FiGlobe, FiSave } from 'react-icons/fi';
 import { AdminLayout } from '../components/admin/AdminLayout';
 import { useAppContext } from '../context/AppContext';
+import { authService } from '../services/authService';
+import api from '../services/api';
 
 export const AdminSettingsPage = () => {
   const { theme, setTheme, language, setLanguage } = useAppContext();
   const [profileForm] = Form.useForm();
+  const adminUser = authService.getCurrentUser();
 
   // Role permissions matrix state
   const [permissions, setPermissions] = useState([
@@ -18,12 +21,42 @@ export const AdminSettingsPage = () => {
     { key: '6', feature: 'Export Institutional Analytics', admin: true, alumni: false, student: false }
   ]);
 
+  useEffect(() => {
+    if (adminUser) {
+      profileForm.setFieldsValue({
+        name: adminUser.name || '',
+        email: adminUser.email || '',
+        role: adminUser.role || 'System Administrator',
+        dept: adminUser.department || ''
+      });
+    }
+  }, [profileForm]);
+
   const handleProfileSave = async () => {
     try {
       const values = await profileForm.validateFields();
-      message.success(`Admin profile for ${values.name} updated!`);
+      if (!adminUser) return;
+
+      const updatedAdmin = {
+        ...adminUser,
+        name: values.name,
+        email: values.email,
+        department: values.dept
+      };
+
+      const res = await api.put('/admin/update', updatedAdmin);
+      const savedUser = res.data;
+
+      localStorage.setItem('alumni_user_data', JSON.stringify({
+        ...adminUser,
+        ...savedUser,
+        role: adminUser.role
+      }));
+
+      message.success(`Admin profile for ${savedUser.name} updated!`);
     } catch (err) {
-      console.log(err);
+      console.error('Error updating admin profile:', err);
+      message.error('Failed to update admin profile.');
     }
   };
 

@@ -1,0 +1,10 @@
+com\alumniconnect\analytics\serviceimpl\CareerRecommendationServiceImpl.class
+com\alumniconnect\analytics\exception\ResourceNotFoundException.class
+com\alumniconnect\analytics\AnalyticsApplication.class
+com\alumniconnect\analytics\serviceimpl\AnalyticsServiceImpl.class
+com\alumniconnect\analytics\controller\AnalyticsController.class
+com\alumniconnect\analytics\controller\CareerRecommendationController.class
+com\alumniconnect\analytics\entity\CareerRecommendation.class
+com\alumniconnect\analytics\repository\CareerRecommendationRepository.class
+com\alumniconnect\analytics\service\AnalyticsService.class
+com\alumniconnect\analytics\service\CareerRecommendationService.class

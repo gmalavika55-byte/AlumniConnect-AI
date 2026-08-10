@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, Tag, Input, Select, Button, Modal, Form, message, Space, Drawer } from 'antd';
 import { FiPlus, FiSearch, FiEdit2, FiTrash2, FiEye, FiBookOpen, FiFileText, FiDownload } from 'react-icons/fi';
 import { AdminLayout } from '../components/admin/AdminLayout';
 import { AddStudentModal } from '../components/admin/AddStudentModal';
+import api from '../services/api';
 
 export const AdminStudentsPage = () => {
   const [searchText, setSearchText] = useState('');
@@ -11,29 +12,76 @@ export const AdminStudentsPage = () => {
   const [viewStudent, setViewStudent] = useState(null);
   const [editStudent, setEditStudent] = useState(null);
   const [editForm] = Form.useForm();
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // Student directory state
-  const [students, setStudents] = useState([
-    { id: 101, registerNumber: '21CS085', fullName: 'John Mathew', email: 'john.mathew@student.kce.ac.in', department: 'Computer Science & Engineering', batchYear: '2026 (3rd Year)', cgpa: '8.85', phone: '+91 98765 43210', status: 'Active' },
-    { id: 102, registerNumber: '21CS099', fullName: 'Ananya Sharma', email: 'ananya.s@student.kce.ac.in', department: 'Information Technology', batchYear: '2026 (3rd Year)', cgpa: '9.12', phone: '+91 98123 45678', status: 'Active' },
-    { id: 103, registerNumber: '22EC042', fullName: 'Karthik Raja', email: 'karthik.r@student.kce.ac.in', department: 'Electronics & Communication', batchYear: '2026 (2nd Year)', cgpa: '8.40', phone: '+91 97890 12345', status: 'Active' },
-    { id: 104, registerNumber: '23ME015', fullName: 'Devendra Patel', email: 'devendra.p@student.kce.ac.in', department: 'Mechanical Engineering', batchYear: '2027 (1st Year)', cgpa: '7.85', phone: '+91 96543 21098', status: 'Inactive' },
-    { id: 105, registerNumber: '20EE088', fullName: 'Sneha Venkatesh', email: 'sneha.v@student.kce.ac.in', department: 'Electrical & Electronics', batchYear: '2024 (4th Year)', cgpa: '8.95', phone: '+91 95432 10987', status: 'Active' },
-    { id: 106, registerNumber: '21CE031', fullName: 'Rahul Menon', email: 'rahul.m@student.kce.ac.in', department: 'Civil Engineering', batchYear: '2025 (3rd Year)', cgpa: '8.10', phone: '+91 94321 09876', status: 'Active' }
-  ]);
+  const fetchStudents = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/student/getall');
+      const data = res.data || [];
+      const mapped = data.map(s => ({
+        id: s.studentId,
+        registerNumber: s.registerNo || 'N/A',
+        fullName: s.name,
+        email: s.email,
+        department: s.department || 'N/A',
+        batchYear: s.batch || '2026',
+        cgpa: s.cgpa ? String(s.cgpa) : '0.0',
+        phone: s.mobile || 'N/A',
+        status: 'Active',
+        rawStudent: s
+      }));
+      setStudents(mapped);
+    } catch (err) {
+      console.error("Error loading students", err);
+      message.error("Failed to load students list.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStudents();
+  }, []);
+
+  useEffect(() => {
+    if (editStudent) {
+      editForm.setFieldsValue({
+        fullName: editStudent.fullName,
+        registerNumber: editStudent.registerNumber,
+        email: editStudent.email,
+        department: editStudent.department,
+        cgpa: editStudent.cgpa
+      });
+    }
+  }, [editStudent, editForm]);
 
   const handleAddStudent = (newStudent) => {
-    setStudents([newStudent, ...students]);
+    fetchStudents();
   };
 
   const handleSaveEdit = async () => {
     try {
       const values = await editForm.validateFields();
-      setStudents(students.map(s => s.id === editStudent.id ? { ...s, ...values } : s));
+      if (!editStudent) return;
+
+      const payload = {
+        ...editStudent.rawStudent,
+        name: values.fullName,
+        registerNo: values.registerNumber,
+        department: values.department,
+        batch: values.batchYear,
+        cgpa: parseFloat(values.cgpa || '0')
+      };
+
+      await api.put('/student/update', payload);
       message.success(`Student "${values.fullName}" updated!`);
       setEditStudent(null);
+      fetchStudents();
     } catch (err) {
-      console.log(err);
+      console.error("Error updating student:", err);
+      message.error("Failed to update student.");
     }
   };
 
@@ -43,9 +91,15 @@ export const AdminStudentsPage = () => {
       content: `Register Number: ${student.registerNumber}. All record data will be permanently removed.`,
       okText: 'Delete Permanently',
       okType: 'danger',
-      onOk() {
-        setStudents(students.filter(s => s.id !== student.id));
-        message.success('Student record removed');
+      async onOk() {
+        try {
+          await api.delete(`/student/delete/${student.id}`);
+          message.success('Student record removed');
+          fetchStudents();
+        } catch (err) {
+          console.error("Error deleting student:", err);
+          message.error("Failed to delete student.");
+        }
       }
     });
   };

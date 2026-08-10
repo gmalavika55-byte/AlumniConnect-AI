@@ -47,7 +47,7 @@ public class DonationServiceImpl implements DonationService {
     }
 
     @Override
-    public List<Donation> getDonationsByCampaign(Integer fundId) {
+    public List<Donation> getDonationsByCampaign(Long fundId) {
         List<Donation> list = donationRepository.findByFundraisingFundId(fundId);
         list.forEach(this::hydrateUserProfiles);
         return list;

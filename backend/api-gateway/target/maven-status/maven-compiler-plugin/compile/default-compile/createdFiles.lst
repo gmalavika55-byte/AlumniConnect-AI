@@ -1,0 +1,2 @@
+com\alumniconnect\gateway\filter\JwtAuthFilter.class
+com\alumniconnect\gateway\ApiGatewayApplication.class

@@ -1,10 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { message, Modal, Form, Input, Button, Tag } from 'antd';
 import {
   FiEdit2, FiUpload, FiPlus, FiBookOpen, FiUser, FiBriefcase,
   FiLink, FiAward, FiFileText, FiExternalLink, FiCheckCircle
 } from 'react-icons/fi';
 import { AlumniLayout } from '../components/alumni/AlumniLayout';
+import { authService } from '../services/authService';
+import api from '../services/api';
 
 export const AlumniProfilePage = () => {
   const fileInputRef = useRef(null);
@@ -14,21 +16,59 @@ export const AlumniProfilePage = () => {
   const [editForm] = Form.useForm();
 
   const [profile, setProfile] = useState({
-    name: 'Rahul Kumar',
-    gradYear: '2018',
-    dept: 'Computer Science & Engineering',
+    name: '',
+    gradYear: '',
+    dept: '',
     college: 'Karpagam College of Engineering',
-    role: 'Senior Software Engineer',
-    company: 'Google India',
-    location: 'Bangalore, India',
-    email: 'rahul.kumar@alumni.kce.ac.in',
-    phone: '+91 98765 12345',
-    bio: 'Alumni Class of 2018. Senior Software Engineer specializing in Distributed Systems, Cloud Architecture, and React performance optimization. Passionate about mentoring students and guiding career transitions.',
-    linkedin: 'linkedin.com/in/rahulkumar-alumni',
-    github: 'github.com/rahulkumar-dev',
-    resumeName: 'Rahul_Kumar_Resume_2026.pdf',
-    resumeSize: '1.4 MB'
+    role: '',
+    company: '',
+    location: '',
+    email: '',
+    phone: '',
+    bio: '',
+    linkedin: '',
+    github: '',
+    resumeName: 'Resume.pdf',
+    resumeSize: '1.2 MB'
   });
+
+  const alumni = authService.getCurrentUser();
+
+  useEffect(() => {
+    if (alumni) {
+      setProfile({
+        name: alumni.name || '',
+        gradYear: alumni.batch || '',
+        dept: alumni.department || '',
+        college: 'Karpagam College of Engineering',
+        role: alumni.designation || '',
+        company: alumni.currentCompany || '',
+        location: alumni.location || '',
+        email: alumni.email || '',
+        phone: alumni.mobile || '',
+        bio: alumni.bio || '',
+        linkedin: alumni.linkedin || '',
+        github: alumni.github || '',
+        resumeName: 'Resume.pdf',
+        resumeSize: '1.2 MB'
+      });
+      if (alumni.skills) {
+        setSkills(alumni.skills.split(',').map(s => s.trim()));
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isEditOpen) {
+      editForm.setFieldsValue({
+        name: profile.name,
+        role: profile.role,
+        company: profile.company,
+        dept: profile.dept,
+        bio: profile.bio
+      });
+    }
+  }, [isEditOpen, profile, editForm]);
 
   const [skills, setSkills] = useState([
     'Distributed Systems', 'React.js', 'System Design', 'Cloud Architecture', 'Go / Golang', 'Kubernetes', 'Python'
@@ -70,11 +110,41 @@ export const AlumniProfilePage = () => {
   const handleSaveProfile = async () => {
     try {
       const values = await editForm.validateFields();
-      setProfile(prev => ({ ...prev, ...values }));
+      const alumniUser = authService.getCurrentUser();
+      if (!alumniUser) return;
+
+      const updatedAlumni = {
+        ...alumniUser,
+        name: values.name,
+        designation: values.role,
+        currentCompany: values.company,
+        department: values.dept,
+        bio: values.bio
+      };
+
+      const res = await api.put('/alumni/update', updatedAlumni);
+      const savedUser = res.data;
+
+      localStorage.setItem('alumni_user_data', JSON.stringify({
+        ...alumniUser,
+        ...savedUser,
+        role: alumniUser.role
+      }));
+
+      setProfile(prev => ({
+        ...prev,
+        name: savedUser.name,
+        role: savedUser.designation,
+        company: savedUser.currentCompany,
+        dept: savedUser.department,
+        bio: savedUser.bio || ''
+      }));
+
       message.success('Profile details saved successfully!');
       setIsEditOpen(false);
     } catch (err) {
-      console.log(err);
+      console.error('Error saving alumni profile:', err);
+      message.error('Failed to update profile. Please try again.');
     }
   };
 

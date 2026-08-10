@@ -26,13 +26,13 @@ public class NotificationController {
     }
 
     @DeleteMapping("/delete/{id}")
-    public String deleteNotification(@PathVariable Integer id) {
+    public String deleteNotification(@PathVariable Long id) {
         notificationService.deleteNotification(id);
         return "Notification deleted successfully";
     }
 
     @GetMapping("/get/{id}")
-    public Notification getNotificationById(@PathVariable Integer id) {
+    public Notification getNotificationById(@PathVariable Long id) {
         return notificationService.getNotificationById(id);
     }
 

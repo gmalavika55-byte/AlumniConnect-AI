@@ -21,7 +21,7 @@ public class DonationController {
     }
 
     @GetMapping("/donations/campaign/{fundId}")
-    public List<Donation> getDonationsByCampaign(@PathVariable Integer fundId) {
+    public List<Donation> getDonationsByCampaign(@PathVariable Long fundId) {
         return donationService.getDonationsByCampaign(fundId);
     }
 

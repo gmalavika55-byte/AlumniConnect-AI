@@ -38,14 +38,14 @@ public class MentorshipServiceImpl implements MentorshipService {
     }
 
     @Override
-    public void deleteMentorship(Integer requestId) {
+    public void deleteMentorship(Long requestId) {
         MentorshipRequest mentorship = mentorshipRepository.findById(requestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Mentorship Request not found"));
         mentorshipRepository.delete(mentorship);
     }
 
     @Override
-    public MentorshipRequest getMentorshipById(Integer requestId) {
+    public MentorshipRequest getMentorshipById(Long requestId) {
         MentorshipRequest mentorship = mentorshipRepository.findById(requestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Mentorship Request not found"));
         hydrateUserProfiles(mentorship);

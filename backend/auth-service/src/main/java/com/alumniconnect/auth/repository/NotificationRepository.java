@@ -6,8 +6,8 @@ import com.alumniconnect.auth.entity.Notification;
 import java.util.List;
 
 @Repository
-public interface NotificationRepository extends JpaRepository<Notification, Integer> {
-    List<Notification> findByUserId(Integer userId);
+public interface NotificationRepository extends JpaRepository<Notification, Long> {
+    List<Notification> findByUserId(Long userId);
     List<Notification> findByUserType(String userType);
     List<Notification> findByStatus(String status);
 }

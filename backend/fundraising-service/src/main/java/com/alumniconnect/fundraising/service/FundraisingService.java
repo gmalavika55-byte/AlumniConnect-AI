@@ -6,7 +6,7 @@ import com.alumniconnect.fundraising.entity.Fundraising;
 public interface FundraisingService {
     Fundraising addFundraising(Fundraising fundraising);
     Fundraising updateFundraising(Fundraising fundraising);
-    void deleteFundraising(Integer fundId);
-    Fundraising getFundraisingById(Integer fundId);
+    void deleteFundraising(Long fundId);
+    Fundraising getFundraisingById(Long fundId);
     List<Fundraising> getAllFundraisings();
 }

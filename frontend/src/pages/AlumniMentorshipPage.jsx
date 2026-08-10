@@ -4,11 +4,12 @@ import { Tag, Button, message, Modal } from 'antd';
 import { FiUsers, FiCheck, FiX, FiEye, FiClock, FiStar, FiBookOpen, FiCalendar } from 'react-icons/fi';
 import { AlumniLayout } from '../components/alumni/AlumniLayout';
 import { useAppContext } from '../context/AppContext';
+import api from '../services/api';
 
 export const AlumniMentorshipPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { alumniRequests: requests, setAlumniRequests: setRequests } = useAppContext();
+  const { alumniRequests: requests, refreshData } = useAppContext();
 
   // Set active tab based on React Router navigation state, default to 'Pending'
   const [activeTab, setActiveTab] = useState('Pending');
@@ -19,9 +20,18 @@ export const AlumniMentorshipPage = () => {
     }
   }, [location.state]);
 
-  const handleAccept = (req) => {
-    setRequests(requests.map(r => r.id === req.id ? { ...r, status: 'Accepted' } : r));
-    message.success(`Mentorship request from ${req.studentName} accepted!`);
+  const handleAccept = async (req) => {
+    try {
+      const getRes = await api.get(`/mentorship/get/${req.id}`);
+      const requestObj = getRes.data;
+      requestObj.status = 'ACCEPTED';
+      await api.put('/mentorship/update', requestObj);
+      message.success(`Mentorship request from ${req.studentName} accepted!`);
+      refreshData();
+    } catch (err) {
+      console.error("Error accepting request:", err);
+      message.error("Failed to accept mentorship request.");
+    }
   };
 
   const handleDecline = (req) => {
@@ -30,21 +40,34 @@ export const AlumniMentorshipPage = () => {
       content: 'The student will be notified that you are currently unavailable for this session.',
       okText: 'Decline Request',
       okType: 'danger',
-      onOk() {
-        setRequests(requests.map(r => r.id === req.id ? { ...r, status: 'Declined' } : r));
-        message.info(`Request from ${req.studentName} declined.`);
+      async onOk() {
+        try {
+          const getRes = await api.get(`/mentorship/get/${req.id}`);
+          const requestObj = getRes.data;
+          requestObj.status = 'DECLINED';
+          await api.put('/mentorship/update', requestObj);
+          message.info(`Request from ${req.studentName} declined.`);
+          refreshData();
+        } catch (err) {
+          console.error("Error declining request:", err);
+          message.error("Failed to decline mentorship request.");
+        }
       }
     });
   };
 
-  const handleComplete = (req) => {
-    const formattedDate = new Date().toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-    setRequests(requests.map(r => r.id === req.id ? { ...r, status: 'Completed', completionDate: formattedDate } : r));
-    message.success(`Mentorship session with ${req.studentName} marked as Completed!`);
+  const handleComplete = async (req) => {
+    try {
+      const getRes = await api.get(`/mentorship/get/${req.id}`);
+      const requestObj = getRes.data;
+      requestObj.status = 'COMPLETED';
+      await api.put('/mentorship/update', requestObj);
+      message.success(`Mentorship session with ${req.studentName} marked as Completed!`);
+      refreshData();
+    } catch (err) {
+      console.error("Error completing session:", err);
+      message.error("Failed to mark mentorship request as completed.");
+    }
   };
 
   // Get records filtered by active tab

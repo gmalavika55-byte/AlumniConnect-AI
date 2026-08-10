@@ -26,14 +26,14 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
-    public void deleteNotification(Integer notificationId) {
+    public void deleteNotification(Long notificationId) {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
         notificationRepository.delete(notification);
     }
 
     @Override
-    public Notification getNotificationById(Integer notificationId) {
+    public Notification getNotificationById(Long notificationId) {
         return notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
     }

@@ -105,8 +105,50 @@ setSkills(
     setCertificates(prev => [...prev, newCert]);
   };
 
-  const handleSaveProfile = (updatedValues) => {
-    setProfile(prev => ({ ...prev, ...updatedValues }));
+  const handleSaveProfile = async (updatedValues) => {
+    const student = authService.getCurrentUser();
+    if (!student) return;
+
+    const updatedStudent = {
+      ...student,
+      name: updatedValues.fullName || student.name,
+      mobile: updatedValues.phone || student.mobile,
+      department: updatedValues.department || student.department,
+      careerGoal: updatedValues.bio || student.careerGoal,
+      linkedin: updatedValues.linkedin || student.linkedin,
+      github: updatedValues.github || student.github,
+      portfolio: updatedValues.portfolio || student.portfolio,
+      yearOfStudy: updatedValues.semester ? parseInt(updatedValues.semester.replace(/\D/g, '')) : student.yearOfStudy,
+      cgpa: updatedValues.cgpa || student.cgpa
+    };
+
+    try {
+      const res = await api.put('/student/update', updatedStudent);
+      const savedUser = res.data;
+      localStorage.setItem('alumni_user_data', JSON.stringify({
+        ...student,
+        ...savedUser,
+        role: student.role
+      }));
+      setProfile(prev => ({
+        ...prev,
+        fullName: savedUser.name,
+        registerNumber: savedUser.registerNo,
+        email: savedUser.email,
+        phone: savedUser.mobile,
+        department: savedUser.department,
+        semester: savedUser.yearOfStudy ? `Year ${savedUser.yearOfStudy}` : '',
+        cgpa: savedUser.cgpa || '',
+        bio: savedUser.careerGoal || '',
+        linkedin: savedUser.linkedin || '',
+        github: savedUser.github || '',
+        portfolio: savedUser.portfolio || '',
+      }));
+      message.success('Profile updated successfully!');
+    } catch (err) {
+      console.error('Error updating student profile:', err);
+      message.error('Failed to update profile. Please try again.');
+    }
   };
 
   return (

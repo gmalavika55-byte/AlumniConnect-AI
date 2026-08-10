@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Card, Tag, Button, Modal, Form, Input, DatePicker, Select, message, Space, Table } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Card, Tag, Button, Modal, Form, Input, DatePicker, Select, message, Space, Table, Spin } from 'antd';
 import { FiPlus, FiCalendar, FiClock, FiMapPin, FiUsers, FiEdit2, FiTrash2, FiEye, FiSearch } from 'react-icons/fi';
 import { AdminLayout } from '../components/admin/AdminLayout';
 import { CreateEventModal } from '../components/admin/CreateEventModal';
+import api from '../services/api';
 
 export const AdminEventsPage = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -12,128 +13,142 @@ export const AdminEventsPage = () => {
   const [viewParticipantsEvent, setViewParticipantsEvent] = useState(null);
   const [editEvent, setEditEvent] = useState(null);
   const [editForm] = Form.useForm();
+  const [events, setEvents] = useState([]);
+  const [participantsList, setParticipantsList] = useState([]);
+  const [loadingParticipants, setLoadingParticipants] = useState(false);
 
-  // Events list state
-  const [events, setEvents] = useState([
-    {
-      id: 1,
-      title: 'Global Alumni Meetup 2026',
-      category: 'Networking',
-      date: '2026-09-15',
-      time: '06:00 PM - 09:00 PM',
-      location: 'Grand Ballroom & Online Zoom',
-      speaker: 'Priya Sankar (Sr. SWE, Google)',
-      registeredCount: 142,
-      capacity: 200,
-      organizer: 'Dr. Sarah Jenkins (Admin)',
-      status: 'Upcoming',
-      description: 'Annual global reunion connecting alumni across big tech, research, and entrepreneurship with current students.'
-    },
-    {
-      id: 2,
-      title: 'Machine Learning & LLM Workshop',
-      category: 'Workshop',
-      date: '2026-08-28',
-      time: '04:00 PM - 06:00 PM',
-      location: 'Computer Lab 3 & Meet',
-      speaker: 'Arun Kumar (Staff Scientist, AWS)',
-      registeredCount: 88,
-      capacity: 100,
-      organizer: 'Arun Kumar (Alumni)',
-      status: 'Upcoming',
-      description: 'Hands-on practical session on fine-tuning PyTorch transformer models for real-world enterprise tasks.'
-    },
-    {
-      id: 3,
-      title: 'Campus Hackathon 2026: AI Solutions',
-      category: 'Hackathon',
-      date: '2026-10-05',
-      time: '09:00 AM - 09:00 PM',
-      location: 'KCE Innovation Hub',
-      speaker: 'KCE Alumni Tech Council',
-      registeredCount: 210,
-      capacity: 250,
-      organizer: 'Dr. Sarah Jenkins (Admin)',
-      status: 'Upcoming',
-      description: '24-hour hackathon with cash prizes & direct internship referrals sponsored by alumni tech startups.'
-    },
-    {
-      id: 4,
-      title: 'Alumni Q&A Panel Discussion',
-      category: 'Webinar',
-      date: '2026-08-09',
-      time: '12:00 PM - 02:00 PM',
-      location: 'Zoom Session 4',
-      speaker: 'Priya Sankar (Sr. SWE, Google)',
-      registeredCount: 45,
-      capacity: 100,
-      organizer: 'Dr. Sarah Jenkins (Admin)',
-      status: 'Ongoing',
-      description: 'Live ongoing Q&A panel matching alumni with final-year students.'
-    },
-    {
-      id: 5,
-      title: 'Cloud Architecture & DevOps Masterclass',
-      category: 'Webinar',
-      date: '2026-07-20',
-      time: '05:00 PM - 07:00 PM',
-      location: 'Zoom Virtual Hall',
-      speaker: 'Divya Rajan (Lead Architect, Flipkart)',
-      registeredCount: 115,
-      capacity: 150,
-      organizer: 'Divya Rajan (Alumni)',
-      status: 'Past',
-      description: 'Mastering Kubernetes deployment pipelines and AWS microservice architecture.'
+  const fetchEvents = async () => {
+    try {
+      const res = await api.get('/event/getall');
+      const data = res.data || [];
+      const mapped = data.map(e => {
+        const dateObj = e.eventDate ? new Date(e.eventDate) : new Date();
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        return {
+          id: e.eventId,
+          title: e.title,
+          category: e.category || 'General',
+          date: `${year}-${month}-${day}`,
+          time: `${e.startTime || '10:00 AM'} - ${e.endTime || '12:00 PM'}`,
+          location: e.venue || 'Virtual',
+          speaker: e.organizer || 'Guest Speaker',
+          registeredCount: 0,
+          capacity: e.maxParticipants || 150,
+          organizer: e.organizer || 'Admin',
+          status: e.status || 'Upcoming',
+          description: e.description || '',
+          eventDate: e.eventDate,
+          venue: e.venue,
+          startTime: e.startTime,
+          endTime: e.endTime,
+          maxParticipants: e.maxParticipants
+        };
+      });
+      setEvents(mapped);
+    } catch (err) {
+      console.error("Error loading events", err);
+      message.error("Failed to load events from server.");
     }
-  ]);
-
-  // Sample unique participants map per event
-  const participantsMap = {
-    1: [
-      { id: 101, name: 'John Mathew', role: 'Student', email: 'john.mathew@student.kce.ac.in', date: '2026-08-01', status: 'Confirmed' },
-      { id: 102, name: 'Ananya Sharma', role: 'Student', email: 'ananya.s@student.kce.ac.in', date: '2026-08-02', status: 'Confirmed' },
-      { id: 103, name: 'Priya Sankar', role: 'Alumni', email: 'priya.sankar@alumni.kce.ac.in', date: '2026-08-01', status: 'Confirmed' },
-      { id: 104, name: 'Rahul Kumar', role: 'Alumni', email: 'rahul.kumar@alumni.kce.ac.in', date: '2026-08-03', status: 'Confirmed' }
-    ],
-    2: [
-      { id: 201, name: 'Malavika Raja', role: 'Student', email: 'malavika.r@student.kce.ac.in', date: '2026-08-05', status: 'Confirmed' },
-      { id: 202, name: 'Arun Kumar', role: 'Alumni', email: 'arun.k@alumni.kce.ac.in', date: '2026-08-04', status: 'Confirmed' },
-      { id: 203, name: 'Divya Rajan', role: 'Alumni', email: 'divya.r@alumni.kce.ac.in', date: '2026-08-04', status: 'Confirmed' }
-    ],
-    3: [
-      { id: 301, name: 'John Mathew', role: 'Student', email: 'john.mathew@student.kce.ac.in', date: '2026-08-01', status: 'Confirmed' },
-      { id: 302, name: 'Ananya Sharma', role: 'Student', email: 'ananya.s@student.kce.ac.in', date: '2026-08-02', status: 'Confirmed' },
-      { id: 303, name: 'Sneha Venkatesh', role: 'Student', email: 'sneha.v@student.kce.ac.in', date: '2026-08-03', status: 'Confirmed' }
-    ],
-    4: [
-      { id: 401, name: 'John Mathew', role: 'Student', email: 'john.mathew@student.kce.ac.in', date: '2026-08-09', status: 'Confirmed' },
-      { id: 402, name: 'Priya Sankar', role: 'Alumni', email: 'priya.sankar@alumni.kce.ac.in', date: '2026-08-09', status: 'Confirmed' }
-    ],
-    5: [
-      { id: 501, name: 'Ananya Sharma', role: 'Student', email: 'ananya.s@student.kce.ac.in', date: '2026-07-15', status: 'Confirmed' },
-      { id: 502, name: 'Divya Rajan', role: 'Alumni', email: 'divya.r@alumni.kce.ac.in', date: '2026-07-16', status: 'Confirmed' }
-    ]
   };
 
-  const handleAddEvent = (newEvent) => {
-    setEvents([
-      {
-        ...newEvent,
-        organizer: newEvent.organizer || 'Dr. Sarah Jenkins (Admin)',
-        capacity: newEvent.capacity || 150
-      },
-      ...events
-    ]);
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  useEffect(() => {
+    if (editEvent) {
+      editForm.setFieldsValue({
+        title: editEvent.title,
+        category: editEvent.category,
+        organizer: editEvent.organizer,
+        capacity: editEvent.maxParticipants || editEvent.capacity,
+        date: editEvent.date || (editEvent.eventDate ? new Date(editEvent.eventDate).toISOString().split('T')[0] : ''),
+        time: editEvent.time || `${editEvent.startTime || '10:00 AM'} - ${editEvent.endTime || '12:00 PM'}`,
+        location: editEvent.venue || editEvent.location
+      });
+    }
+  }, [editEvent, editForm]);
+
+  const loadParticipants = async (eventId) => {
+    setLoadingParticipants(true);
+    try {
+      const res = await api.get(`/event/registrations/event/${eventId}`);
+      const data = res.data || [];
+      const mapped = data.map(r => ({
+        id: r.registrationId,
+        name: r.student?.name || r.alumni?.name || 'User',
+        role: r.studentId ? 'Student' : 'Alumni',
+        email: r.student?.email || r.alumni?.email || 'N/A',
+        date: r.registrationDate ? new Date(r.registrationDate).toLocaleDateString() : 'N/A',
+        status: 'Confirmed'
+      }));
+      setParticipantsList(mapped);
+    } catch (err) {
+      console.error("Error fetching participants:", err);
+      message.error("Failed to load participants.");
+    } finally {
+      setLoadingParticipants(false);
+    }
+  };
+
+  useEffect(() => {
+    if (viewParticipantsEvent) {
+      loadParticipants(viewParticipantsEvent.id);
+    } else {
+      setParticipantsList([]);
+    }
+  }, [viewParticipantsEvent]);
+
+  const handleAddEvent = async (newEvent) => {
+    const payload = {
+      title: newEvent.title,
+      category: newEvent.category || 'Technical Workshop',
+      description: newEvent.description,
+      eventDate: newEvent.date ? newEvent.date.toISOString() : new Date().toISOString(),
+      startTime: newEvent.startTime || '04:00 PM',
+      endTime: newEvent.endTime || '06:00 PM',
+      venue: newEvent.location || 'Virtual',
+      organizer: newEvent.organizer || 'Dr. Sarah Jenkins (Admin)',
+      maxParticipants: parseInt(newEvent.capacity || 150),
+      status: 'UPCOMING'
+    };
+
+    try {
+      await api.post('/event/add', payload);
+      message.success('Event created successfully!');
+      setIsCreateOpen(false);
+      fetchEvents();
+    } catch (err) {
+      console.error("Error creating event:", err);
+      message.error("Failed to create event.");
+    }
   };
 
   const handleSaveEdit = async () => {
     try {
       const values = await editForm.validateFields();
-      setEvents(events.map(ev => ev.id === editEvent.id ? { ...ev, ...values } : ev));
+      const payload = {
+        ...editEvent,
+        eventId: editEvent.id,
+        title: values.title,
+        category: values.category,
+        organizer: values.organizer,
+        maxParticipants: parseInt(values.capacity),
+        eventDate: values.date ? new Date(values.date).toISOString() : new Date().toISOString(),
+        startTime: values.time?.split('-')[0]?.trim() || '10:00 AM',
+        endTime: values.time?.split('-')[1]?.trim() || '12:00 PM',
+        venue: values.location
+      };
+
+      await api.put('/event/update', payload);
       message.success(`Event "${values.title}" updated successfully!`);
       setEditEvent(null);
+      fetchEvents();
     } catch (err) {
-      console.log(err);
+      console.error("Error updating event:", err);
+      message.error("Failed to update event.");
     }
   };
 
@@ -143,9 +158,15 @@ export const AdminEventsPage = () => {
       content: 'This will notify registered attendees and remove the event from student and alumni portals.',
       okText: 'Delete Event',
       okType: 'danger',
-      onOk() {
-        setEvents(events.filter(ev => ev.id !== eventItem.id));
-        message.success('Event deleted');
+      async onOk() {
+        try {
+          await api.delete(`/event/delete/${eventItem.id}`);
+          message.success('Event deleted successfully');
+          fetchEvents();
+        } catch (err) {
+          console.error("Error deleting event:", err);
+          message.error("Failed to delete event.");
+        }
       }
     });
   };
@@ -155,10 +176,7 @@ export const AdminEventsPage = () => {
                           e.category.toLowerCase().includes(searchText.toLowerCase()) ||
                           e.speaker.toLowerCase().includes(searchText.toLowerCase());
     
-    // Status tab filter (All, Upcoming, Ongoing, Past)
     const matchesStatus = activeStatusTab === 'All' ? true : e.status === activeStatusTab;
-
-    // Creator filter (All, Admin, Alumni)
     const isCreatedByAdmin = e.organizer?.toLowerCase().includes('admin');
     let matchesCreator = true;
     if (creatorFilter === 'admin') {
@@ -170,14 +188,11 @@ export const AdminEventsPage = () => {
     return matchesSearch && matchesStatus && matchesCreator;
   });
 
-  // Calculate lists of participants for the currently viewed event
-  const currentParticipants = participantsMap[viewParticipantsEvent?.id] || [];
-  const studentsList = currentParticipants.filter(p => p.role === 'Student');
-  const alumniList = currentParticipants.filter(p => p.role === 'Alumni');
+  const studentsList = participantsList.filter(p => p.role === 'Student');
+  const alumniList = participantsList.filter(p => p.role === 'Alumni');
 
   return (
     <AdminLayout onSearch={setSearchText}>
-      {/* Title Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 4px 0' }}>Event & Webinar Management</h1>
