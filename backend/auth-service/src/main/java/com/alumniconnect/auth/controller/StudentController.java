@@ -10,7 +10,6 @@ import com.alumniconnect.auth.service.StudentService;
 
 @RestController
 @RequestMapping("/student")
-@CrossOrigin(origins = "*")
 public class StudentController {
 
     @Autowired
@@ -22,7 +21,16 @@ public class StudentController {
     }
 
     @PutMapping("/update")
-    public Student updateStudent(@RequestBody Student student) {
+    public Student updateStudent(
+            @RequestBody Student student,
+            @RequestHeader(value = "X-User-Id", required = false) String authenticatedUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String authenticatedUserRole) {
+        if (authenticatedUserId != null && "STUDENT".equalsIgnoreCase(authenticatedUserRole)) {
+            Integer authId = Integer.parseInt(authenticatedUserId);
+            if (!authId.equals(student.getStudentId())) {
+                throw new RuntimeException("Unauthorized: Cannot modify other student's profile.");
+            }
+        }
         return studentService.updateStudent(student);
     }
 
@@ -33,7 +41,16 @@ public class StudentController {
     }
 
     @GetMapping("/get/{id}")
-    public Student getStudentById(@PathVariable Integer id) {
+    public Student getStudentById(
+            @PathVariable Integer id,
+            @RequestHeader(value = "X-User-Id", required = false) String authenticatedUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String authenticatedUserRole) {
+        if (authenticatedUserId != null && "STUDENT".equalsIgnoreCase(authenticatedUserRole)) {
+            Integer authId = Integer.parseInt(authenticatedUserId);
+            if (!authId.equals(id)) {
+                throw new RuntimeException("Unauthorized: Cannot access other student's profile.");
+            }
+        }
         return studentService.getStudentById(id);
     }
 

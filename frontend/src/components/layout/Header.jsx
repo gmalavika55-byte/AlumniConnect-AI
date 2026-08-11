@@ -10,7 +10,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../services/authService';
-import { mockNotifications } from '../../data/mockData';
+import { useAppContext } from '../../context/AppContext';
 
 const { Header: AntHeader } = Layout;
 
@@ -18,6 +18,11 @@ export const Header = ({ collapsed, setCollapsed }) => {
   const navigate = useNavigate();
   const user = authService.getCurrentUser();
   const [drawerOpen, setDrawerOpen] = React.useState(false);
+  const { alumniNotifications, studentNotifications } = useAppContext();
+
+  const role = user?.role ? user.role.toLowerCase() : '';
+  const notificationsList = role === 'student' ? (studentNotifications || []) : (alumniNotifications || []);
+  const unreadCount = notificationsList.filter(n => !n.read).length;
 
   const handleLogout = () => {
     authService.logout();
@@ -67,7 +72,7 @@ export const Header = ({ collapsed, setCollapsed }) => {
       </Space>
 
       <Space size="large" align="center">
-        <Badge count={2} offset={[-2, 4]} color="#1677ff">
+        <Badge count={unreadCount} offset={[-2, 4]} color="#1677ff">
           <Button
             type="text"
             shape="circle"
@@ -95,15 +100,15 @@ export const Header = ({ collapsed, setCollapsed }) => {
         width={360}
       >
         <List
-          dataSource={mockNotifications}
+          dataSource={notificationsList}
           renderItem={(item) => (
             <List.Item style={{ padding: '12px 0', borderBottom: '1px solid #f0f0f0' }}>
               <List.Item.Meta
                 title={<span style={{ fontWeight: 600, fontSize: '14px' }}>{item.title}</span>}
                 description={
                   <div>
-                    <p style={{ margin: '4px 0', fontSize: '13px', color: '#475569' }}>{item.message}</p>
-                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>{item.timestamp}</span>
+                    <p style={{ margin: '4px 0', fontSize: '13px', color: '#475569' }}>{item.desc}</p>
+                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>{item.time}</span>
                   </div>
                 }
               />

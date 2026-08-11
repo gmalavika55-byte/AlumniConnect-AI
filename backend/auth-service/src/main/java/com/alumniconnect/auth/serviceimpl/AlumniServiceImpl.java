@@ -10,6 +10,9 @@ import com.alumniconnect.auth.exception.ResourceNotFoundException;
 import com.alumniconnect.auth.repository.AlumniRepository;
 import com.alumniconnect.auth.service.AlumniService;
 
+import com.alumniconnect.auth.repository.StudentRepository;
+import com.alumniconnect.auth.repository.AdminRepository;
+
 @Service
 public class AlumniServiceImpl implements AlumniService {
 
@@ -17,10 +20,26 @@ public class AlumniServiceImpl implements AlumniService {
     private AlumniRepository alumniRepository;
 
     @Autowired
+    private StudentRepository studentRepository;
+
+    @Autowired
+    private AdminRepository adminRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Override
     public Alumni addAlumni(Alumni alumni) {
+        if (studentRepository.findByEmail(alumni.getEmail()) != null ||
+            alumniRepository.findByEmail(alumni.getEmail()) != null ||
+            adminRepository.findByEmail(alumni.getEmail()) != null) {
+            throw new IllegalArgumentException("An account already exists with this email.");
+        }
+
+        if (alumniRepository.findByRegisterNo(alumni.getRegisterNo()) != null) {
+            throw new IllegalArgumentException("Register number already exists.");
+        }
+
         alumni.setPassword(passwordEncoder.encode(alumni.getPassword()));
         return alumniRepository.save(alumni);
     }

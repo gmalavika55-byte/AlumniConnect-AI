@@ -1,8 +1,10 @@
 import React from 'react';
-import { Modal, Form, Input, Select, Button, message } from 'antd';
+import { Modal, Form, Input, Button, message } from 'antd';
+import { authService } from '../../services/authService';
 
 export const EventRegisterModal = ({ visible, event, onClose, onRegisterSuccess }) => {
   const [form] = Form.useForm();
+  const student = authService.getCurrentUser();
 
   const handleSubmit = async () => {
     try {
@@ -34,19 +36,23 @@ export const EventRegisterModal = ({ visible, event, onClose, onRegisterSuccess 
     >
       <div style={{ backgroundColor: '#f8fafc', padding: 12, borderRadius: 8, marginBottom: 16 }}>
         <p style={{ margin: 0, fontSize: 13, color: '#475569' }}>
-          <strong>Date:</strong> {event.date} • <strong>Time:</strong> {event.time}
+          <strong>Date:</strong> {event.dayNum} {event.monthStr} • <strong>Time:</strong> {event.time}
         </p>
         <p style={{ margin: '4px 0 0 0', fontSize: 13, color: '#475569' }}>
           <strong>Venue:</strong> {event.venue}
         </p>
       </div>
 
-      <Form form={form} layout="vertical" initialValues={{
-        fullName: 'John Mathew',
-        email: 'john.mathew@student.kce.ac.in',
-        department: 'CSE',
-        semester: 'Semester 5'
-      }}>
+      <Form
+        form={form}
+        layout="vertical"
+        initialValues={{
+          fullName: student?.name || '',
+          email: student?.email || '',
+          department: student?.department || '',
+          semester: student?.yearOfStudy ? `Year ${student.yearOfStudy}` : ''
+        }}
+      >
         <Form.Item name="fullName" label="Full Name" rules={[{ required: true }]}>
           <Input />
         </Form.Item>
@@ -57,7 +63,7 @@ export const EventRegisterModal = ({ visible, event, onClose, onRegisterSuccess 
           <Form.Item name="department" label="Department">
             <Input disabled />
           </Form.Item>
-          <Form.Item name="semester" label="Semester">
+          <Form.Item name="semester" label="Year of Study">
             <Input disabled />
           </Form.Item>
         </div>

@@ -1,31 +1,54 @@
 import React, { useState } from 'react';
 import { Modal, Form, Input, Select, DatePicker, Upload, Button, message } from 'antd';
 import { FiUpload } from 'react-icons/fi';
+import api from '../../services/api';
+import { authService } from '../../services/authService';
+import { useAppContext } from '../../context/AppContext';
 
 export const RequestMentorshipModal = ({ visible, mentor, onClose, onRequestSuccess }) => {
   const [form] = Form.useForm();
   const [fileList, setFileList] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { refreshData } = useAppContext();
 
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      const requestData = {
-        mentorId: mentor?.id,
-        mentorName: mentor?.name || values.mentorName,
-        topic: values.topic,
-        date: values.date ? values.date.format('YYYY-MM-DD') : '2026-08-15',
-        timeSlot: values.timeSlot,
-        mode: values.mode,
-        purpose: values.purpose,
-        resume: fileList.length > 0 ? fileList[0].name : 'John_Mathew_Resume.pdf'
+      const currentUser = authService.getCurrentUser();
+      const currentStudentId = currentUser ? currentUser.studentId : null;
+      if (!currentStudentId) {
+        message.error('Student ID not found. Please log in again.');
+        return;
+      }
+
+      setIsSubmitting(true);
+
+      const payload = {
+        studentId: currentStudentId,
+        alumniId: mentor?.id,
+        status: 'PENDING',
+        remarks: `${values.topic || ''}: ${values.purpose || ''}`.trim().replace(/^:/, '').trim(),
+        requestDate: values.date ? values.date.format('YYYY-MM-DD') : new Date().toISOString().split('T')[0]
       };
-      onRequestSuccess(requestData);
+
+      await api.post('/mentorship/add', payload);
+
       message.success(`Mentorship request submitted successfully to ${mentor?.name || 'Mentor'}!`);
       form.resetFields();
       setFileList([]);
+      refreshData();
       onClose();
     } catch (err) {
-      console.log('Validation failed:', err);
+      console.error('Error submitting mentorship request:', err);
+      if (err.name === 'FieldsValidationError' || err.errorFields) {
+        // Validation failed, do not show error message or close modal
+        return;
+      }
+      const errData = err.response?.data;
+      const errorMsg = typeof errData === 'string' ? errData : 'Failed to send mentorship request. Please try again.';
+      message.error(errorMsg);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -35,10 +58,10 @@ export const RequestMentorshipModal = ({ visible, mentor, onClose, onRequestSucc
       open={visible}
       onCancel={onClose}
       footer={[
-        <Button key="cancel" onClick={onClose}>
+        <Button key="cancel" onClick={onClose} disabled={isSubmitting}>
           Cancel
         </Button>,
-        <Button key="submit" type="primary" style={{ backgroundColor: '#1b62d4' }} onClick={handleSubmit}>
+        <Button key="submit" type="primary" style={{ backgroundColor: '#1b62d4' }} onClick={handleSubmit} loading={isSubmitting}>
           Send Request
         </Button>,
       ]}

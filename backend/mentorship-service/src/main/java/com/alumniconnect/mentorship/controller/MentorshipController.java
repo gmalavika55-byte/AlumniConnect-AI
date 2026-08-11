@@ -9,7 +9,6 @@ import com.alumniconnect.mentorship.service.MentorshipService;
 
 @RestController
 @RequestMapping("/mentorship")
-@CrossOrigin(origins = "*")
 public class MentorshipController {
 
     @Autowired
@@ -39,5 +38,29 @@ public class MentorshipController {
     @GetMapping("/getall")
     public List<MentorshipRequest> getAllMentorships() {
         return mentorshipService.getAllMentorships();
+    }
+
+    // Student cancels their own PENDING request
+    @PutMapping("/cancel/{requestId}")
+    public MentorshipRequest cancelMentorshipRequest(
+            @PathVariable Long requestId,
+            @RequestParam Integer studentId) {
+        return mentorshipService.cancelMentorshipRequest(requestId, studentId);
+    }
+
+    // Alumni accepts a PENDING request (ownership verified by alumniId)
+    @PutMapping("/accept/{requestId}")
+    public MentorshipRequest acceptMentorshipRequest(
+            @PathVariable Long requestId,
+            @RequestParam Integer alumniId) {
+        return mentorshipService.acceptMentorshipRequest(requestId, alumniId);
+    }
+
+    // Alumni rejects a PENDING request (ownership verified by alumniId)
+    @PutMapping("/reject/{requestId}")
+    public MentorshipRequest rejectMentorshipRequest(
+            @PathVariable Long requestId,
+            @RequestParam Integer alumniId) {
+        return mentorshipService.rejectMentorshipRequest(requestId, alumniId);
     }
 }

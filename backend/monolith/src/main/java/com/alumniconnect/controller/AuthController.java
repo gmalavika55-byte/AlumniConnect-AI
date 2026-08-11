@@ -13,7 +13,7 @@ import com.alumniconnect.service.StudentService;
 
 @RestController
 @RequestMapping("/auth")
-@CrossOrigin(origins = "*")
+
 public class AuthController {
 
     @Autowired

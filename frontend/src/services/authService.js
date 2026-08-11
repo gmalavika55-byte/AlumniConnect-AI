@@ -1,5 +1,5 @@
 import api from './api';
-import { mockUserProfiles } from '../data/mockData';
+
 
 export const authService = {
   // login service
@@ -14,6 +14,10 @@ login: async ({ email, password, remember }) => {
 
   const data = response.data;
   console.log(data.user);
+
+  if (data.user && data.role) {
+    data.user.role = data.role;
+  }
 
   localStorage.setItem(
     "alumni_user_data",
@@ -56,7 +60,7 @@ login: async ({ email, password, remember }) => {
       password: registerPayload.password,
       department: registerPayload.department,
       course: registerPayload.course || "B.E.",
-      yearOfStudy: registerPayload.year ? parseInt(registerPayload.year) : 3,
+      yearOfStudy: registerPayload.yearOfStudy ? parseInt(registerPayload.yearOfStudy) : (registerPayload.year ? parseInt(registerPayload.year) : 3),
       batch: registerPayload.batch
     };
 
@@ -68,6 +72,9 @@ login: async ({ email, password, remember }) => {
     });
     
     const data = loginResponse.data;
+    if (data.user && data.role) {
+      data.user.role = data.role;
+    }
     localStorage.setItem("alumni_user_data", JSON.stringify(data.user));
     localStorage.setItem("alumni_auth_token", data.token);
 
@@ -103,6 +110,6 @@ login: async ({ email, password, remember }) => {
 
   getUserRole: () => {
     const user = authService.getCurrentUser();
-    return user ? user.role.toLowerCase() : null;
+    return user && user.role ? user.role.toLowerCase() : null;
   }
 };

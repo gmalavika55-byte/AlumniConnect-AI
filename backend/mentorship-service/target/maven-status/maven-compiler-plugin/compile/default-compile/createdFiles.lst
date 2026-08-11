@@ -3,5 +3,6 @@ com\alumniconnect\mentorship\repository\MentorshipRequestRepository.class
 com\alumniconnect\mentorship\MentorshipApplication.class
 com\alumniconnect\mentorship\entity\MentorshipRequest.class
 com\alumniconnect\mentorship\controller\MentorshipController.class
+com\alumniconnect\mentorship\exception\GlobalExceptionHandler.class
 com\alumniconnect\mentorship\exception\ResourceNotFoundException.class
 com\alumniconnect\mentorship\serviceimpl\MentorshipServiceImpl.class

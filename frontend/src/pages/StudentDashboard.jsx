@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { message } from 'antd';
+import { message, Spin, Modal } from 'antd';
 import {
   FiUser,
   FiSearch,
@@ -14,43 +14,111 @@ import {
 import { authService } from '../services/authService';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { useAppContext } from '../context/AppContext';
+import api from '../services/api';
 import styles from './StudentDashboard.module.css';
 
 export const StudentDashboard = () => {
   const navigate = useNavigate();
   const student = authService.getCurrentUser();
-  const { searchQuery, mentors, events, setEvents, requests, setRequests } = useAppContext();
+  const { searchQuery, mentors, events, requests, loading, refreshData } = useAppContext();
 
-  const handleRequestMentorship = (mentorName) => {
-    const mentor = mentors.find(m => m.name === mentorName);
-    if (!mentor) return;
+  if (loading) {
+    return (
+      <StudentLayout>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+          <Spin size="large" tip="Loading Dashboard..." />
+        </div>
+      </StudentLayout>
+    );
+  }
 
-    const alreadyRequested = requests.some(r => r.mentorId === mentor.id);
+  // ── Request Mentorship via real API ──
+  const handleRequestMentorship = async (mentorId, mentorName) => {
+    if (!student) return;
+
+    const alreadyRequested = requests.some(r => {
+      const s = r.status?.toUpperCase();
+      return String(r.mentorId) === String(mentorId) && s !== 'CANCELLED' && s !== 'REVOKED';
+    });
     if (alreadyRequested) {
-      const req = requests.find(r => r.mentorId === mentor.id);
-      message.info(`Request status for ${mentorName} is already: ${req.status}`);
+      const req = requests.find(r => {
+        const s = r.status?.toUpperCase();
+        return String(r.mentorId) === String(mentorId) && s !== 'CANCELLED' && s !== 'REVOKED';
+      });
+      message.info(`Request to ${mentorName} is already: ${req.status}`);
       return;
     }
 
-    const newRequest = {
-      id: Date.now(),
-      mentorId: mentor.id,
-      mentorName: mentor.name,
-      role: mentor.role,
-      company: mentor.company,
-      date: 'Today',
-      status: 'Pending'
-    };
-    setRequests([...requests, newRequest]);
-    message.success(`Mentorship request sent to ${mentorName}`);
+    try {
+      const payload = {
+        studentId: student.studentId,
+        alumniId: mentorId,
+        status: 'PENDING',
+        remarks: 'Mentorship request from dashboard',
+        requestDate: new Date().toISOString()
+      };
+      await api.post('/mentorship/add', payload);
+      message.success(`Mentorship request sent to ${mentorName}!`);
+      refreshData();
+    } catch (err) {
+      console.error('Error sending mentorship request:', err);
+      message.error('Failed to send request. Please try again.');
+    }
   };
 
-  const handleRegisterEvent = (eventId, eventTitle) => {
-    const eventItem = events.find(e => e.id === eventId);
-    if (!eventItem || eventItem.registered) return;
+  const handleRevokeMentorship = (requestId, mentorName) => {
+    if (!student) return;
+    if (!requestId) {
+      message.error('Request ID is missing. Cannot revoke.');
+      return;
+    }
 
-    setEvents(prev => prev.map(e => e.id === eventId ? { ...e, registered: true } : e));
-    message.success(`RSVP confirmed for ${eventTitle}`);
+    Modal.confirm({
+      title: 'Revoke Mentorship Request?',
+      content: 'Are you sure you want to revoke this mentorship request?',
+      okText: 'Revoke',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      okButtonProps: { style: { backgroundColor: '#ef4444', borderColor: '#ef4444' } },
+      async onOk() {
+        try {
+          await api.put(`/mentorship/cancel/${requestId}?studentId=${student.studentId}`);
+          message.success('Mentorship request revoked successfully.');
+          refreshData();
+        } catch (err) {
+          console.error('Error revoking request:', err);
+          const errData = err.response?.data;
+          const errorMsg = typeof errData === 'string' ? errData : 'Failed to revoke request. Please try again.';
+          message.error(errorMsg);
+        }
+      }
+    });
+  };
+
+  // ── Register Event via real API ──
+  const handleRegisterEvent = async (eventId, eventTitle) => {
+    if (!student) return;
+
+    const eventItem = events.find(e => e.id === eventId);
+    if (eventItem?.registered) {
+      message.info('You are already registered for this event.');
+      return;
+    }
+
+    try {
+      const payload = {
+        eventId: eventId,
+        studentId: student.studentId,
+        alumniId: null,
+        registrationDate: new Date().toISOString()
+      };
+      await api.post('/event/register', payload);
+      message.success(`RSVP confirmed for ${eventTitle}!`);
+      refreshData();
+    } catch (err) {
+      console.error('Error registering for event:', err);
+      message.error('Failed to register. Please try again.');
+    }
   };
 
   // ── Search Filtering ──
@@ -58,10 +126,10 @@ export const StudentDashboard = () => {
     if (searchQuery.trim() === '') return true;
     const q = searchQuery.toLowerCase();
     return (
-      m.name.toLowerCase().includes(q) ||
-      m.role.toLowerCase().includes(q) ||
-      m.company.toLowerCase().includes(q) ||
-      m.skills.some(s => s.toLowerCase().includes(q))
+      m.name?.toLowerCase().includes(q) ||
+      m.role?.toLowerCase().includes(q) ||
+      m.company?.toLowerCase().includes(q) ||
+      m.skills?.some(s => s.toLowerCase().includes(q))
     );
   });
 
@@ -69,11 +137,38 @@ export const StudentDashboard = () => {
     if (searchQuery.trim() === '') return true;
     const q = searchQuery.toLowerCase();
     return (
-      e.title.toLowerCase().includes(q) ||
-      e.category.toLowerCase().includes(q) ||
-      e.venue.toLowerCase().includes(q)
+      e.title?.toLowerCase().includes(q) ||
+      e.category?.toLowerCase().includes(q) ||
+      e.venue?.toLowerCase().includes(q)
     );
   });
+
+  // ── Stats derived from real data ──
+  const availableMentorsCount = mentors.filter(m => m.availableForMentorship && m.availableForMentorship.toLowerCase() === 'yes').length;
+  const registeredEventsCount = events.filter(e => e.registered).length;
+  const pendingCount = requests.filter(r => r.status?.toUpperCase() === 'PENDING').length;
+  const acceptedCount = requests.filter(r => r.status?.toUpperCase() === 'ACCEPTED').length;
+  const activeRequestsCount = requests.filter(r => {
+    const s = r.status?.toUpperCase();
+    return s !== 'CANCELLED' && s !== 'REVOKED';
+  }).length;
+
+  // Upcoming registered event date text
+  const upcomingRegistered = events
+    .filter(e => e.registered && e.eventDate)
+    .filter(e => {
+      const d = new Date(e.eventDate);
+      return !isNaN(d.getTime()) && d >= new Date();
+    })
+    .sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate));
+
+  let nextEventText = 'No upcoming registered events';
+  if (upcomingRegistered.length > 0) {
+    const nextDate = new Date(upcomingRegistered[0].eventDate);
+    if (!isNaN(nextDate.getTime())) {
+      nextEventText = `Next on ${nextDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    }
+  }
 
   return (
     <StudentLayout>
@@ -106,7 +201,7 @@ export const StudentDashboard = () => {
 
       {/* 3 Top Statistics Cards */}
       <div className={styles.statsRow}>
-        {/* Card 1: Recommended Mentors */}
+        {/* Card 1: Available Mentors */}
         <div
           className={styles.statCard}
           style={{ cursor: 'pointer' }}
@@ -115,9 +210,9 @@ export const StudentDashboard = () => {
           <div className={`${styles.statIconWrapper} ${styles.purpleIconBg}`}>
             <FiZap />
           </div>
-          <div className={styles.statNumber}>12</div>
-          <div className={styles.statTitle}>Recommended Mentors</div>
-          <div className={styles.statSubtext}>AI-matched to your profile</div>
+          <div className={styles.statNumber}>{availableMentorsCount}</div>
+          <div className={styles.statTitle}>Available Mentors</div>
+          <div className={styles.statSubtext}>Connect with verified alumni</div>
         </div>
 
         {/* Card 2: Mentorship Requests */}
@@ -129,10 +224,10 @@ export const StudentDashboard = () => {
           <div className={`${styles.statIconWrapper} ${styles.orangeIconBg}`}>
             <FiBookOpen />
           </div>
-          <div className={styles.statNumber}>{requests.length}</div>
+          <div className={styles.statNumber}>{activeRequestsCount}</div>
           <div className={styles.statTitle}>Mentorship Requests</div>
           <div className={styles.statSubtext}>
-            {requests.filter(r => r.status === 'Pending').length} pending • {requests.filter(r => r.status === 'Accepted').length} accepted
+            {pendingCount} pending • {acceptedCount} accepted
           </div>
         </div>
 
@@ -145,9 +240,9 @@ export const StudentDashboard = () => {
           <div className={`${styles.statIconWrapper} ${styles.greenIconBg}`}>
             <FiCalendar />
           </div>
-          <div className={styles.statNumber}>{events.filter(e => e.registered).length}</div>
+          <div className={styles.statNumber}>{registeredEventsCount}</div>
           <div className={styles.statTitle}>Registered Events</div>
-          <div className={styles.statSubtext}>Next on Aug 18, 2026</div>
+          <div className={styles.statSubtext}>{nextEventText}</div>
         </div>
       </div>
 
@@ -176,45 +271,74 @@ export const StudentDashboard = () => {
               </a>
             </div>
 
-            {filteredMentors.length > 0 ? (
-              filteredMentors.map((mentor, index) => {
-                const request = requests.find(r => r.mentorId === mentor.id);
-                const isPending = request?.status === 'Pending';
-                const isAccepted = request?.status === 'Accepted';
+            {filteredMentors.filter(m => m.availableForMentorship && m.availableForMentorship.toLowerCase() === 'yes').length > 0 ? (
+              filteredMentors
+                .filter(m => m.availableForMentorship && m.availableForMentorship.toLowerCase() === 'yes')
+                .map((mentor, index) => {
+                  const request = requests.find(r => {
+                    const s = r.status?.toUpperCase();
+                    return String(r.mentorId) === String(mentor.id) && s !== 'CANCELLED' && s !== 'REVOKED';
+                  });
+                  const status = request?.status?.toUpperCase();
+                  const isPending = status === 'PENDING';
+                  const isAccepted = status === 'ACCEPTED';
+                  const isRejected = status === 'REJECTED' || status === 'DECLINED';
 
-                return (
-                  <div key={index} className={styles.mentorItem}>
-                    <div className={styles.mentorItemLeft}>
-                      <div className={styles.mentorAvatar}>{mentor.avatar}</div>
-                      <div>
-                        <div className={styles.mentorNameRow}>
-                          <h4 className={styles.mentorName}>{mentor.name}</h4>
-                          <span className={styles.matchTag}>{mentor.match}</span>
-                        </div>
-                        <div className={styles.mentorRoleCompany}>
-                          {mentor.role} • <strong>{mentor.company}</strong>
-                        </div>
-                        <div className={styles.mentorTagsRow}>
-                          {mentor.skills.map((s, idx) => (
-                            <span key={idx} className={styles.skillTag}>{s}</span>
-                          ))}
-                        </div>
-                        <div className={styles.mentorMetaRow}>
-                          <span>Batch {mentor.batch}</span>
-                          <span className={styles.starRating}>★ {mentor.rating}</span>
+                  return (
+                    <div key={mentor.id || index} className={styles.mentorItem}>
+                      <div className={styles.mentorItemLeft}>
+                        <div className={styles.mentorAvatar}>{mentor.avatar}</div>
+                        <div>
+                          <div className={styles.mentorNameRow}>
+                            <h4 className={styles.mentorName}>{mentor.name}</h4>
+                          </div>
+                          <div className={styles.mentorRoleCompany}>
+                            {mentor.role} • <strong>{mentor.company}</strong>
+                          </div>
+                          <div className={styles.mentorTagsRow}>
+                            {(mentor.skills || []).map((s, idx) => (
+                              <span key={idx} className={styles.skillTag}>{s}</span>
+                            ))}
+                          </div>
+                          <div className={styles.mentorMetaRow}>
+                            <span>Batch {mentor.batch}</span>
+                          </div>
                         </div>
                       </div>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        {isPending ? (
+                          <>
+                            <button className={`${styles.requestBtn} ${styles.disabledBtn}`} disabled>
+                              Pending
+                            </button>
+                            <button
+                              className={styles.requestBtn}
+                              style={{ backgroundColor: '#ef4444', borderColor: '#ef4444', color: '#fff' }}
+                              onClick={() => handleRevokeMentorship(request.id, mentor.name)}
+                            >
+                              Revoke
+                            </button>
+                          </>
+                        ) : isAccepted ? (
+                          <button className={`${styles.requestBtn} ${styles.disabledBtn}`} disabled>
+                            Connected
+                          </button>
+                        ) : isRejected ? (
+                          <button className={`${styles.requestBtn} ${styles.disabledBtn}`} disabled>
+                            Rejected
+                          </button>
+                        ) : (
+                          <button
+                            className={styles.requestBtn}
+                            onClick={() => handleRequestMentorship(mentor.id, mentor.name)}
+                          >
+                            Request
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <button
-                      className={`${styles.requestBtn} ${request ? styles.disabledBtn : ''}`}
-                      disabled={!!request}
-                      onClick={() => handleRequestMentorship(mentor.name)}
-                    >
-                      {isPending ? 'Pending' : isAccepted ? 'Connected' : 'Request'}
-                    </button>
-                  </div>
-                );
-              })
+                  );
+                })
             ) : (
               <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--ac-text-secondary)' }}>
                 No matching recommended mentors found.

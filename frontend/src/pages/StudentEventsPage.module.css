@@ -219,3 +219,21 @@
 .emptyIcon {
   color: var(--ac-text-muted);
 }
+
+.cancelBtn {
+  flex: 1;
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border: none;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancelBtn:hover {
+  background-color: #fecaca;
+  color: #991b1b;
+}

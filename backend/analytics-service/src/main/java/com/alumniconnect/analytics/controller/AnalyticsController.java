@@ -8,7 +8,6 @@ import com.alumniconnect.analytics.service.AnalyticsService;
 
 @RestController
 @RequestMapping("/analytics")
-@CrossOrigin(origins = "*")
 public class AnalyticsController {
 
     @Autowired

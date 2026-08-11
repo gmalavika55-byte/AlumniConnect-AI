@@ -50,6 +50,17 @@ public class Event {
     @Column(name = "STATUS")
     private String status;
 
+    @Transient
+    private Long registeredCount;
+
+    public Long getRegisteredCount() {
+        return registeredCount;
+    }
+
+    public void setRegisteredCount(Long registeredCount) {
+        this.registeredCount = registeredCount;
+    }
+
     public Event() {
     }
 

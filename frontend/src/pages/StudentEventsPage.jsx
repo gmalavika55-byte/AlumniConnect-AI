@@ -39,24 +39,52 @@ export const StudentEventsPage = () => {
       refreshData();
     } catch (err) {
       console.error("Error registering for event:", err);
-      message.error("Failed to register for event.");
+      const errorMsg = err.response?.data || "Failed to register for event.";
+      message.error(errorMsg);
     }
   };
 
+  const handleCancelClick = (eventItem) => {
+    const student = authService.getCurrentUser();
+    if (!student) return;
+
+    Modal.confirm({
+      title: "Cancel Event Registration?",
+      content: `Are you sure you want to cancel your registration for "${eventItem.title}"?`,
+      okText: "Yes, Cancel",
+      okType: "danger",
+      cancelText: "No",
+      onOk: async () => {
+        try {
+          await api.delete(`/event/registrations/cancel/${eventItem.id}/student/${student.studentId}`);
+          message.success("Registration cancelled successfully.");
+          refreshData();
+        } catch (err) {
+          console.error("Error cancelling registration:", err);
+          const errorMsg = err.response?.data || "Failed to cancel registration.";
+          message.error(errorMsg);
+        }
+      }
+    });
+  };
+
   // ── Search & Tab Filtering ──
+  const isPast = (e) => e.eventDate && new Date(e.eventDate) < new Date();
+
   const filteredEvents = events.filter(e => {
     // 1. Tab Filter
     if (activeTab === 'Registered Events' && !e.registered) return false;
-    if (activeTab === 'Past Events') return false; // Simulated past list
+    if (activeTab === 'Past Events' && !isPast(e)) return false;
+    if (activeTab === 'Upcoming Events' && isPast(e)) return false;
 
     // 2. Search Filter
     if (searchQuery.trim() !== '') {
       const q = searchQuery.toLowerCase();
       return (
-        e.title.toLowerCase().includes(q) ||
-        e.category.toLowerCase().includes(q) ||
-        e.speaker.toLowerCase().includes(q) ||
-        e.venue.toLowerCase().includes(q)
+        e.title?.toLowerCase().includes(q) ||
+        e.category?.toLowerCase().includes(q) ||
+        e.speaker?.toLowerCase().includes(q) ||
+        e.venue?.toLowerCase().includes(q)
       );
     }
     return true;
@@ -99,13 +127,18 @@ export const StudentEventsPage = () => {
 
               <h3 className={styles.eventTitle}>{event.title}</h3>
 
-              <div className={styles.eventMeta}>
+               <div className={styles.eventMeta}>
                 <div className={styles.metaRow}>
                   <FiClock style={{ color: '#1b62d4' }} /> {event.time}
                 </div>
                 <div className={styles.metaRow}>
                   <FiMapPin style={{ color: '#1b62d4' }} /> {event.venue}
                 </div>
+                {event.maxParticipants ? (
+                  <div className={styles.metaRow}>
+                    <FiCheckCircle style={{ color: '#1b62d4' }} /> Registered: {event.registeredCount || 0} / {event.maxParticipants}
+                  </div>
+                ) : null}
               </div>
 
               <div className={styles.cardFooter}>
@@ -117,8 +150,15 @@ export const StudentEventsPage = () => {
                 </button>
 
                 {event.registered ? (
-                  <button className={styles.registeredBtn} disabled>
-                    <FiCheckCircle style={{ marginRight: 4 }} /> Registered
+                  <button
+                    className={styles.cancelBtn}
+                    onClick={() => handleCancelClick(event)}
+                  >
+                    Cancel RSVP
+                  </button>
+                ) : (event.maxParticipants && (event.registeredCount || 0) >= event.maxParticipants) ? (
+                  <button className={styles.registeredBtn} style={{ backgroundColor: '#fee2e2', color: '#b91c1c' }} disabled>
+                    Event Full
                   </button>
                 ) : (
                   <button
@@ -150,7 +190,22 @@ export const StudentEventsPage = () => {
             <button key="close" className={styles.secondaryBtn} onClick={() => setDetailsEvent(null)}>
               Close
             </button>,
-            !detailsEvent.registered && (
+            detailsEvent.registered ? (
+              <button
+                key="cancel"
+                className={styles.cancelBtn}
+                onClick={() => {
+                  setDetailsEvent(null);
+                  handleCancelClick(detailsEvent);
+                }}
+              >
+                Cancel RSVP
+              </button>
+            ) : (detailsEvent.maxParticipants && (detailsEvent.registeredCount || 0) >= detailsEvent.maxParticipants) ? (
+              <button key="full" className={styles.registeredBtn} style={{ backgroundColor: '#fee2e2', color: '#b91c1c', cursor: 'not-allowed' }} disabled>
+                Event Full
+              </button>
+            ) : (
               <button
                 key="reg"
                 className={styles.primaryBtn}

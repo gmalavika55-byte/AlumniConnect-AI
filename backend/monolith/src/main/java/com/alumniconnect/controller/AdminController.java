@@ -11,7 +11,6 @@ import com.alumniconnect.service.AdminService;
 
 @RestController
 @RequestMapping("/admin")
-@CrossOrigin(origins = "*")
 public class AdminController {
 
     @Autowired

@@ -9,7 +9,6 @@ import com.alumniconnect.fundraising.service.DonationService;
 
 @RestController
 @RequestMapping("/fundraising")
-@CrossOrigin(origins = "*")
 public class DonationController {
 
     @Autowired

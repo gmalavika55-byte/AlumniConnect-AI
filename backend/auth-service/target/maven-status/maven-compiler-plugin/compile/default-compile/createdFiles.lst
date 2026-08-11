@@ -2,6 +2,7 @@ com\alumniconnect\auth\service\AlumniService.class
 com\alumniconnect\auth\exception\GlobalExceptionHandler.class
 com\alumniconnect\auth\controller\NotificationController.class
 com\alumniconnect\auth\service\AdminService.class
+com\alumniconnect\auth\entity\Certificate.class
 com\alumniconnect\auth\controller\AuthController.class
 com\alumniconnect\auth\serviceimpl\NotificationServiceImpl.class
 com\alumniconnect\auth\serviceimpl\AlumniServiceImpl.class
@@ -14,6 +15,8 @@ com\alumniconnect\auth\entity\Admin.class
 com\alumniconnect\auth\exception\ResourceNotFoundException.class
 com\alumniconnect\auth\entity\Student.class
 com\alumniconnect\auth\controller\AdminController.class
+com\alumniconnect\auth\controller\CertificateController.class
+com\alumniconnect\auth\repository\CertificateRepository.class
 com\alumniconnect\auth\service\NotificationService.class
 com\alumniconnect\auth\repository\StudentRepository.class
 com\alumniconnect\auth\controller\AlumniController.class
@@ -23,4 +26,6 @@ com\alumniconnect\auth\serviceimpl\AdminServiceImpl.class
 com\alumniconnect\auth\service\StudentService.class
 com\alumniconnect\auth\repository\NotificationRepository.class
 com\alumniconnect\auth\entity\Notification.class
+com\alumniconnect\auth\serviceimpl\CertificateServiceImpl.class
+com\alumniconnect\auth\service\CertificateService.class
 com\alumniconnect\auth\repository\AdminRepository.class

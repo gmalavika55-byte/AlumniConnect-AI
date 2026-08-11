@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Tag, Button, message, Modal } from 'antd';
-import { FiUsers, FiCheck, FiX, FiEye, FiClock, FiStar, FiBookOpen, FiCalendar } from 'react-icons/fi';
+import { FiUsers, FiCheck, FiX, FiEye, FiClock, FiCalendar } from 'react-icons/fi';
 import { AlumniLayout } from '../components/alumni/AlumniLayout';
 import { useAppContext } from '../context/AppContext';
+import { authService } from '../services/authService';
 import api from '../services/api';
 
 export const AlumniMentorshipPage = () => {
@@ -11,8 +12,7 @@ export const AlumniMentorshipPage = () => {
   const location = useLocation();
   const { alumniRequests: requests, refreshData } = useAppContext();
 
-  // Set active tab based on React Router navigation state, default to 'Pending'
-  const [activeTab, setActiveTab] = useState('Pending');
+  const [activeTab, setActiveTab] = useState('PENDING');
 
   useEffect(() => {
     if (location.state && location.state.tab) {
@@ -20,21 +20,46 @@ export const AlumniMentorshipPage = () => {
     }
   }, [location.state]);
 
-  const handleAccept = async (req) => {
+  // Helper: post a notification to auth-service
+  const createNotification = async (userId, userType, title, msg) => {
     try {
-      const getRes = await api.get(`/mentorship/get/${req.id}`);
-      const requestObj = getRes.data;
-      requestObj.status = 'ACCEPTED';
-      await api.put('/mentorship/update', requestObj);
+      await api.post('/notification/add', {
+        userId,
+        userType,
+        title,
+        message: msg,
+        notificationDate: new Date().toISOString(),
+        status: 'UNREAD'
+      });
+    } catch (err) {
+      console.warn('Notification creation failed (non-critical):', err);
+    }
+  };
+
+  const handleAccept = async (req) => {
+    const alumni = authService.getCurrentUser();
+    if (!alumni) return;
+    try {
+      await api.put(`/mentorship/accept/${req.id}?alumniId=${alumni.alumniId}`);
       message.success(`Mentorship request from ${req.studentName} accepted!`);
+      // Notify the student
+      await createNotification(
+        req.studentId,
+        'STUDENT',
+        'Mentorship Request Accepted',
+        `Your mentorship request to ${alumni.name || 'an alumni'} was accepted! You can now begin your sessions.`
+      );
       refreshData();
     } catch (err) {
-      console.error("Error accepting request:", err);
-      message.error("Failed to accept mentorship request.");
+      console.error('Error accepting request:', err);
+      const errorMsg = err.response?.data || 'Failed to accept mentorship request.';
+      message.error(errorMsg);
     }
   };
 
   const handleDecline = (req) => {
+    const alumni = authService.getCurrentUser();
+    if (!alumni) return;
     Modal.confirm({
       title: `Decline Mentorship Request from "${req.studentName}"?`,
       content: 'The student will be notified that you are currently unavailable for this session.',
@@ -42,21 +67,28 @@ export const AlumniMentorshipPage = () => {
       okType: 'danger',
       async onOk() {
         try {
-          const getRes = await api.get(`/mentorship/get/${req.id}`);
-          const requestObj = getRes.data;
-          requestObj.status = 'DECLINED';
-          await api.put('/mentorship/update', requestObj);
+          await api.put(`/mentorship/reject/${req.id}?alumniId=${alumni.alumniId}`);
           message.info(`Request from ${req.studentName} declined.`);
+          // Notify the student
+          await createNotification(
+            req.studentId,
+            'STUDENT',
+            'Mentorship Request Declined',
+            `Your mentorship request to ${alumni.name || 'an alumni'} was not accepted at this time.`
+          );
           refreshData();
         } catch (err) {
-          console.error("Error declining request:", err);
-          message.error("Failed to decline mentorship request.");
+          console.error('Error declining request:', err);
+          const errorMsg = err.response?.data || 'Failed to decline mentorship request.';
+          message.error(errorMsg);
         }
       }
     });
   };
 
   const handleComplete = async (req) => {
+    const alumni = authService.getCurrentUser();
+    if (!alumni) return;
     try {
       const getRes = await api.get(`/mentorship/get/${req.id}`);
       const requestObj = getRes.data;
@@ -65,20 +97,17 @@ export const AlumniMentorshipPage = () => {
       message.success(`Mentorship session with ${req.studentName} marked as Completed!`);
       refreshData();
     } catch (err) {
-      console.error("Error completing session:", err);
-      message.error("Failed to mark mentorship request as completed.");
+      console.error('Error completing session:', err);
+      const errorMsg = err.response?.data || 'Failed to mark mentorship request as completed.';
+      message.error(errorMsg);
     }
   };
 
-  // Get records filtered by active tab
+  // All status comparisons use UPPERCASE (data is normalised in AppContext)
   const getFilteredRequests = () => {
-    if (activeTab === 'Pending') {
-      return requests.filter(r => r.status === 'Pending');
-    } else if (activeTab === 'Accepted') {
-      return requests.filter(r => r.status === 'Accepted');
-    } else {
-      return requests.filter(r => r.status === 'Completed');
-    }
+    if (activeTab === 'PENDING') return requests.filter(r => r.status === 'PENDING');
+    if (activeTab === 'ACCEPTED') return requests.filter(r => r.status === 'ACCEPTED');
+    return requests.filter(r => r.status === 'COMPLETED' || r.status === 'REJECTED');
   };
 
   const filteredRequests = getFilteredRequests();
@@ -96,9 +125,9 @@ export const AlumniMentorshipPage = () => {
       {/* Tab Switcher Header */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 24, borderBottom: '1px solid var(--ac-border)', paddingBottom: 12, flexWrap: 'wrap' }}>
         {[
-          { id: 'Pending', label: 'Pending Requests', count: requests.filter(r => r.status === 'Pending').length },
-          { id: 'Accepted', label: 'Accepted / Active Mentorships', count: requests.filter(r => r.status === 'Accepted').length },
-          { id: 'History', label: 'Past History', count: requests.filter(r => r.status === 'Completed').length }
+          { id: 'PENDING', label: 'Pending Requests', count: requests.filter(r => r.status === 'PENDING').length },
+          { id: 'ACCEPTED', label: 'Accepted / Active Mentorships', count: requests.filter(r => r.status === 'ACCEPTED').length },
+          { id: 'History', label: 'Past History', count: requests.filter(r => r.status === 'COMPLETED' || r.status === 'REJECTED').length }
         ].map(tab => (
           <button
             key={tab.id}
@@ -138,7 +167,9 @@ export const AlumniMentorshipPage = () => {
         <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', padding: 48, textAlign: 'center', color: 'var(--ac-text-secondary)' }}>
           <FiUsers size={48} color="var(--ac-text-muted)" style={{ marginBottom: 16 }} />
           <h3 style={{ fontSize: 16, color: 'var(--ac-text-primary)', margin: '0 0 4px 0' }}>No records found</h3>
-          <p style={{ fontSize: 13.5, margin: 0 }}>There are currently no items under the {activeTab === 'Pending' ? 'Pending Requests' : activeTab === 'Accepted' ? 'Accepted / Active Mentorships' : 'Past History'} section.</p>
+          <p style={{ fontSize: 13.5, margin: 0 }}>
+            There are currently no items under the {activeTab === 'PENDING' ? 'Pending Requests' : activeTab === 'ACCEPTED' ? 'Accepted / Active Mentorships' : 'Past History'} section.
+          </p>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 24 }}>
@@ -166,27 +197,28 @@ export const AlumniMentorshipPage = () => {
                   }}>
                     {req.matchPct}
                   </span>
-                  <Tag color={req.status === 'Accepted' ? 'success' : req.status === 'Pending' ? 'warning' : 'default'} style={{ fontWeight: 700 }}>
-                    {req.status === 'Completed' ? 'COMPLETED' : req.status.toUpperCase()}
+                  {/* Null-safe status display */}
+                  <Tag
+                    color={
+                      req.status === 'ACCEPTED' ? 'success' :
+                      req.status === 'PENDING' ? 'warning' :
+                      req.status === 'REJECTED' ? 'error' : 'default'
+                    }
+                    style={{ fontWeight: 700 }}
+                  >
+                    {req.status || 'PENDING'}
                   </Tag>
                 </div>
 
                 {/* Student Header */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
                   <div style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: '50%',
-                    backgroundColor: 'var(--ac-bg-input)',
-                    border: '1px solid var(--ac-border)',
-                    color: 'var(--ac-text-primary)',
-                    fontWeight: 800,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 16
+                    width: 44, height: 44, borderRadius: '50%',
+                    backgroundColor: 'var(--ac-bg-input)', border: '1px solid var(--ac-border)',
+                    color: 'var(--ac-text-primary)', fontWeight: 800,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16
                   }}>
-                    {req.studentName.split(' ').map(n => n[0]).join('')}
+                    {(req.studentName || 'S').split(' ').map(n => n[0]).join('')}
                   </div>
                   <div>
                     <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ac-text-primary)', margin: 0 }}>{req.studentName}</h3>
@@ -226,7 +258,7 @@ export const AlumniMentorshipPage = () => {
                   View Profile
                 </Button>
 
-                {req.status === 'Pending' && (
+                {req.status === 'PENDING' && (
                   <div style={{ display: 'flex', gap: 8 }}>
                     <Button
                       type="primary"
@@ -248,7 +280,7 @@ export const AlumniMentorshipPage = () => {
                   </div>
                 )}
 
-                {req.status === 'Accepted' && (
+                {req.status === 'ACCEPTED' && (
                   <Button
                     type="primary"
                     icon={<FiCheck />}
@@ -259,9 +291,9 @@ export const AlumniMentorshipPage = () => {
                   </Button>
                 )}
 
-                {req.status === 'Completed' && (
+                {(req.status === 'COMPLETED' || req.status === 'REJECTED') && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--ac-text-secondary)' }}>
-                    <FiCalendar /> <span>Completed: {req.completionDate}</span>
+                    <FiCalendar /> <span>{req.status === 'COMPLETED' ? `Completed: ${req.completionDate}` : 'Request Declined'}</span>
                   </div>
                 )}
               </div>

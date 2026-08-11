@@ -11,6 +11,7 @@ export const RegisterPage = () => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [roleSelection, setRoleSelection] = useState(null);
 
   const onFinish = async (values) => {
     setLoading(true);
@@ -98,6 +99,25 @@ export const RegisterPage = () => {
             }}
           >
             <div className={styles.formGrid}>
+              {/* 0. Register As */}
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label className={styles.fieldLabel}>Register As</label>
+                <Form.Item
+                  name="role"
+                  rules={[{ required: true, message: 'Please select a role' }]}
+                >
+                  <Select
+                    placeholder="Select Role"
+                    className={styles.customSelect}
+                    style={{ width: '100%', height: '44px' }}
+                    onChange={(val) => setRoleSelection(val)}
+                  >
+                    <Option value="student">Student</Option>
+                    <Option value="alumni">Alumni</Option>
+                  </Select>
+                </Form.Item>
+              </div>
+
               {/* 1. Full Name */}
               <div>
                 <label className={styles.fieldLabel}>Full Name</label>
@@ -177,6 +197,51 @@ export const RegisterPage = () => {
                   <Input placeholder="e.g. 2024" className={styles.customInput} />
                 </Form.Item>
               </div>
+
+              {/* Conditional Fields for Student: Course & Year of Study */}
+              {roleSelection === 'student' && (
+                <>
+                  <div>
+                    <label className={styles.fieldLabel}>Course</label>
+                    <Form.Item
+                      name="course"
+                      rules={[{ required: true, message: 'Please select course' }]}
+                    >
+                      <Select
+                        placeholder="Select Course"
+                        className={styles.customSelect}
+                        style={{ width: '100%', height: '44px' }}
+                      >
+                        <Option value="B.E.">B.E. (Bachelor of Engineering)</Option>
+                        <Option value="B.Tech">B.Tech (Bachelor of Technology)</Option>
+                        <Option value="M.E.">M.E. (Master of Engineering)</Option>
+                        <Option value="M.Tech">M.Tech (Master of Technology)</Option>
+                        <Option value="MCA">MCA (Master of Computer Applications)</Option>
+                        <Option value="MBA">MBA (Master of Business Administration)</Option>
+                      </Select>
+                    </Form.Item>
+                  </div>
+
+                  <div>
+                    <label className={styles.fieldLabel}>Year of Study</label>
+                    <Form.Item
+                      name="yearOfStudy"
+                      rules={[{ required: true, message: 'Please select year of study' }]}
+                    >
+                      <Select
+                        placeholder="Select Year"
+                        className={styles.customSelect}
+                        style={{ width: '100%', height: '44px' }}
+                      >
+                        <Option value={1}>1st Year</Option>
+                        <Option value={2}>2nd Year</Option>
+                        <Option value={3}>3rd Year</Option>
+                        <Option value={4}>4th Year</Option>
+                      </Select>
+                    </Form.Item>
+                  </div>
+                </>
+              )}
 
               {/* 7. Password */}
               <div>

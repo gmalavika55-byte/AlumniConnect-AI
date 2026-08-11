@@ -7,6 +7,7 @@ com\alumniconnect\event\serviceimpl\EventRegistrationServiceImpl.class
 com\alumniconnect\event\EventApplication.class
 com\alumniconnect\event\repository\EventRegistrationRepository.class
 com\alumniconnect\event\service\EventRegistrationService.class
+com\alumniconnect\event\exception\GlobalExceptionHandler.class
 com\alumniconnect\event\entity\Event.class
 com\alumniconnect\event\repository\EventRepository.class
 com\alumniconnect\event\serviceimpl\EventServiceImpl.class

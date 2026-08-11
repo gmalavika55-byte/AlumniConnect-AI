@@ -10,7 +10,6 @@ import com.alumniconnect.service.MentorshipService;
 
 @RestController
 @RequestMapping("/mentorship")
-@CrossOrigin(origins = "*")
 public class MentorshipController {
 
     @Autowired

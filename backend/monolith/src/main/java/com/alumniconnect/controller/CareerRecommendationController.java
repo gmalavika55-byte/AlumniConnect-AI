@@ -10,7 +10,6 @@ import com.alumniconnect.service.CareerRecommendationService;
 
 @RestController
 @RequestMapping("/career")
-@CrossOrigin(origins = "*")
 public class CareerRecommendationController {
 
     @Autowired

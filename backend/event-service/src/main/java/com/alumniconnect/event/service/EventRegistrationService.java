@@ -7,4 +7,5 @@ public interface EventRegistrationService {
     EventRegistration registerForEvent(EventRegistration registration);
     List<EventRegistration> getRegistrationsForEvent(Integer eventId);
     List<EventRegistration> getRegistrationsForUser(String userType, Integer userId);
+    void cancelStudentRegistration(Integer eventId, Integer studentId);
 }

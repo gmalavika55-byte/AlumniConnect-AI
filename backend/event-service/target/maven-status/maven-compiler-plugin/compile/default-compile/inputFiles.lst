@@ -3,6 +3,7 @@ C:\Users\Hp\.gemini\antigravity\scratch\alumni-connect-ai\backend\event-service\
 C:\Users\Hp\.gemini\antigravity\scratch\alumni-connect-ai\backend\event-service\src\main\java\com\alumniconnect\event\entity\Event.java
 C:\Users\Hp\.gemini\antigravity\scratch\alumni-connect-ai\backend\event-service\src\main\java\com\alumniconnect\event\entity\EventRegistration.java
 C:\Users\Hp\.gemini\antigravity\scratch\alumni-connect-ai\backend\event-service\src\main\java\com\alumniconnect\event\EventApplication.java
+C:\Users\Hp\.gemini\antigravity\scratch\alumni-connect-ai\backend\event-service\src\main\java\com\alumniconnect\event\exception\GlobalExceptionHandler.java
 C:\Users\Hp\.gemini\antigravity\scratch\alumni-connect-ai\backend\event-service\src\main\java\com\alumniconnect\event\exception\ResourceNotFoundException.java
 C:\Users\Hp\.gemini\antigravity\scratch\alumni-connect-ai\backend\event-service\src\main\java\com\alumniconnect\event\repository\EventRegistrationRepository.java
 C:\Users\Hp\.gemini\antigravity\scratch\alumni-connect-ai\backend\event-service\src\main\java\com\alumniconnect\event\repository\EventRepository.java

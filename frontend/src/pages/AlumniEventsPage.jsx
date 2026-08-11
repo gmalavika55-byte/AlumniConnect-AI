@@ -169,7 +169,7 @@ export const AlumniEventsPage = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <Tag color="blue" style={{ fontWeight: 700 }}>{eventItem.category}</Tag>
                   <Tag color={isPast(eventItem) ? 'default' : eventItem.status === 'Upcoming' ? 'success' : 'default'} style={{ fontWeight: 600 }}>
-                    {isPast(eventItem) ? 'COMPLETED' : eventItem.status.toUpperCase()}
+                    {isPast(eventItem) ? 'COMPLETED' : (eventItem.status || 'UPCOMING').toUpperCase()}
                   </Tag>
                 </div>
 

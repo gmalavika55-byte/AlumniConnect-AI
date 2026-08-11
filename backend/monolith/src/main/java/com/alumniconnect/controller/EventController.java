@@ -10,7 +10,6 @@ import com.alumniconnect.service.EventService;
 
 @RestController
 @RequestMapping("/event")
-@CrossOrigin(origins = "*")
 public class EventController {
 
     @Autowired

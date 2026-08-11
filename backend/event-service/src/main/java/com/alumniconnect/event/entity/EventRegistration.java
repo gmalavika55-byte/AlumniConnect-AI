@@ -113,4 +113,19 @@ public class EventRegistration {
     public void setAlumni(Object alumni) {
         this.alumni = alumni;
     }
+
+    public Integer getEventId() {
+        return event != null ? event.getEventId() : null;
+    }
+
+    public void setEventId(Integer eventId) {
+        if (eventId != null) {
+            if (this.event == null) {
+                this.event = new Event();
+            }
+            this.event.setEventId(eventId);
+        } else {
+            this.event = null;
+        }
+    }
 }

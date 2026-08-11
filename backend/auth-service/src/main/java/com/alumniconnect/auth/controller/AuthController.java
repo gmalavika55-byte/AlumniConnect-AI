@@ -24,7 +24,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
-@CrossOrigin(origins = "*")
 public class AuthController {
 
     @Autowired
@@ -51,6 +50,11 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+        if (loginRequest == null || 
+            loginRequest.getEmail() == null || loginRequest.getEmail().trim().isEmpty() ||
+            loginRequest.getPassword() == null || loginRequest.getPassword().trim().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Email and password are required.");
+        }
         try {
             Student student = studentService.getStudentByEmail(loginRequest.getEmail());
             if (student != null) {

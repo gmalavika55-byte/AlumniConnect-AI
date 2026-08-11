@@ -9,7 +9,6 @@ import com.alumniconnect.auth.service.NotificationService;
 
 @RestController
 @RequestMapping("/notification")
-@CrossOrigin(origins = "*")
 public class NotificationController {
 
     @Autowired

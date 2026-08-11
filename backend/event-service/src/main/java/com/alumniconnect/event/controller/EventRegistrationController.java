@@ -9,7 +9,6 @@ import com.alumniconnect.event.service.EventRegistrationService;
 
 @RestController
 @RequestMapping("/event")
-@CrossOrigin(origins = "*")
 public class EventRegistrationController {
 
     @Autowired
@@ -28,5 +27,11 @@ public class EventRegistrationController {
     @GetMapping("/registrations/user/{userType}/{userId}")
     public List<EventRegistration> getRegistrationsForUser(@PathVariable String userType, @PathVariable Integer userId) {
         return registrationService.getRegistrationsForUser(userType, userId);
+    }
+
+    @DeleteMapping("/registrations/cancel/{eventId}/student/{studentId}")
+    public String cancelStudentRegistration(@PathVariable Integer eventId, @PathVariable Integer studentId) {
+        registrationService.cancelStudentRegistration(eventId, studentId);
+        return "Event registration cancelled successfully.";
     }
 }

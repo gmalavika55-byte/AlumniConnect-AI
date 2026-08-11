@@ -12,7 +12,6 @@ import com.alumniconnect.service.AlumniService;
 
 @RestController
 @RequestMapping("/alumni")
-@CrossOrigin(origins = "*")
 public class AlumniController {
 
     @Autowired

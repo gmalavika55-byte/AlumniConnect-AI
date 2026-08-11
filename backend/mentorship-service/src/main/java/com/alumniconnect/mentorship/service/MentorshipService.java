@@ -9,4 +9,8 @@ public interface MentorshipService {
     void deleteMentorship(Long requestId);
     MentorshipRequest getMentorshipById(Long requestId);
     List<MentorshipRequest> getAllMentorships();
+    MentorshipRequest cancelMentorshipRequest(Long requestId, Integer studentId);
+    MentorshipRequest acceptMentorshipRequest(Long requestId, Integer alumniId);
+    MentorshipRequest rejectMentorshipRequest(Long requestId, Integer alumniId);
 }
+

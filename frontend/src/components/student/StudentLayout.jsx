@@ -9,17 +9,19 @@ import {
 import { FaGraduationCap } from 'react-icons/fa';
 import { authService } from '../../services/authService';
 import { useTranslation, useAppContext } from '../../context/AppContext';
+import api from '../../services/api';
 import styles from './StudentLayout.module.css';
 
 export const StudentLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
-  const { theme, setTheme, searchQuery, setSearchQuery, mentors, events } = useAppContext();
+  const { theme, setTheme, searchQuery, setSearchQuery, mentors, events, studentNotifications, refreshData } = useAppContext();
   const student = authService.getCurrentUser();
 
   const [showDropdown, setShowDropdown] = useState(false);
   const searchContainerRef = useRef(null);
+  const unreadCount = (studentNotifications || []).filter(n => !n.read).length;
 
   // Clear search query whenever pathname changes
   useEffect(() => {
@@ -197,10 +199,35 @@ export const StudentLayout = ({ children }) => {
             <button
               className={styles.bellBtn}
               title="Notifications"
-              onClick={() => message.info('No new unread notifications')}
+              onClick={async () => {
+                if (unreadCount > 0) {
+                  message.info(`You have ${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}`);
+                  const unreadNotifs = (studentNotifications || []).filter(n => !n.read);
+                  for (const n of unreadNotifs) {
+                    try {
+                      const res = await api.get(`/notification/get/${n.id}`);
+                      const notifObj = res.data;
+                      if (notifObj) {
+                        notifObj.status = 'READ';
+                        await api.put('/notification/update', notifObj);
+                      }
+                    } catch (e) {
+                      console.error("Error updating notification:", e);
+                    }
+                  }
+                  refreshData();
+                } else {
+                  message.info('No new unread notifications');
+                }
+              }}
             >
               <FiBell />
-              <span className={styles.bellBadge} />
+              {unreadCount > 0 && (
+                <span className={styles.bellBadge} style={{ position: 'absolute', top: 2, right: 2, background: '#ef4444', color: '#fff', borderRadius: '50%', fontSize: 9, width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+              {unreadCount === 0 && <span className={styles.bellBadge} />}
             </button>
 
             <button

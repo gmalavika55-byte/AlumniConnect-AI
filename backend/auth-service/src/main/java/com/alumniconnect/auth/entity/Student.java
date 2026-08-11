@@ -47,6 +47,27 @@ public class Student {
     @Column(name = "PROFILE_PHOTO")
     private String profilePhoto;
 
+    @Column(name = "CGPA")
+    private Double cgpa;
+
+    @Column(name = "GITHUB")
+    private String github;
+
+    @Column(name = "PORTFOLIO")
+    private String portfolio;
+
+    @Column(name = "LINKEDIN")
+    private String linkedin;
+
+    @Column(name = "RESUME_NAME")
+    private String resumeName;
+
+    @Column(name = "RESUME_URL")
+    private String resumeUrl;
+
+    @Column(name = "NOTIFICATION_PREF")
+    private String notificationPref;
+
     public Student() {
     }
 
@@ -170,5 +191,61 @@ public class Student {
 
     public void setProfilePhoto(String profilePhoto) {
         this.profilePhoto = profilePhoto;
+    }
+
+    public Double getCgpa() {
+        return cgpa;
+    }
+
+    public void setCgpa(Double cgpa) {
+        this.cgpa = cgpa;
+    }
+
+    public String getGithub() {
+        return github;
+    }
+
+    public void setGithub(String github) {
+        this.github = github;
+    }
+
+    public String getPortfolio() {
+        return portfolio;
+    }
+
+    public void setPortfolio(String portfolio) {
+        this.portfolio = portfolio;
+    }
+
+    public String getLinkedin() {
+        return linkedin;
+    }
+
+    public void setLinkedin(String linkedin) {
+        this.linkedin = linkedin;
+    }
+
+    public String getResumeName() {
+        return resumeName;
+    }
+
+    public void setResumeName(String resumeName) {
+        this.resumeName = resumeName;
+    }
+
+    public String getResumeUrl() {
+        return resumeUrl;
+    }
+
+    public void setResumeUrl(String resumeUrl) {
+        this.resumeUrl = resumeUrl;
+    }
+
+    public String getNotificationPref() {
+        return notificationPref;
+    }
+
+    public void setNotificationPref(String notificationPref) {
+        this.notificationPref = notificationPref;
     }
 }

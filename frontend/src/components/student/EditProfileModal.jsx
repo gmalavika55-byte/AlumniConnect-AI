@@ -17,7 +17,9 @@ export const EditProfileModal = ({ visible, onClose, profileData, onSave }) => {
         bio: profileData.bio,
         linkedin: profileData.linkedin,
         github: profileData.github,
-        portfolio: profileData.portfolio
+        portfolio: profileData.portfolio,
+        resumeName: profileData.resumeName,
+        resumeUrl: profileData.resumeUrl
       });
     }
   }, [visible, profileData, form]);
@@ -81,6 +83,15 @@ export const EditProfileModal = ({ visible, onClose, profileData, onSave }) => {
           </Form.Item>
           <Form.Item name="cgpa" label="Current CGPA">
             <Input />
+          </Form.Item>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <Form.Item name="resumeName" label="Resume Document Name">
+            <Input placeholder="e.g. My_Resume" />
+          </Form.Item>
+          <Form.Item name="resumeUrl" label="Resume Link / Document URL">
+            <Input placeholder="https://drive.google.com/..." />
           </Form.Item>
         </div>
 

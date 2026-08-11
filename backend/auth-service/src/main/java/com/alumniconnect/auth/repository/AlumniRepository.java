@@ -8,4 +8,5 @@ import com.alumniconnect.auth.entity.Alumni;
 public interface AlumniRepository extends JpaRepository<Alumni, Integer> {
     Alumni findByEmail(String email);
     Alumni findByAlumniId(Integer alumniId);
+    Alumni findByRegisterNo(String registerNo);
 }

@@ -26,9 +26,12 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem('alumni_auth_token');
-      localStorage.removeItem('alumni_user_data');
-      window.location.href = '/login';
+      const url = error.config && error.config.url ? error.config.url : '';
+      if (!url.includes('/auth/login')) {
+        localStorage.removeItem('alumni_auth_token');
+        localStorage.removeItem('alumni_user_data');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

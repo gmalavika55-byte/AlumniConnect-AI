@@ -17,9 +17,10 @@ import {
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
 import { Input } from '../components/common/Input';
-import { message } from 'antd';
+import { message, Modal } from 'antd';
 import { authService } from '../services/authService';
 import api from '../services/api';
+import { useAppContext } from '../context/AppContext';
 
 export const DirectoryPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,6 +32,99 @@ export const DirectoryPage = () => {
   const [requestSent, setRequestSent] = useState(false);
   const [alumniList, setAlumniList] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const { requests, refreshData } = useAppContext();
+
+  const handleRevokeRequest = (requestId, mentorName) => {
+    const student = authService.getCurrentUser();
+    if (!student) return;
+
+    Modal.confirm({
+      title: 'Are you sure you want to revoke this mentorship request?',
+      content: `This will cancel your pending mentorship request to ${mentorName}.`,
+      okText: 'Revoke Request',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      okButtonProps: { style: { backgroundColor: '#ef4444', borderColor: '#ef4444' } },
+      async onOk() {
+        try {
+          await api.put(`/mentorship/cancel/${requestId}?studentId=${student.studentId}`);
+          message.success('Mentorship request revoked successfully.');
+          refreshData();
+        } catch (err) {
+          console.error('Error revoking request:', err);
+          const errorMsg = err.response?.data || 'Unable to revoke mentorship request. Please try again.';
+          message.error(errorMsg);
+        }
+      }
+    });
+  };
+
+  const renderDirectoryConnectButton = (alumnus) => {
+    const request = requests.find(r => {
+      const s = r.status?.toUpperCase();
+      return String(r.mentorId) === String(alumnus.id) && s !== 'CANCELLED' && s !== 'REVOKED';
+    });
+
+    if (!request) {
+      return (
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => handleOpenModal(alumnus)}
+          icon={MessageSquare}
+        >
+          Connect
+        </Button>
+      );
+    }
+
+    const status = request.status?.toUpperCase();
+
+    if (status === 'PENDING') {
+      return (
+        <div className="flex items-center gap-2">
+          <Badge variant="warning" size="sm">
+            Pending
+          </Badge>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => handleRevokeRequest(request.id, alumnus.name)}
+          >
+            Revoke
+          </Button>
+        </div>
+      );
+    }
+
+    if (status === 'ACCEPTED') {
+      return (
+        <Badge variant="success" size="sm">
+          Connected
+        </Badge>
+      );
+    }
+
+    if (status === 'REJECTED') {
+      return (
+        <Badge variant="gray" size="sm">
+          Rejected
+        </Badge>
+      );
+    }
+
+    return (
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={() => handleOpenModal(alumnus)}
+        icon={MessageSquare}
+      >
+        Connect
+      </Button>
+    );
+  };
 
   const fetchAlumni = async () => {
     setLoading(true);
@@ -99,12 +193,14 @@ export const DirectoryPage = () => {
       };
       await api.post('/mentorship/add', payload);
       setRequestSent(true);
+      refreshData();
       setTimeout(() => {
         setSelectedMentorModal(null);
       }, 1800);
     } catch (err) {
-      console.error("Error sending connection request:", err);
-      message.error("Failed to send mentorship request.");
+      console.error('Error sending connection request:', err);
+      const errorMsg = err.response?.data || 'Failed to send mentorship request.';
+      message.error(errorMsg);
     }
   };
 
@@ -241,14 +337,7 @@ export const DirectoryPage = () => {
                   <MapPin className="w-3.5 h-3.5 text-slate-400" />
                   {alumnus.location}
                 </span>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => handleOpenModal(alumnus)}
-                  icon={MessageSquare}
-                >
-                  Connect
-                </Button>
+                {renderDirectoryConnectButton(alumnus)}
               </div>
             </div>
           ))}
@@ -277,14 +366,7 @@ export const DirectoryPage = () => {
                 <Badge variant="brand" size="sm">
                   {alumnus.matchScore}% Match
                 </Badge>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => handleOpenModal(alumnus)}
-                  icon={MessageSquare}
-                >
-                  Request Mentorship
-                </Button>
+                {renderDirectoryConnectButton(alumnus)}
               </div>
             </div>
           ))}
