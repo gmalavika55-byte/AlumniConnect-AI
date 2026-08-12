@@ -207,6 +207,8 @@
   border: 1px dashed #cbd5e1;
   border-radius: 12px;
   padding: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .addBtnSmall {

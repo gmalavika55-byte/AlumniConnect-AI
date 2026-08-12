@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { message, Rate } from 'antd';
+import { message, Rate, Button } from 'antd';
 import {
   FiArrowLeft, FiBriefcase, FiMapPin, FiGlobe, FiLinkedin,
-  FiStar, FiCalendar, FiCheckCircle, FiUsers, FiMessageSquare
+  FiStar, FiCalendar, FiCheckCircle, FiUsers, FiMessageSquare,
+  FiFileText, FiExternalLink
 } from 'react-icons/fi';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { RequestMentorshipModal } from '../components/student/RequestMentorshipModal';
@@ -28,6 +29,8 @@ const MENTOR_MAP = {
     education: 'B.E. Computer Science – Karpagam College of Engineering (2015–2019)',
     availability: 'Weekdays 7–9 PM IST | Weekends 10 AM–12 PM IST',
     sessionTypes: ['1-on-1 Video Session', 'Resume Review', 'Mock Interview'],
+    resumeName: 'Priya_Sankar_Resume_2026.pdf',
+    resumeUrl: 'https://drive.google.com/file/d/priya_resume/view',
     reviews: [
       { name: 'Rahul M.', rating: 5, text: 'Priya helped me crack my Google interview. Her system design tips were invaluable!', date: 'July 2026' },
       { name: 'Aishwarya K.', rating: 5, text: 'Brilliant mentor. She reviewed my resume and I got 3 interview calls in a week.', date: 'June 2026' }
@@ -50,6 +53,8 @@ const MENTOR_MAP = {
     education: 'B.E. Computer Science – Karpagam College of Engineering (2014–2018)',
     availability: 'Saturdays 2–5 PM IST | Sundays 10 AM–1 PM IST',
     sessionTypes: ['1-on-1 Video Session', 'Project Mentorship', 'Career Q&A'],
+    resumeName: 'Arun_Kumar_Resume_2026.pdf',
+    resumeUrl: 'https://storage.alumniconnect.com/resumes/Arun_Kumar_Resume_2026.pdf',
     reviews: [
       { name: 'Deepika S.', rating: 5, text: 'Arun explained NLP transformers in the clearest way I\'ve ever heard. Truly exceptional!', date: 'July 2026' },
       { name: 'Karthik R.', rating: 4, text: 'Great mentor for ML career guidance. Got detailed project feedback.', date: 'May 2026' }
@@ -72,6 +77,8 @@ const MENTOR_MAP = {
     education: 'B.E. Computer Science – Karpagam College of Engineering (2016–2020)',
     availability: 'Tuesdays & Thursdays 8–10 PM IST',
     sessionTypes: ['1-on-1 Video Session', 'Portfolio Review', 'Hands-on Demos'],
+    resumeName: 'Divya_Rajan_Resume_2026.pdf',
+    resumeUrl: 'https://drive.google.com/file/d/divya_resume/view',
     reviews: [
       { name: 'Saran P.', rating: 5, text: 'Divya helped me set up my first Kubernetes cluster. Incredibly patient and knowledgeable.', date: 'June 2026' }
     ]
@@ -84,13 +91,21 @@ export const MentorProfilePage = () => {
   const navigate = useNavigate();
   const [isRequestOpen, setIsRequestOpen] = useState(false);
 
-  // Prefer state passed via navigate, fall back to static data
   const mentorFromState = location.state?.mentor;
   const mentorStatic = MENTOR_MAP[parseInt(id, 10)];
   const baseMentor = mentorFromState || mentorStatic;
 
-  // Always use the enriched MENTOR_MAP entry if available
   const mentor = (mentorStatic && { ...baseMentor, ...mentorStatic }) || baseMentor;
+
+  const handleViewResume = () => {
+    const url = mentor?.resumeUrl;
+    if (url && url.trim() !== '' && url !== '#') {
+      const fullUrl = url.startsWith('http://') || url.startsWith('https://') ? url.trim() : `https://${url.trim()}`;
+      window.open(fullUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      message.warning('Resume document URL is not available for this mentor.');
+    }
+  };
 
   if (!mentor) {
     return (
@@ -116,7 +131,7 @@ export const MentorProfilePage = () => {
       <div className={styles.heroCard}>
         <div className={styles.heroTop}>
           <div className={styles.heroAvatar}>
-            {mentor.name.split(' ').map(n => n[0]).join('')}
+            {(mentor.name || 'M').split(' ').map(n => n[0]).join('')}
           </div>
           <div className={styles.heroInfo}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -150,36 +165,25 @@ export const MentorProfilePage = () => {
           </div>
           <div className={styles.statBox}>
             <span className={styles.statNum}>{mentor.studentsHelped || 0}</span>
-            <span className={styles.statLbl}>Students Helped</span>
+            <span className={styles.statLbl}>Students Mentored</span>
           </div>
           <div className={styles.statBox}>
-            <span className={styles.statNum}>{mentor.rating}</span>
-            <span className={styles.statLbl}>Average Rating</span>
+            <span className={styles.statNum}>100%</span>
+            <span className={styles.statLbl}>Response Rate</span>
           </div>
-        </div>
-
-        {/* CTA Buttons */}
-        <div className={styles.heroCta}>
-          <button className={styles.primaryBtn} onClick={() => setIsRequestOpen(true)}>
-            <FiCalendar size={15} /> Request Mentorship Session
-          </button>
-          <button className={styles.secondaryBtn} onClick={() => message.info('Message feature coming soon!')}>
-            <FiMessageSquare size={15} /> Send Message
-          </button>
         </div>
       </div>
 
-      {/* ── Two-Column Layout ───────────────────── */}
-      <div className={styles.bodyGrid}>
-
+      {/* ── Main Content Grid ────────────────────── */}
+      <div className={styles.grid2Col}>
         {/* LEFT COLUMN */}
         <div>
-          {/* About */}
+          {/* About / Bio */}
           <div className={styles.card}>
-            <h3 className={styles.cardTitle}>
-              <FiUsers size={16} style={{ marginRight: 8 }} /> About
-            </h3>
-            <p className={styles.bodyText}>{mentor.longBio || mentor.bio}</p>
+            <h3 className={styles.cardTitle}>About Mentor</h3>
+            <p className={styles.bodyText}>
+              {mentor.longBio || mentor.bio}
+            </p>
           </div>
 
           {/* Education */}
@@ -190,12 +194,14 @@ export const MentorProfilePage = () => {
             </div>
           )}
 
-          {/* Reviews */}
+          {/* Student Reviews */}
           {mentor.reviews && mentor.reviews.length > 0 && (
             <div className={styles.card}>
               <h3 className={styles.cardTitle}>
-                <FiStar size={16} style={{ marginRight: 8, color: '#eab308' }} /> Student Reviews
+                <FiMessageSquare size={16} style={{ marginRight: 8, color: '#1b62d4' }} />
+                Student Reviews ({mentor.reviews.length})
               </h3>
+
               <div className={styles.reviewList}>
                 {mentor.reviews.map((r, i) => (
                   <div key={i} className={styles.reviewItem}>
@@ -218,14 +224,46 @@ export const MentorProfilePage = () => {
         {/* RIGHT COLUMN */}
         <div>
           {/* Skills */}
-          <div className={styles.card}>
-            <h3 className={styles.cardTitle}>🛠 Technical Skills</h3>
-            <div className={styles.skillPills}>
-              {mentor.skills.map((s, i) => (
-                <span key={i} className={styles.skillBadge}>{s}</span>
-              ))}
+          {mentor.skills && (
+            <div className={styles.card}>
+              <h3 className={styles.cardTitle}>🛠 Technical Skills</h3>
+              <div className={styles.skillPills}>
+                {mentor.skills.map((s, i) => (
+                  <span key={i} className={styles.skillBadge}>{s}</span>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Attached Resume (Viewer Mode) */}
+          {(mentor.resumeName || mentor.resumeUrl) && (
+            <div className={styles.card}>
+              <h3 className={styles.cardTitle}>
+                <FiFileText size={15} style={{ marginRight: 8, color: '#1b62d4' }} /> Primary Resume
+              </h3>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'var(--ac-bg-input)', border: '1px dashed #cbd5e1', borderRadius: 12, padding: 16 }}>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: 13.5, color: 'var(--ac-text-primary)' }}>
+                    {mentor.resumeName || 'Mentor_Resume.pdf'}
+                  </h4>
+                  <span style={{ fontSize: 11, color: 'var(--ac-text-secondary)', marginTop: 4, display: 'block' }}>
+                    {mentor.resumeUrl ? mentor.resumeUrl : 'Verified Resume Link'}
+                  </span>
+                </div>
+                {mentor.resumeUrl && (
+                  <Button
+                    type="primary"
+                    icon={<FiExternalLink />}
+                    size="small"
+                    style={{ backgroundColor: '#1b62d4' }}
+                    onClick={handleViewResume}
+                  >
+                    View Resume
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Expertise */}
           {mentor.expertise && (

@@ -88,12 +88,12 @@ export const AlumniMentorshipPage = () => {
 
   const handleComplete = async (req) => {
     const alumni = authService.getCurrentUser();
-    if (!alumni) return;
+    if (!alumni?.alumniId) {
+      message.error('Alumni profile not found. Please log in again.');
+      return;
+    }
     try {
-      const getRes = await api.get(`/mentorship/get/${req.id}`);
-      const requestObj = getRes.data;
-      requestObj.status = 'COMPLETED';
-      await api.put('/mentorship/update', requestObj);
+      await api.put(`/mentorship/complete/${req.id}?alumniId=${alumni.alumniId}`);
       message.success(`Mentorship session with ${req.studentName} marked as Completed!`);
       refreshData();
     } catch (err) {
@@ -226,10 +226,13 @@ export const AlumniMentorshipPage = () => {
                   </div>
                 </div>
 
-                {/* Requested Topic */}
+                {/* Requested Topic & Date */}
                 <div style={{ padding: 12, backgroundColor: 'var(--ac-bg-input)', borderRadius: 10, border: '1px solid var(--ac-border)', marginBottom: 14 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-muted)', textTransform: 'uppercase' }}>Requested Topic</span>
-                  <p style={{ margin: '2px 0 0 0', fontSize: 13.5, fontWeight: 700, color: 'var(--ac-text-primary)' }}>{req.topic}</p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-muted)', textTransform: 'uppercase' }}>Requested Topic</span>
+                    <span style={{ fontSize: 11, color: 'var(--ac-text-secondary)', display: 'flex', alignItems: 'center' }}><FiClock style={{ marginRight: 4 }} />{req.requestDate}</span>
+                  </div>
+                  <p style={{ margin: '4px 0 0 0', fontSize: 13.5, fontWeight: 700, color: 'var(--ac-text-primary)' }}>{req.topic}</p>
                 </div>
 
                 {/* Career Goal */}
@@ -253,7 +256,7 @@ export const AlumniMentorshipPage = () => {
                   type="default"
                   icon={<FiEye />}
                   style={{ fontWeight: 600, height: 38 }}
-                  onClick={() => navigate(`/alumni/student/${req.id}`, { state: { student: req } })}
+                  onClick={() => navigate(`/alumni/student/${req.studentId || req.id}`, { state: { student: req } })}
                 >
                   View Profile
                 </Button>

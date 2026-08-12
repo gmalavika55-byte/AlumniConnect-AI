@@ -31,22 +31,23 @@ export const StudentProfilePage = () => {
   const [isAddCertOpen, setIsAddCertOpen] = useState(false);
   const student = authService.getCurrentUser();
   const [profile, setProfile] = useState({
-  fullName: '',
-  registerNumber: '',
-  email: '',
-  phone: '',
-  department: '',
-  semester: '',
-  cgpa: '',
-  college: 'Karpagam College of Engineering',
-  bio: '',
-  linkedin: '',
-  github: '',
-  portfolio: '',
-  resumeName: '',
-  resumeUrl: '',
-  resumeSize: ''
-});
+    fullName: '',
+    registerNumber: '',
+    email: '',
+    phone: '',
+    department: '',
+    semester: '',
+    cgpa: '',
+    college: 'Karpagam College of Engineering',
+    bio: '',
+    linkedin: '',
+    github: '',
+    portfolio: '',
+    resumeName: '',
+    resumeUrl: '',
+    resumeSize: ''
+  });
+
   const applyStudentData = (s) => {
     setProfile({
       fullName: s.name || '',
@@ -73,20 +74,16 @@ export const StudentProfilePage = () => {
   };
 
   useEffect(() => {
-    // 1. Apply localStorage data immediately (fast render)
     if (student) {
       applyStudentData(student);
-      // 2. Fetch certificates
       api.get(`/certificate/student/${student.studentId}`)
         .then(res => setCertificates(res.data || []))
         .catch(err => console.error('Error loading certificates:', err));
-      // 3. Fetch fresh profile from backend to override stale localStorage data
       api.get(`/student/get/${student.studentId}`)
         .then(res => {
           const fresh = res.data;
           if (fresh) {
             applyStudentData(fresh);
-            // Update localStorage with fresh data, preserving role
             localStorage.setItem('alumni_user_data', JSON.stringify({
               ...fresh,
               role: student.role
@@ -99,13 +96,9 @@ export const StudentProfilePage = () => {
 
   const [skills, setSkills] = useState([]);
   const [certificates, setCertificates] = useState([]);
-
-  // States for Editing Skills
   const [isEditSkillOpen, setIsEditSkillOpen] = useState(false);
   const [editingSkillIndex, setEditingSkillIndex] = useState(null);
   const [editingSkillName, setEditingSkillName] = useState('');
-
-  // States for Editing Certificates
   const [isEditCertOpen, setIsEditCertOpen] = useState(false);
   const [selectedCert, setSelectedCert] = useState(null);
 
@@ -116,7 +109,6 @@ export const StudentProfilePage = () => {
         const fresh = res.data;
         if (fresh) {
           applyStudentData(fresh);
-          // Preserve role in localStorage
           localStorage.setItem('alumni_user_data', JSON.stringify({
             ...fresh,
             role: student.role
@@ -139,6 +131,18 @@ export const StudentProfilePage = () => {
     }
   };
 
+  const openSafeResumeUrl = (url) => {
+    if (!url || typeof url !== 'string' || url.trim() === '' || url === '#') {
+      message.warning('Resume link / document URL is not available.');
+      return;
+    }
+    const trimmed = url.trim();
+    const fullUrl = (trimmed.startsWith('http://') || trimmed.startsWith('https://'))
+      ? trimmed
+      : `https://${trimmed}`;
+    window.open(fullUrl, '_blank', 'noopener,noreferrer');
+  };
+
   const handleResumeUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -147,14 +151,13 @@ export const StudentProfilePage = () => {
         resumeName: file.name,
         resumeSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`
       }));
-      message.success(`Resume "${file.name}" uploaded successfully!`);
+      message.success(`Resume "${file.name}" selected!`);
     }
   };
 
   const handleAddSkill = async (newSkill) => {
     if (student) {
       try {
-        // Fetch fresh profile first to avoid overwriting recent changes
         const profileRes = await api.get(`/student/get/${student.studentId}`);
         const freshStudent = profileRes.data;
         const currentSkills = freshStudent.skills
@@ -289,16 +292,10 @@ export const StudentProfilePage = () => {
   };
 
   const handleNavigateCertificate = (cert) => {
-    const url = cert.certificateUrl;
-    if (url && url !== '#' && url.trim() !== '') {
-      window.open(url, "_blank", "noopener,noreferrer");
-    } else {
-      message.warning("Certificate document is not available.");
-    }
+    openSafeResumeUrl(cert.certificateUrl);
   };
 
   const handleSaveProfile = async (updatedValues) => {
-    // Use the module-level student variable (from authService.getCurrentUser())
     if (!student) return;
 
     const updatedStudent = {
@@ -314,14 +311,13 @@ export const StudentProfilePage = () => {
       portfolio: updatedValues.portfolio || student.portfolio,
       yearOfStudy: updatedValues.semester ? parseInt(updatedValues.semester.replace(/\D/g, '')) : student.yearOfStudy,
       cgpa: updatedValues.cgpa || student.cgpa,
-      resumeName: updatedValues.resumeName || student.resumeName,
-      resumeUrl: updatedValues.resumeUrl || student.resumeUrl
+      resumeName: updatedValues.resumeName !== undefined ? updatedValues.resumeName : student.resumeName,
+      resumeUrl: updatedValues.resumeUrl !== undefined ? updatedValues.resumeUrl : student.resumeUrl
     };
 
     try {
       const res = await api.put('/student/update', updatedStudent);
       const savedUser = res.data;
-      // Persist the updated profile with role intact
       localStorage.setItem('alumni_user_data', JSON.stringify({
         ...savedUser,
         role: student.role
@@ -356,7 +352,6 @@ export const StudentProfilePage = () => {
 
   return (
     <StudentLayout>
-      {/* Hidden File Input for Resume Upload */}
       <input
         type="file"
         ref={fileInputRef}
@@ -370,13 +365,13 @@ export const StudentProfilePage = () => {
         <div className={styles.coverBanner} />
         <div className={styles.profileHeaderContent}>
           <div className={styles.avatarWrapper}>
-           <div className={styles.avatarCircle}>
-  {profile.fullName
-    ?.split(" ")
-    .map(word => word.charAt(0))
-    .join("")
-    .toUpperCase()}
-</div>
+            <div className={styles.avatarCircle}>
+              {profile.fullName
+                ?.split(" ")
+                .map(word => word.charAt(0))
+                .join("")
+                .toUpperCase()}
+            </div>
             <div>
               <h1 className={styles.profileName}>{profile.fullName}</h1>
               <p className={styles.profileSub}>{profile.department} • {profile.semester}</p>
@@ -388,7 +383,7 @@ export const StudentProfilePage = () => {
               <FiEdit2 /> Edit Profile
             </button>
             <button className={styles.uploadResumeBtn} onClick={() => setIsEditModalOpen(true)}>
-              <FiUpload /> Set Resume Link
+              <FiFileText /> {profile.resumeName || profile.resumeUrl ? 'Change Resume Link' : 'Set Resume Link'}
             </button>
           </div>
         </div>
@@ -420,9 +415,7 @@ export const StudentProfilePage = () => {
               </div>
               <div className={styles.infoItem}>
                 <span className={styles.infoLabel}>Current CGPA</span>
-              <span className={styles.infoVal}>
-  {profile.cgpa || "-"}
-</span>
+                <span className={styles.infoVal}>{profile.cgpa || "-"}</span>
               </div>
             </div>
           </div>
@@ -515,23 +508,10 @@ export const StudentProfilePage = () => {
               {certificates.map((cert) => (
                 <div key={cert.certificateId} className={styles.certItem}>
                   <div>
-                    <h4
-                      style={{
-                        margin: 0,
-                        fontSize: 14,
-                        color: "#0f1e36"
-                      }}
-                    >
+                    <h4 style={{ margin: 0, fontSize: 14, color: "#0f1e36" }}>
                       {cert.certificateName}
                     </h4>
-
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: 12,
-                        color: "#64748b"
-                      }}
-                    >
+                    <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
                       {cert.organization} • Issued {cert.issueDate}
                     </p>
                   </div>
@@ -583,75 +563,46 @@ export const StudentProfilePage = () => {
         <div>
           {/* Professional Links */}
           <div className={styles.card}>
-  <div className={styles.cardHeader}>
-    <h3 className={styles.cardTitle}>
-      <FiLink style={{ color: '#1b62d4' }} /> Professional Links
-    </h3>
-  </div>
+            <div className={styles.cardHeader}>
+              <h3 className={styles.cardTitle}>
+                <FiLink style={{ color: '#1b62d4' }} /> Professional Links
+              </h3>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div className={styles.infoItem}>
+                <span className={styles.infoLabel}>LinkedIn</span>
+                {profile.linkedin ? (
+                  <a href={profile.linkedin.startsWith('http') ? profile.linkedin : `https://${profile.linkedin}`} target="_blank" rel="noreferrer" className={styles.infoVal} style={{ color: '#1b62d4' }}>
+                    {profile.linkedin}
+                  </a>
+                ) : (
+                  <span className={styles.infoVal}>-</span>
+                )}
+              </div>
+              <div className={styles.infoItem}>
+                <span className={styles.infoLabel}>GitHub</span>
+                {profile.github ? (
+                  <a href={profile.github.startsWith('http') ? profile.github : `https://${profile.github}`} target="_blank" rel="noreferrer" className={styles.infoVal} style={{ color: '#1b62d4' }}>
+                    {profile.github}
+                  </a>
+                ) : (
+                  <span className={styles.infoVal}>-</span>
+                )}
+              </div>
+              <div className={styles.infoItem}>
+                <span className={styles.infoLabel}>Portfolio</span>
+                {profile.portfolio ? (
+                  <a href={profile.portfolio.startsWith('http') ? profile.portfolio : `https://${profile.portfolio}`} target="_blank" rel="noreferrer" className={styles.infoVal} style={{ color: '#1b62d4' }}>
+                    {profile.portfolio}
+                  </a>
+                ) : (
+                  <span className={styles.infoVal}>-</span>
+                )}
+              </div>
+            </div>
+          </div>
 
-  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-    {/* LinkedIn */}
-    <div className={styles.infoItem}>
-      <span className={styles.infoLabel}>LinkedIn</span>
-
-      {profile.linkedin ? (
-        <a
-          href={profile.linkedin}
-          target="_blank"
-          rel="noreferrer"
-          className={styles.infoVal}
-          style={{ color: '#1b62d4' }}
-        >
-          {profile.linkedin}
-        </a>
-      ) : (
-        <span className={styles.infoVal}>-</span>
-      )}
-    </div>
-
-    {/* GitHub */}
-    <div className={styles.infoItem}>
-      <span className={styles.infoLabel}>GitHub</span>
-
-      {profile.github ? (
-        <a
-          href={profile.github}
-          target="_blank"
-          rel="noreferrer"
-          className={styles.infoVal}
-          style={{ color: '#1b62d4' }}
-        >
-          {profile.github}
-        </a>
-      ) : (
-        <span className={styles.infoVal}>-</span>
-      )}
-    </div>
-
-    {/* Portfolio */}
-    <div className={styles.infoItem}>
-      <span className={styles.infoLabel}>Portfolio</span>
-
-      {profile.portfolio ? (
-        <a
-          href={profile.portfolio}
-          target="_blank"
-          rel="noreferrer"
-          className={styles.infoVal}
-          style={{ color: '#1b62d4' }}
-        >
-          {profile.portfolio}
-        </a>
-      ) : (
-        <span className={styles.infoVal}>-</span>
-      )}
-    </div>
-
-  </div>
-</div>
-
-          {/* Resume Card */}
+          {/* Primary Resume Card */}
           <div className={styles.card}>
             <div className={styles.cardHeader}>
               <h3 className={styles.cardTitle}>
@@ -659,29 +610,35 @@ export const StudentProfilePage = () => {
               </h3>
             </div>
             <div className={styles.resumeBox}>
-              <div>
-                <h4>
-  {profile.resumeName ? (
-    <a
-      href={profile.resumeUrl}
-      target="_blank"
-      rel="noreferrer"
-      style={{ color: "#1b62d4" }}
-    >
-      {profile.resumeName}
-    </a>
-  ) : (
-    "No Resume Uploaded"
-  )}
-</h4>
-                <span style={{ fontSize: 11, color: '#64748b' }}>{profile.resumeSize} • PDF</span>
+              <div style={{ flex: 1, minWidth: 180 }}>
+                <h4 style={{ margin: 0, fontSize: 14, color: '#0f1e36' }}>
+                  {profile.resumeName || profile.resumeUrl ? (
+                    <span style={{ fontWeight: 700 }}>{profile.resumeName || 'Resume Document'}</span>
+                  ) : (
+                    <span style={{ color: '#64748b', fontStyle: 'italic' }}>No Resume Added</span>
+                  )}
+                </h4>
+                <span style={{ fontSize: 11, color: '#64748b', marginTop: 4, display: 'block', wordBreak: 'break-all' }}>
+                  {profile.resumeUrl ? profile.resumeUrl : 'No document link provided'}
+                </span>
               </div>
-              <button
-                className={styles.addBtnSmall}
-                onClick={() => setIsEditModalOpen(true)}
-              >
-                <FiUpload /> Change Link
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                {profile.resumeUrl && (
+                  <button
+                    className={styles.addBtnSmall}
+                    style={{ backgroundColor: '#1b62d4', color: '#ffffff', borderColor: '#1b62d4' }}
+                    onClick={() => openSafeResumeUrl(profile.resumeUrl)}
+                  >
+                    <FiExternalLink /> View Resume
+                  </button>
+                )}
+                <button
+                  className={styles.addBtnSmall}
+                  onClick={() => setIsEditModalOpen(true)}
+                >
+                  <FiEdit2 /> {profile.resumeName || profile.resumeUrl ? 'Change Link' : 'Set Resume Link'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

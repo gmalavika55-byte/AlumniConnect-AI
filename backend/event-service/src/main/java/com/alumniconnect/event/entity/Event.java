@@ -50,8 +50,19 @@ public class Event {
     @Column(name = "STATUS")
     private String status;
 
+    @Column(name = "AUDIENCE")
+    private String audience = "BOTH";
+
     @Transient
     private Long registeredCount;
+
+    public String getAudience() {
+        return audience;
+    }
+
+    public void setAudience(String audience) {
+        this.audience = audience;
+    }
 
     public Long getRegisteredCount() {
         return registeredCount;

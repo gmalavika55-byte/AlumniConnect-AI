@@ -12,5 +12,6 @@ public interface MentorshipService {
     MentorshipRequest cancelMentorshipRequest(Long requestId, Integer studentId);
     MentorshipRequest acceptMentorshipRequest(Long requestId, Integer alumniId);
     MentorshipRequest rejectMentorshipRequest(Long requestId, Integer alumniId);
+    MentorshipRequest completeMentorshipRequest(Long requestId, Integer alumniId);
 }
 

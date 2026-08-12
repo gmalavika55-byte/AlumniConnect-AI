@@ -113,27 +113,32 @@ export const AppProvider = ({ children }) => {
       const userId = user.studentId || user.alumniId || user.adminId;
 
       // 1. Fetch Alumni for Directory and Mentors lists
-      const alumniRes = await api.get('/alumni/getall');
-      const allAlumni = alumniRes.data || [];
-      const mappedMentors = allAlumni.map(a => ({
-        id: a.alumniId,
-        name: a.name,
-        avatar: a.name ? a.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'A',
-        match: '95% match',
-        role: a.designation || 'Software Engineer',
-        company: a.currentCompany || 'Independent',
-        skills: a.skills ? a.skills.split(',').map(s => s.trim()) : [],
-        batch: a.batch || 'N/A',
-        rating: 4.8,
-        bio: a.currentCompany ? `Alumni (Class of ${a.batch}). Specialized in ${a.skills || 'Engineering'}.` : 'Alumni Connect Member',
-        availableForMentorship: a.availableForMentorship,
-        email: a.email,
-        mobile: a.mobile,
-        department: a.department,
-        location: a.location,
-        linkedin: a.linkedin
-      }));
-      setMentors(mappedMentors);
+      let mappedMentors = [];
+      try {
+        const alumniRes = await api.get('/alumni/getall');
+        const allAlumni = alumniRes.data || [];
+        mappedMentors = allAlumni.map(a => ({
+          id: a.alumniId,
+          name: a.name,
+          avatar: a.name ? a.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'A',
+          match: '95% match',
+          role: a.designation || 'Software Engineer',
+          company: a.currentCompany || 'Independent',
+          skills: a.skills ? a.skills.split(',').map(s => s.trim()) : [],
+          batch: a.batch || 'N/A',
+          rating: 4.8,
+          bio: a.currentCompany ? `Alumni (Class of ${a.batch}). Specialized in ${a.skills || 'Engineering'}.` : 'Alumni Connect Member',
+          availableForMentorship: a.availableForMentorship,
+          email: a.email,
+          mobile: a.mobile,
+          department: a.department,
+          location: a.location,
+          linkedin: a.linkedin
+        }));
+        setMentors(mappedMentors);
+      } catch (alumniErr) {
+        console.error('Error fetching alumni (non-fatal):', alumniErr);
+      }
 
       // 2. Fetch Events
       try {
@@ -162,6 +167,8 @@ export const AppProvider = ({ children }) => {
             dayNum: String(dateObj.getDate()),
             monthStr: months[dateObj.getMonth()],
             time: `${e.startTime || '10:00 AM'} - ${e.endTime || '12:00 PM'}`,
+            startTime: e.startTime,
+            endTime: e.endTime,
             venue: e.venue || 'Virtual',
             registered: registeredEventIds.includes(e.eventId),
             speaker: e.organizer || 'Guest Speaker',
@@ -169,11 +176,20 @@ export const AppProvider = ({ children }) => {
             eventDate: e.eventDate,
             organizer: e.organizer,
             status: e.status || 'UPCOMING',
+            audience: e.audience || 'BOTH',
             maxParticipants: e.maxParticipants,
             registeredCount: e.registeredCount
           };
         });
-        setEvents(mappedEvents);
+        const uniqueEvents = [];
+        const seenIds = new Set();
+        for (const ev of mappedEvents) {
+          if (ev.id && !seenIds.has(ev.id)) {
+            seenIds.add(ev.id);
+            uniqueEvents.push(ev);
+          }
+        }
+        setEvents(uniqueEvents);
       } catch (e) {
         console.error("Error fetching events (non-fatal):", e);
       }
@@ -213,11 +229,8 @@ export const AppProvider = ({ children }) => {
 
         // Active mentorships = ACCEPTED requests
         setActiveMentorships(formattedRequests.filter(r => r.status === 'ACCEPTED'));
-        // History = COMPLETED, REJECTED, DECLINED
-        setMeetingsHistory(formattedRequests.filter(r => {
-          const s = r.status;
-          return s === 'COMPLETED' || s === 'REJECTED' || s === 'DECLINED';
-        }));
+        // History = ONLY COMPLETED requests
+        setMeetingsHistory(formattedRequests.filter(r => (r.status || '').toUpperCase() === 'COMPLETED'));
 
         // Alumni mentorship requests view
         if (userRole === 'alumni') {
@@ -331,8 +344,9 @@ export const AppProvider = ({ children }) => {
           setAlumniNotifications(myNotifications);
         } else if (userRole === 'student') {
           setStudentNotifications(filteredMyNotifications);
-          // Also keep alumniNotifications in sync for shared components that may use it
-          setAlumniNotifications(filteredMyNotifications);
+          // Reset alumniNotifications to empty when logged in as student
+          // so alumni bell never shows stale student data
+          setAlumniNotifications([]);
         } else {
           setAlumniNotifications(myNotifications);
         }
@@ -344,6 +358,41 @@ export const AppProvider = ({ children }) => {
       console.error('Error fetching backend data in AppContext:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const markNotificationAsRead = async (notifId) => {
+    try {
+      const res = await api.get(`/notification/get/${notifId}`);
+      const notifObj = res.data;
+      if (notifObj && notifObj.status !== 'READ') {
+        notifObj.status = 'READ';
+        await api.put('/notification/update', notifObj);
+        await fetchBackendData();
+      }
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
+    }
+  };
+
+  const markAllNotificationsAsRead = async (notifsList) => {
+    try {
+      const unread = (notifsList || []).filter(n => !n.read);
+      for (const n of unread) {
+        try {
+          const res = await api.get(`/notification/get/${n.id}`);
+          const notifObj = res.data;
+          if (notifObj && notifObj.status !== 'READ') {
+            notifObj.status = 'READ';
+            await api.put('/notification/update', notifObj);
+          }
+        } catch (e) {
+          console.error('Error updating notification:', e);
+        }
+      }
+      await fetchBackendData();
+    } catch (err) {
+      console.error('Error marking all notifications as read:', err);
     }
   };
 
@@ -388,6 +437,8 @@ export const AppProvider = ({ children }) => {
       studentNotifications, setStudentNotifications,
       alumniRequests, setAlumniRequests,
       alumniDonations, setAlumniDonations,
+      markNotificationAsRead,
+      markAllNotificationsAsRead,
       translations,
       loading,
       refreshData: fetchBackendData

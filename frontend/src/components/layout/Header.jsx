@@ -18,7 +18,7 @@ export const Header = ({ collapsed, setCollapsed }) => {
   const navigate = useNavigate();
   const user = authService.getCurrentUser();
   const [drawerOpen, setDrawerOpen] = React.useState(false);
-  const { alumniNotifications, studentNotifications } = useAppContext();
+  const { alumniNotifications, studentNotifications, markNotificationAsRead, markAllNotificationsAsRead } = useAppContext();
 
   const role = user?.role ? user.role.toLowerCase() : '';
   const notificationsList = role === 'student' ? (studentNotifications || []) : (alumniNotifications || []);
@@ -93,7 +93,23 @@ export const Header = ({ collapsed, setCollapsed }) => {
 
       {/* Notifications Drawer */}
       <Drawer
-        title="Notifications Center"
+        title={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Notifications Center</span>
+            {unreadCount > 0 && (
+              <Button
+                type="link"
+                size="small"
+                onClick={async () => {
+                  await markAllNotificationsAsRead(notificationsList);
+                  message.success('All notifications marked as read');
+                }}
+              >
+                Mark all read
+              </Button>
+            )}
+          </div>
+        }
         placement="right"
         onClose={() => setDrawerOpen(false)}
         open={drawerOpen}
@@ -101,10 +117,28 @@ export const Header = ({ collapsed, setCollapsed }) => {
       >
         <List
           dataSource={notificationsList}
+          locale={{ emptyText: 'No notifications' }}
           renderItem={(item) => (
-            <List.Item style={{ padding: '12px 0', borderBottom: '1px solid #f0f0f0' }}>
+            <List.Item
+              style={{
+                padding: '12px 16px',
+                borderBottom: '1px solid #f0f0f0',
+                cursor: 'pointer',
+                backgroundColor: item.read ? 'transparent' : '#f0f7ff'
+              }}
+              onClick={async () => {
+                if (!item.read) {
+                  await markNotificationAsRead(item.id);
+                }
+              }}
+            >
               <List.Item.Meta
-                title={<span style={{ fontWeight: 600, fontSize: '14px' }}>{item.title}</span>}
+                title={
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 600, fontSize: '14px' }}>{item.title}</span>
+                    {!item.read && <Tag color="blue">New</Tag>}
+                  </div>
+                }
                 description={
                   <div>
                     <p style={{ margin: '4px 0', fontSize: '13px', color: '#475569' }}>{item.desc}</p>

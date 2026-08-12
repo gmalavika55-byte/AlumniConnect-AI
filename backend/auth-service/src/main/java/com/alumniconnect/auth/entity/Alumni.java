@@ -53,6 +53,12 @@ public class Alumni {
     @Column(name = "AVAILABLE_FOR_MENTORSHIP")
     private String availableForMentorship;
 
+    @Column(name = "RESUME_NAME")
+    private String resumeName;
+
+    @Column(name = "RESUME_URL")
+    private String resumeUrl;
+
     public Alumni() {
     }
 
@@ -194,5 +200,21 @@ public class Alumni {
 
     public void setAvailableForMentorship(String availableForMentorship) {
         this.availableForMentorship = availableForMentorship;
+    }
+
+    public String getResumeName() {
+        return resumeName;
+    }
+
+    public void setResumeName(String resumeName) {
+        this.resumeName = resumeName;
+    }
+
+    public String getResumeUrl() {
+        return resumeUrl;
+    }
+
+    public void setResumeUrl(String resumeUrl) {
+        this.resumeUrl = resumeUrl;
     }
 }

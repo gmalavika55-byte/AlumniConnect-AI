@@ -16,11 +16,13 @@ export const StudentLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
-  const { theme, setTheme, searchQuery, setSearchQuery, mentors, events, studentNotifications, refreshData } = useAppContext();
+  const { theme, setTheme, searchQuery, setSearchQuery, mentors, events, studentNotifications, markNotificationAsRead, markAllNotificationsAsRead, refreshData } = useAppContext();
   const student = authService.getCurrentUser();
 
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const searchContainerRef = useRef(null);
+  const notifContainerRef = useRef(null);
   const unreadCount = (studentNotifications || []).filter(n => !n.read).length;
 
   // Clear search query whenever pathname changes
@@ -29,11 +31,14 @@ export const StudentLayout = ({ children }) => {
     setShowDropdown(false);
   }, [location.pathname, setSearchQuery]);
 
-  // Close search dropdown on click outside
+  // Close search & notification dropdowns on click outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
         setShowDropdown(false);
+      }
+      if (notifContainerRef.current && !notifContainerRef.current.contains(event.target)) {
+        setShowNotifDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -196,39 +201,64 @@ export const StudentLayout = ({ children }) => {
           </div>
 
           <div className={styles.headerRight}>
-            <button
-              className={styles.bellBtn}
-              title="Notifications"
-              onClick={async () => {
-                if (unreadCount > 0) {
-                  message.info(`You have ${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}`);
-                  const unreadNotifs = (studentNotifications || []).filter(n => !n.read);
-                  for (const n of unreadNotifs) {
-                    try {
-                      const res = await api.get(`/notification/get/${n.id}`);
-                      const notifObj = res.data;
-                      if (notifObj) {
-                        notifObj.status = 'READ';
-                        await api.put('/notification/update', notifObj);
-                      }
-                    } catch (e) {
-                      console.error("Error updating notification:", e);
-                    }
-                  }
-                  refreshData();
-                } else {
-                  message.info('No new unread notifications');
-                }
-              }}
-            >
-              <FiBell />
-              {unreadCount > 0 && (
-                <span className={styles.bellBadge} style={{ position: 'absolute', top: 2, right: 2, background: '#ef4444', color: '#fff', borderRadius: '50%', fontSize: 9, width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
+            {/* Notification Bell Dropdown Container */}
+            <div className={styles.notifContainer} ref={notifContainerRef}>
+              <button
+                className={styles.bellBtn}
+                title="Notifications"
+                onClick={() => setShowNotifDropdown(!showNotifDropdown)}
+              >
+                <FiBell />
+                {unreadCount > 0 && (
+                  <span className={styles.bellBadge} style={{ position: 'absolute', top: 2, right: 2, background: '#ef4444', color: '#fff', borderRadius: '50%', fontSize: 9, width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {showNotifDropdown && (
+                <div className={styles.notifDropdown}>
+                  <div className={styles.notifDropdownHeader}>
+                    <h4>Notifications</h4>
+                    {unreadCount > 0 && (
+                      <span
+                        className={styles.markAllLink}
+                        onClick={async () => {
+                          await markAllNotificationsAsRead(studentNotifications);
+                          message.success('All notifications marked as read');
+                        }}
+                      >
+                        Mark all read
+                      </span>
+                    )}
+                  </div>
+                  <div className={styles.notifList}>
+                    {studentNotifications && studentNotifications.length > 0 ? (
+                      studentNotifications.map(notif => (
+                        <div
+                          key={notif.id}
+                          className={`${styles.notifItem} ${notif.read ? styles.notifRead : styles.notifUnread}`}
+                          onClick={async () => {
+                            if (!notif.read) {
+                              await markNotificationAsRead(notif.id);
+                            }
+                          }}
+                        >
+                          <div className={styles.notifItemHeader}>
+                            <strong className={styles.notifTitle}>{notif.title}</strong>
+                            {!notif.read && <span className={styles.newBadge}>New</span>}
+                          </div>
+                          <p className={styles.notifDesc}>{notif.desc}</p>
+                          <span className={styles.notifTime}>{notif.time}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className={styles.notifEmpty}>No notifications</div>
+                    )}
+                  </div>
+                </div>
               )}
-              {unreadCount === 0 && <span className={styles.bellBadge} />}
-            </button>
+            </div>
 
             <button
               className={styles.bellBtn}

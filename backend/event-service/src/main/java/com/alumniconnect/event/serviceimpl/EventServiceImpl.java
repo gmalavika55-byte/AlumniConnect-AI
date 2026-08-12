@@ -25,14 +25,37 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public Event updateEvent(Event event) {
+    @org.springframework.transaction.annotation.Transactional
+    public Event updateEvent(Event event, String requesterName) {
+        if (event == null || event.getEventId() == null) {
+            throw new IllegalArgumentException("Event ID must be specified for update.");
+        }
+        Event existing = eventRepository.findById(event.getEventId())
+                .orElseThrow(() -> new ResourceNotFoundException("Event not found with ID: " + event.getEventId()));
+
+        if (requesterName == null || requesterName.trim().isEmpty() ||
+            existing.getOrganizer() == null || !existing.getOrganizer().trim().equalsIgnoreCase(requesterName.trim())) {
+            throw new IllegalArgumentException("Access denied. Only the event organizer can update this event.");
+        }
+
+        // Ensure organizer and eventId remain unchanged
+        event.setOrganizer(existing.getOrganizer());
         return eventRepository.save(event);
     }
 
     @Override
-    public void deleteEvent(Integer eventId) {
+    @org.springframework.transaction.annotation.Transactional
+    public void deleteEvent(Integer eventId, String requesterName) {
         Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Event not found with ID: " + eventId));
+
+        if (requesterName == null || requesterName.trim().isEmpty() ||
+            event.getOrganizer() == null || !event.getOrganizer().trim().equalsIgnoreCase(requesterName.trim())) {
+            throw new IllegalArgumentException("Access denied. Only the event organizer can delete this event.");
+        }
+
+        // Clean up associated registrations first to prevent FK constraint errors
+        registrationRepository.deleteByEventEventId(eventId);
         eventRepository.delete(event);
     }
 

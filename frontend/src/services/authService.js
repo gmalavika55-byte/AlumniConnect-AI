@@ -111,5 +111,23 @@ login: async ({ email, password, remember }) => {
   getUserRole: () => {
     const user = authService.getCurrentUser();
     return user && user.role ? user.role.toLowerCase() : null;
+  },
+
+  forgotPassword: async (email) => {
+    const response = await api.post('/auth/forgot-password', { email });
+    return response.data;
+  },
+
+  verifyOtp: async (email, otp) => {
+    const response = await api.post('/auth/verify-otp', { email, otp });
+    return response.data;
+  },
+
+  resetPassword: async (email, resetToken, newPassword) => {
+    const payload = (typeof resetToken === 'string' && resetToken.length > 20)
+      ? { resetToken, newPassword }
+      : { email, otp: resetToken, newPassword };
+    const response = await api.post('/auth/reset-password', payload);
+    return response.data;
   }
 };

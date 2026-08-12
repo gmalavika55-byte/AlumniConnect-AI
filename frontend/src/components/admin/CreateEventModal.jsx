@@ -1,22 +1,50 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Modal, Form, Input, Select, DatePicker, Button, message } from 'antd';
+import dayjs from 'dayjs';
 
-export const CreateEventModal = ({ visible, onClose, onAddEvent }) => {
+export const CreateEventModal = ({ visible, onClose, onAddEvent, onUpdateEvent, editingEvent }) => {
   const [form] = Form.useForm();
+  const isEdit = !!editingEvent;
+
+  useEffect(() => {
+    if (visible && editingEvent) {
+      form.setFieldsValue({
+        title: editingEvent.title || '',
+        category: editingEvent.category || 'Webinar',
+        audience: editingEvent.audience || 'BOTH',
+        eventDate: editingEvent.eventDate ? dayjs(editingEvent.eventDate) : null,
+        time: editingEvent.time || '',
+        location: editingEvent.venue || editingEvent.location || '',
+        speaker: editingEvent.speaker || '',
+        organizer: editingEvent.organizer || '',
+        capacity: editingEvent.maxParticipants || editingEvent.capacity || 100,
+        description: editingEvent.description || ''
+      });
+    } else if (visible && !editingEvent) {
+      form.resetFields();
+    }
+  }, [visible, editingEvent, form]);
 
   const handleFinish = async () => {
     try {
       const values = await form.validateFields();
-      if (onAddEvent) {
+      const formattedDate = values.eventDate ? values.eventDate.format('YYYY-MM-DD') : '2026-09-15';
+
+      if (isEdit && onUpdateEvent) {
+        onUpdateEvent({
+          id: editingEvent.id,
+          ...values,
+          date: formattedDate
+        });
+      } else if (onAddEvent) {
         onAddEvent({
           id: Date.now(),
           ...values,
-          date: values.eventDate ? values.eventDate.format('YYYY-MM-DD') : '2026-09-15',
+          date: formattedDate,
           registeredCount: 0,
           status: 'Upcoming'
         });
       }
-      message.success(`Event "${values.title}" created successfully!`);
       form.resetFields();
       onClose();
     } catch (err) {
@@ -26,7 +54,7 @@ export const CreateEventModal = ({ visible, onClose, onAddEvent }) => {
 
   return (
     <Modal
-      title="Publish New Event / Webinar"
+      title={isEdit ? `Edit Event – "${editingEvent?.title}"` : "Publish New Event / Webinar"}
       open={visible}
       onCancel={onClose}
       footer={[
@@ -34,11 +62,11 @@ export const CreateEventModal = ({ visible, onClose, onAddEvent }) => {
           Cancel
         </Button>,
         <Button key="submit" type="primary" style={{ backgroundColor: 'var(--ac-brand)', border: 'none' }} onClick={handleFinish}>
-          Create Event
+          {isEdit ? "Save Changes" : "Create Event"}
         </Button>
       ]}
     >
-      <Form form={form} layout="vertical" initialValues={{ category: 'Webinar', location: 'Online - Zoom / Meet' }}>
+      <Form form={form} layout="vertical" initialValues={{ category: 'Webinar', audience: 'BOTH', location: 'Online - Zoom / Meet' }}>
         <Form.Item
           name="title"
           label="Event Title"
@@ -58,6 +86,18 @@ export const CreateEventModal = ({ visible, onClose, onAddEvent }) => {
             { value: 'Networking', label: 'Alumni Networking Reunion' },
             { value: 'Workshop', label: 'Technical Workshop' },
             { value: 'Job Drive', label: 'Campus Placement Drive' }
+          ]} />
+        </Form.Item>
+
+        <Form.Item
+          name="audience"
+          label="Target Audience"
+          rules={[{ required: true }]}
+        >
+          <Select options={[
+            { value: 'BOTH', label: 'Everyone (Students & Alumni)' },
+            { value: 'STUDENTS', label: 'Students' },
+            { value: 'ALUMNI', label: 'Alumni' }
           ]} />
         </Form.Item>
 
@@ -95,13 +135,9 @@ export const CreateEventModal = ({ visible, onClose, onAddEvent }) => {
         <Form.Item
           name="organizer"
           label="Event Organizer"
-          rules={[{ required: true }]}
+          rules={[{ required: true, message: 'Please enter event organizer' }]}
         >
-          <Select options={[
-            { value: 'Dr. Sarah Jenkins (Admin)', label: 'Dr. Sarah Jenkins (Admin)' },
-            { value: 'Arun Kumar (Alumni)', label: 'Arun Kumar (Alumni)' },
-            { value: 'Priya Sankar (Alumni)', label: 'Priya Sankar (Alumni)' }
-          ]} placeholder="Select event organizer" />
+          <Input placeholder="e.g. Lohidha" disabled={isEdit} />
         </Form.Item>
 
         <Form.Item

@@ -63,7 +63,7 @@ export const DirectoryPage = () => {
   const renderDirectoryConnectButton = (alumnus) => {
     const request = requests.find(r => {
       const s = r.status?.toUpperCase();
-      return String(r.mentorId) === String(alumnus.id) && s !== 'CANCELLED' && s !== 'REVOKED';
+      return String(r.mentorId) === String(alumnus.id) && (s === 'PENDING' || s === 'ACCEPTED');
     });
 
     if (!request) {

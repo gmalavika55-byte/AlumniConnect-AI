@@ -137,7 +137,7 @@ export const LoginPage = () => {
                 href="#forgot"
                 onClick={(e) => {
                   e.preventDefault();
-                  message.info('Password reset instructions sent to your email.');
+                  navigate('/forgot-password');
                 }}
                 className={styles.forgotLink}
               >

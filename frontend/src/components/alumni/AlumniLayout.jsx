@@ -19,11 +19,16 @@ import { authService } from '../../services/authService';
 import { useTranslation, useAppContext } from '../../context/AppContext';
 import styles from './AlumniLayout.module.css';
 
+// Helper: derive initials from a name string
+const getInitials = (name) =>
+  name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'AL';
+
 export const AlumniLayout = ({ children, onSearch }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
-  const { theme, setTheme, searchQuery, setSearchQuery, alumniNotifications, setAlumniNotifications, alumniRequests } = useAppContext();
+  const { theme, setTheme, searchQuery, setSearchQuery, alumniNotifications, setAlumniNotifications, alumniRequests, markNotificationAsRead, markAllNotificationsAsRead } = useAppContext();
+  const alumni = authService.getCurrentUser();
 
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const notifContainerRef = useRef(null);
@@ -233,7 +238,11 @@ export const AlumniLayout = ({ children, onSearch }) => {
                 onClick={() => setShowNotifDropdown(!showNotifDropdown)}
               >
                 <FiBell />
-                {unreadCount > 0 && <span className={styles.bellBadge} />}
+                {unreadCount > 0 && (
+                  <span className={styles.bellBadge} style={{ position: 'absolute', top: 2, right: 2, background: '#ef4444', color: '#fff', borderRadius: '50%', fontSize: 9, width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </button>
 
               {showNotifDropdown && (
@@ -243,8 +252,8 @@ export const AlumniLayout = ({ children, onSearch }) => {
                     {unreadCount > 0 && (
                       <span
                         className={styles.markAllLink}
-                        onClick={() => {
-                          setAlumniNotifications(prev => prev.map(n => ({ ...n, read: true })));
+                        onClick={async () => {
+                          await markAllNotificationsAsRead(alumniNotifications);
                           message.success('All notifications marked as read');
                         }}
                       >
@@ -258,10 +267,10 @@ export const AlumniLayout = ({ children, onSearch }) => {
                         <div
                           key={notif.id}
                           className={`${styles.notifItem} ${notif.read ? styles.notifRead : styles.notifUnread}`}
-                          onClick={() => {
-                            setAlumniNotifications(prev =>
-                              prev.map(n => n.id === notif.id ? { ...n, read: true } : n)
-                            );
+                          onClick={async () => {
+                            if (!notif.read) {
+                              await markNotificationAsRead(notif.id);
+                            }
                           }}
                         >
                           <div className={styles.notifItemHeader}>
@@ -290,10 +299,10 @@ export const AlumniLayout = ({ children, onSearch }) => {
 
             <div className={styles.userInfoBox} onClick={() => navigate('/alumni/profile')}>
               <div style={{ textAlign: 'right' }}>
-                <div className={styles.userName}>Rahul Kumar</div>
-                <div className={styles.userBadge}>ALUMNI, CLASS OF 2018</div>
+                <div className={styles.userName}>{alumni?.name || 'Alumni'}</div>
+                <div className={styles.userBadge}>ALUMNI{alumni?.batch ? `, CLASS OF ${alumni.batch}` : ''}</div>
               </div>
-              <div className={styles.userAvatar}>RK</div>
+              <div className={styles.userAvatar}>{getInitials(alumni?.name)}</div>
             </div>
           </div>
         </header>

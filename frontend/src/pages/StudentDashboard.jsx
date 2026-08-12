@@ -32,39 +32,12 @@ export const StudentDashboard = () => {
     );
   }
 
-  // ── Request Mentorship via real API ──
-  const handleRequestMentorship = async (mentorId, mentorName) => {
-    if (!student) return;
-
-    const alreadyRequested = requests.some(r => {
-      const s = r.status?.toUpperCase();
-      return String(r.mentorId) === String(mentorId) && s !== 'CANCELLED' && s !== 'REVOKED';
-    });
-    if (alreadyRequested) {
-      const req = requests.find(r => {
-        const s = r.status?.toUpperCase();
-        return String(r.mentorId) === String(mentorId) && s !== 'CANCELLED' && s !== 'REVOKED';
-      });
-      message.info(`Request to ${mentorName} is already: ${req.status}`);
-      return;
-    }
-
-    try {
-      const payload = {
-        studentId: student.studentId,
-        alumniId: mentorId,
-        status: 'PENDING',
-        remarks: 'Mentorship request from dashboard',
-        requestDate: new Date().toISOString()
-      };
-      await api.post('/mentorship/add', payload);
-      message.success(`Mentorship request sent to ${mentorName}!`);
-      refreshData();
-    } catch (err) {
-      console.error('Error sending mentorship request:', err);
-      message.error('Failed to send request. Please try again.');
-    }
+  // ── Mentorship quick-action: navigate to Mentorship page
+  // Real request is submitted from StudentMentorshipPage (POST /mentorship/add lives there)
+  const handleRequestMentorship = () => {
+    navigate('/student/mentorship');
   };
+
 
   const handleRevokeMentorship = (requestId, mentorName) => {
     if (!student) return;
@@ -95,31 +68,12 @@ export const StudentDashboard = () => {
     });
   };
 
-  // ── Register Event via real API ──
-  const handleRegisterEvent = async (eventId, eventTitle) => {
-    if (!student) return;
-
-    const eventItem = events.find(e => e.id === eventId);
-    if (eventItem?.registered) {
-      message.info('You are already registered for this event.');
-      return;
-    }
-
-    try {
-      const payload = {
-        eventId: eventId,
-        studentId: student.studentId,
-        alumniId: null,
-        registrationDate: new Date().toISOString()
-      };
-      await api.post('/event/register', payload);
-      message.success(`RSVP confirmed for ${eventTitle}!`);
-      refreshData();
-    } catch (err) {
-      console.error('Error registering for event:', err);
-      message.error('Failed to register. Please try again.');
-    }
+  // ── Event quick-action: navigate to Events page
+  // Real registration is submitted from StudentEventsPage (POST /event/register lives there)
+  const handleRegisterEvent = () => {
+    navigate('/student/events');
   };
+
 
   // ── Search Filtering ──
   const filteredMentors = mentors.filter(m => {
@@ -132,6 +86,45 @@ export const StudentDashboard = () => {
       m.skills?.some(s => s.toLowerCase().includes(q))
     );
   });
+
+  const parseTimeString = (timeStr) => {
+    if (!timeStr) return null;
+    const str = timeStr.trim().toUpperCase();
+    const isPM = str.includes('PM');
+    const isAM = str.includes('AM');
+    const cleanStr = str.replace(/(AM|PM)/g, '').trim();
+    const parts = cleanStr.split(':');
+    if (parts.length < 2) return null;
+    let hours = parseInt(parts[0], 10);
+    let minutes = parseInt(parts[1], 10);
+    if (isNaN(hours) || isNaN(minutes)) return null;
+    if (isPM && hours < 12) hours += 12;
+    if (isAM && hours === 12) hours = 0;
+    return { hours, minutes };
+  };
+
+  const isEventPast = (e) => {
+    if (!e || !e.eventDate) return false;
+    const now = new Date();
+    const eventDateObj = new Date(e.eventDate);
+    if (isNaN(eventDateObj.getTime())) return false;
+
+    const eventDateOnly = new Date(eventDateObj.getFullYear(), eventDateObj.getMonth(), eventDateObj.getDate());
+    const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (eventDateOnly < todayOnly) return true;
+    if (eventDateOnly > todayOnly) return false;
+
+    const timeStr = e.endTime || (e.time && e.time.includes('-') ? e.time.split('-')[1]?.trim() : null);
+    if (timeStr) {
+      const parsed = parseTimeString(timeStr);
+      if (parsed) {
+        const endDateTime = new Date(eventDateObj.getFullYear(), eventDateObj.getMonth(), eventDateObj.getDate(), parsed.hours, parsed.minutes);
+        return now > endDateTime;
+      }
+    }
+    return false;
+  };
 
   const filteredEvents = events.filter(e => {
     if (searchQuery.trim() === '') return true;
@@ -150,7 +143,7 @@ export const StudentDashboard = () => {
   const acceptedCount = requests.filter(r => r.status?.toUpperCase() === 'ACCEPTED').length;
   const activeRequestsCount = requests.filter(r => {
     const s = r.status?.toUpperCase();
-    return s !== 'CANCELLED' && s !== 'REVOKED';
+    return s === 'PENDING' || s === 'ACCEPTED';
   }).length;
 
   // Upcoming registered event date text
@@ -277,7 +270,7 @@ export const StudentDashboard = () => {
                 .map((mentor, index) => {
                   const request = requests.find(r => {
                     const s = r.status?.toUpperCase();
-                    return String(r.mentorId) === String(mentor.id) && s !== 'CANCELLED' && s !== 'REVOKED';
+                    return String(r.mentorId) === String(mentor.id) && (s === 'PENDING' || s === 'ACCEPTED');
                   });
                   const status = request?.status?.toUpperCase();
                   const isPending = status === 'PENDING';
@@ -386,13 +379,31 @@ export const StudentDashboard = () => {
                       </div>
                     </div>
                   </div>
-                  <button
-                    className={`${styles.requestBtn} ${event.registered ? styles.disabledBtn : ''}`}
-                    disabled={event.registered}
-                    onClick={() => handleRegisterEvent(event.id, event.title)}
-                  >
-                    {event.registered ? 'Registered' : 'Register'}
-                  </button>
+                  {(() => {
+                    const ended = isEventPast(event);
+                    if (event.registered) {
+                      return (
+                        <button className={`${styles.requestBtn} ${styles.disabledBtn}`} disabled>
+                          Registered
+                        </button>
+                      );
+                    }
+                    if (ended) {
+                      return (
+                        <button className={`${styles.requestBtn} ${styles.disabledBtn}`} style={{ backgroundColor: '#f1f5f9', color: '#64748b' }} disabled>
+                          Event Ended
+                        </button>
+                      );
+                    }
+                    return (
+                      <button
+                        className={styles.requestBtn}
+                        onClick={() => handleRegisterEvent(event.id, event.title)}
+                      >
+                        Register
+                      </button>
+                    );
+                  })()}
                 </div>
               ))
             ) : (

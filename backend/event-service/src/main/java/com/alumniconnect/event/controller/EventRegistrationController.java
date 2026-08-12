@@ -24,6 +24,13 @@ public class EventRegistrationController {
         return registrationService.getRegistrationsForEvent(eventId);
     }
 
+    @GetMapping("/registrations/organizer/{eventId}")
+    public List<EventRegistration> getRegistrationsForOrganizer(
+            @PathVariable Integer eventId,
+            @RequestParam(required = false) String organizerName) {
+        return registrationService.getRegistrationsForOrganizer(eventId, organizerName);
+    }
+
     @GetMapping("/registrations/user/{userType}/{userId}")
     public List<EventRegistration> getRegistrationsForUser(@PathVariable String userType, @PathVariable Integer userId) {
         return registrationService.getRegistrationsForUser(userType, userId);
@@ -32,6 +39,12 @@ public class EventRegistrationController {
     @DeleteMapping("/registrations/cancel/{eventId}/student/{studentId}")
     public String cancelStudentRegistration(@PathVariable Integer eventId, @PathVariable Integer studentId) {
         registrationService.cancelStudentRegistration(eventId, studentId);
+        return "Event registration cancelled successfully.";
+    }
+
+    @DeleteMapping("/registrations/cancel/{eventId}/alumni/{alumniId}")
+    public String cancelAlumniRegistration(@PathVariable Integer eventId, @PathVariable Integer alumniId) {
+        registrationService.cancelAlumniRegistration(eventId, alumniId);
         return "Event registration cancelled successfully.";
     }
 }

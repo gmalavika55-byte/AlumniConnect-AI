@@ -72,8 +72,13 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
     private boolean isPublicEndpoint(String path) {
         return path.startsWith("/auth/login") || 
+               path.startsWith("/auth/register/student") || 
+               path.startsWith("/auth/register/alumni") ||
                path.startsWith("/auth/student/register") || 
-               path.startsWith("/auth/alumni/register");
+               path.startsWith("/auth/alumni/register") ||
+               path.startsWith("/auth/forgot-password") ||
+               path.startsWith("/auth/verify-otp") ||
+               path.startsWith("/auth/reset-password");
     }
 
     private Mono<Void> onError(ServerWebExchange exchange, String err, HttpStatus status) {

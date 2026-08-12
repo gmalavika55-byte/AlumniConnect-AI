@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { message, Tag, Modal } from 'antd';
-import { FiUsers, FiCalendar, FiVideo, FiMessageSquare, FiStar, FiClock, FiCheckCircle } from 'react-icons/fi';
+import {
+  FiUsers, FiCalendar, FiVideo, FiMessageSquare, FiStar,
+  FiClock, FiCheckCircle, FiRefreshCw, FiXCircle, FiCheck, FiArrowRight
+} from 'react-icons/fi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { RequestMentorshipModal } from '../components/student/RequestMentorshipModal';
@@ -15,6 +18,7 @@ export const StudentMentorshipPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState((location.state && location.state.tab) || 'Available Mentors');
+  const [requestFilter, setRequestFilter] = useState('ALL');
   const [selectedMentor, setSelectedMentor] = useState(null);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [activeSession, setActiveSession] = useState(null);
@@ -30,7 +34,7 @@ export const StudentMentorshipPage = () => {
     refreshData
   } = useAppContext();
 
-  // ─── Current logged-in student ───────────────────────────────────────────────
+  // ── Current Logged-in Student ──
   const currentUser = authService.getCurrentUser();
   const currentStudentId = currentUser ? (currentUser.studentId || null) : null;
 
@@ -44,7 +48,7 @@ export const StudentMentorshipPage = () => {
   };
 
   const handleRequestSuccess = async (reqData) => {
-    const mentor = mentors.find(m => m.id === reqData.mentorId);
+    const mentor = mentors.find(m => String(m.id) === String(reqData.mentorId));
     if (!mentor) {
       message.error('Mentor not found.');
       return;
@@ -64,7 +68,7 @@ export const StudentMentorshipPage = () => {
       };
       await api.post('/mentorship/add', payload);
       message.success(`Mentorship request submitted successfully to ${mentor.name}!`);
-      refreshData();
+      await refreshData();
     } catch (err) {
       console.error('Error creating mentorship request:', err);
       const errData = err.response?.data;
@@ -84,112 +88,47 @@ export const StudentMentorshipPage = () => {
     }
 
     Modal.confirm({
-      title: 'Revoke Mentorship Request?',
-      content: `Are you sure you want to revoke your pending request to ${mentorName}?`,
-      okText: 'Revoke Request',
+      title: 'Cancel Mentorship Request?',
+      content: `Are you sure you want to cancel your pending request to ${mentorName}?`,
+      okText: 'Cancel Request',
       okType: 'danger',
       cancelText: 'Keep Request',
       okButtonProps: { style: { backgroundColor: '#ef4444', borderColor: '#ef4444' } },
       async onOk() {
         try {
           await api.put(`/mentorship/cancel/${requestId}?studentId=${currentStudentId}`);
-          message.success('Mentorship request revoked successfully.');
-          refreshData();
+          message.success('Mentorship request cancelled successfully.');
+          await refreshData();
         } catch (err) {
-          console.error('Error revoking mentorship request:', err);
+          console.error('Error cancelling mentorship request:', err);
           const errData = err.response?.data;
-          const errorMsg = typeof errData === 'string' ? errData : 'Unable to revoke mentorship request. Please try again.';
+          const errorMsg = typeof errData === 'string' ? errData : 'Unable to cancel mentorship request. Please try again.';
           message.error(errorMsg);
         }
       }
     });
   };
 
-  /**
-   * Returns the most-relevant request for a given mentor:
-   * Priority: PENDING > ACCEPTED > any other (REJECTED, DECLINED, CANCELLED)
-   * A CANCELLED or DECLINED request does NOT block a new session.
-   */
-  const getActiveRequestForMentor = (mentor) => {
-    // All requests for this mentor
-    const mentorRequests = (requests || []).filter(r =>
-      String(r.mentorId) === String(mentor.id)
-    );
-    if (mentorRequests.length === 0) return null;
-
-    // Priority: return PENDING first, then ACCEPTED
-    const pending = mentorRequests.find(r => (r.status || '').toUpperCase() === 'PENDING');
-    if (pending) return pending;
-    const accepted = mentorRequests.find(r => (r.status || '').toUpperCase() === 'ACCEPTED');
-    if (accepted) return accepted;
-
-    // All other statuses (REJECTED, DECLINED, CANCELLED) — not blocking
-    return null;
+  const handleRequestAgain = (req) => {
+    const mentor = mentors.find(m => String(m.id) === String(req.mentorId)) || {
+      id: req.mentorId,
+      name: req.mentorName,
+      role: req.role,
+      company: req.company
+    };
+    handleRequestClick(mentor);
   };
 
-  const renderMentorActionButton = (mentor) => {
-    const activeRequest = getActiveRequestForMentor(mentor);
-
-    if (!activeRequest) {
-      // No blocking request — show Request Session
-      return (
-        <button
-          className={styles.primaryBtn}
-          onClick={() => handleRequestClick(mentor)}
-        >
-          Request Session
-        </button>
-      );
-    }
-
-    const status = (activeRequest.status || '').toUpperCase();
-
-    if (status === 'PENDING') {
-      return (
-        <div style={{ display: 'flex', gap: 6, flex: 1 }}>
-          <button
-            className={`${styles.primaryBtn} ${styles.disabledBtn}`}
-            disabled
-            style={{ padding: '9px 4px', fontSize: '11.5px' }}
-          >
-            Pending
-          </button>
-          <button
-            className={styles.secondaryBtn}
-            style={{ borderColor: '#ef4444', color: '#ef4444', padding: '9px 4px', fontSize: '11.5px' }}
-            onClick={() => handleRevokeRequestClick(activeRequest.id, mentor.name)}
-          >
-            Revoke Request
-          </button>
-        </div>
-      );
-    }
-
-    if (status === 'ACCEPTED') {
-      return (
-        <button
-          className={`${styles.primaryBtn} ${styles.disabledBtn}`}
-          disabled
-          style={{ backgroundColor: '#16a34a', borderColor: '#16a34a' }}
-        >
-          Accepted ✓
-        </button>
-      );
-    }
-
-    // REJECTED, DECLINED, CANCELLED, or unknown — allow fresh request
-    return (
-      <button
-        className={styles.primaryBtn}
-        onClick={() => handleRequestClick(mentor)}
-      >
-        Request Session
-      </button>
-    );
-  };
-
-  // ── Filters based on Global Search Query ──
-  const filteredMentors = (mentors || []).filter(m => {
+  // ── 1. Available Mentors Filter ──
+  // A mentor MUST NOT appear in Available Mentors if the student currently has a PENDING or ACCEPTED/ACTIVE request/relationship with that mentor!
+  const availableMentorsList = (mentors || []).filter(m => {
+    const mentorReqs = (requests || []).filter(r => String(r.mentorId) === String(m.id));
+    const hasPendingOrAccepted = mentorReqs.some(r => {
+      const st = (r.status || '').toUpperCase();
+      return st === 'PENDING' || st === 'ACCEPTED' || st === 'ACTIVE';
+    });
+    return !hasPendingOrAccepted;
+  }).filter(m => {
     if (!searchQuery || searchQuery.trim() === '') return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -201,35 +140,50 @@ export const StudentMentorshipPage = () => {
     );
   });
 
+  // ── 2. Mentorship Requests Filter ──
   const filteredRequests = (requests || []).filter(r => {
+    const st = (r.status || '').toUpperCase();
+    if (requestFilter === 'PENDING') return st === 'PENDING';
+    if (requestFilter === 'ACCEPTED') return st === 'ACCEPTED';
+    if (requestFilter === 'DECLINED') return st === 'DECLINED' || st === 'REJECTED';
+    if (requestFilter === 'CANCELLED') return st === 'CANCELLED';
+    return true; // ALL
+  }).filter(r => {
     if (!searchQuery || searchQuery.trim() === '') return true;
     const q = searchQuery.toLowerCase();
     return (
       (r.mentorName || '').toLowerCase().includes(q) ||
       (r.role || '').toLowerCase().includes(q) ||
-      (r.company || '').toLowerCase().includes(q)
+      (r.company || '').toLowerCase().includes(q) ||
+      (r.topic || '').toLowerCase().includes(q)
     );
   });
 
-  const filteredActive = (activeMentorships || []).filter(s => {
-    if (!searchQuery || searchQuery.trim() === '') return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      (s.mentorName || '').toLowerCase().includes(q) ||
-      (s.role || '').toLowerCase().includes(q) ||
-      (s.company || '').toLowerCase().includes(q)
-    );
-  });
+  // ── 3. Active Mentorships Filter (Only ACCEPTED status) ──
+  const filteredActive = (activeMentorships || [])
+    .filter(s => (s.status || '').toUpperCase() === 'ACCEPTED')
+    .filter(s => {
+      if (!searchQuery || searchQuery.trim() === '') return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        (s.mentorName || '').toLowerCase().includes(q) ||
+        (s.role || '').toLowerCase().includes(q) ||
+        (s.company || '').toLowerCase().includes(q)
+      );
+    });
 
-  const filteredPast = (meetingsHistory || []).filter(s => {
-    if (!searchQuery || searchQuery.trim() === '') return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      (s.mentorName || '').toLowerCase().includes(q) ||
-      (s.topic || '').toLowerCase().includes(q) ||
-      (s.status || '').toLowerCase().includes(q)
-    );
-  });
+  // ── 4. Meeting History Filter (Only COMPLETED status) ──
+  const filteredPast = (meetingsHistory || [])
+    .filter(s => (s.status || '').toUpperCase() === 'COMPLETED')
+    .filter(s => {
+      if (!searchQuery || searchQuery.trim() === '') return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        (s.mentorName || '').toLowerCase().includes(q) ||
+        (s.topic || '').toLowerCase().includes(q) ||
+        (s.status || '').toLowerCase().includes(q)
+      );
+    });
 
   const getStatusColor = (status) => {
     const s = (status || '').toUpperCase();
@@ -248,7 +202,7 @@ export const StudentMentorshipPage = () => {
         </div>
       </div>
 
-      {/* Tabs Row */}
+      {/* Primary Tabs Row */}
       <div className={styles.tabRow}>
         {['Available Mentors', 'Mentorship Requests', 'Active Mentorships', 'Meeting History'].map(tab => (
           <button
@@ -261,68 +215,101 @@ export const StudentMentorshipPage = () => {
         ))}
       </div>
 
-      {/* 1. Available Mentors Tab */}
+      {/* ── 1. Available Mentors Tab ── */}
       {activeTab === 'Available Mentors' && (
         <>
-          {filteredMentors.length > 0 ? (
+          {availableMentorsList.length > 0 ? (
             <div className={styles.mentorGrid}>
-              {filteredMentors.map(mentor => {
-                return (
-                  <div key={mentor.id} className={styles.mentorCard}>
-                    <div className={styles.mentorHeader}>
-                        <div className={styles.avatarCircle}>
-                          {(mentor.name || 'M').split(' ').map(n => n[0]).join('')}
-                        </div>
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <h3 className={styles.mentorName}>{mentor.name}</h3>
-                            <span className={styles.matchPill}>{mentor.match}</span>
-                          </div>
-                          <p className={styles.mentorRole}>{mentor.role} at <strong>{mentor.company}</strong></p>
-                          <div style={{ fontSize: 12, color: '#eab308', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                            <FiStar /> {mentor.rating} / 5.0
-                          </div>
-                        </div>
-                      </div>
-
-                    <p className={styles.mentorBio}>{mentor.bio}</p>
-
-                    <div className={styles.skillsRow}>
-                      {(mentor.skills || []).map((s, idx) => (
-                        <span key={idx} className={styles.skillTag}>{s}</span>
-                      ))}
+              {availableMentorsList.map(mentor => (
+                <div key={mentor.id} className={styles.mentorCard}>
+                  <div className={styles.mentorHeader}>
+                    <div className={styles.avatarCircle}>
+                      {(mentor.name || 'M').split(' ').map(n => n[0]).join('')}
                     </div>
-
-                    <div className={styles.cardFooter}>
-                      <button
-                        className={styles.secondaryBtn}
-                        onClick={() => navigate(`/student/mentor/${mentor.id}`, { state: { mentor } })}
-                      >
-                        View Profile
-                      </button>
-                      {renderMentorActionButton(mentor)}
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <h3 className={styles.mentorName}>{mentor.name}</h3>
+                        <span className={styles.matchPill}>{mentor.match}</span>
+                      </div>
+                      <p className={styles.mentorRole}>{mentor.role} at <strong>{mentor.company}</strong></p>
+                      <div style={{ fontSize: 12, color: '#eab308', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                        <FiStar /> {mentor.rating} / 5.0
+                      </div>
                     </div>
                   </div>
-                );
-              })}
+
+                  <p className={styles.mentorBio}>{mentor.bio}</p>
+
+                  <div className={styles.skillsRow}>
+                    {(mentor.skills || []).map((s, idx) => (
+                      <span key={idx} className={styles.skillTag}>{s}</span>
+                    ))}
+                  </div>
+
+                  <div className={styles.cardFooter}>
+                    <button
+                      className={styles.secondaryBtn}
+                      onClick={() => navigate(`/student/mentor/${mentor.id}`, { state: { mentor } })}
+                    >
+                      View Profile
+                    </button>
+                    <button
+                      className={styles.primaryBtn}
+                      onClick={() => handleRequestClick(mentor)}
+                    >
+                      Request Session
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <div className={styles.emptyState}>
               <FiUsers size={48} className={styles.emptyIcon} />
-              <h3>No mentors found</h3>
-              <p>{searchQuery ? `No mentors match "${searchQuery}". Try a different keyword!` : 'No alumni mentors are currently available.'}</p>
+              <h3>No mentors available</h3>
+              <p>{searchQuery ? `No mentors match "${searchQuery}". Try a different keyword!` : 'You have active or pending requests with all currently listed mentors.'}</p>
             </div>
           )}
         </>
       )}
 
-      {/* 2. Mentorship Requests Tab */}
+      {/* ── 2. Mentorship Requests Tab ── */}
       {activeTab === 'Mentorship Requests' && (
         <div>
+          {/* Requests Status Sub-Filter Bar */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+            {[
+              { key: 'ALL', label: 'All Requests' },
+              { key: 'PENDING', label: 'Pending' },
+              { key: 'ACCEPTED', label: 'Accepted' },
+              { key: 'DECLINED', label: 'Declined' },
+              { key: 'CANCELLED', label: 'Cancelled' }
+            ].map(f => (
+              <button
+                key={f.key}
+                onClick={() => setRequestFilter(f.key)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 20,
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  border: requestFilter === f.key ? '1px solid #1b62d4' : '1px solid var(--ac-border)',
+                  backgroundColor: requestFilter === f.key ? 'var(--ac-brand-bg)' : 'var(--ac-bg-card)',
+                  color: requestFilter === f.key ? '#1b62d4' : 'var(--ac-text-secondary)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
           {filteredRequests.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {filteredRequests.map(req => {
-                const statusColor = getStatusColor(req.status);
+                const statusStr = (req.status || 'PENDING').toUpperCase();
+                const statusColor = getStatusColor(statusStr);
                 return (
                   <div key={req.id} className={styles.sessionCard}>
                     <div>
@@ -332,22 +319,44 @@ export const StudentMentorshipPage = () => {
                       <p style={{ margin: '0 0 6px 0', fontSize: 13, color: 'var(--ac-text-secondary)' }}>
                         {req.role || 'Professional'} • <strong>{req.company || 'Company'}</strong>
                       </p>
-                      <span style={{ fontSize: 12, color: 'var(--ac-text-muted)', fontWeight: 500 }}>
-                        <FiClock style={{ marginRight: 4 }} /> Requested {req.date || 'N/A'}
-                      </span>
+                      <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--ac-text-muted)', fontWeight: 500 }}>
+                        <span><FiClock style={{ marginRight: 4 }} /> Requested: {req.date || 'N/A'}</span>
+                        {req.topic && <span><strong>Topic:</strong> {req.topic}</span>}
+                      </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                      <Tag color={statusColor} style={{ fontSize: 13, padding: '4px 12px', fontWeight: 600, borderRadius: 6 }}>
-                        {req.status || 'PENDING'}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <Tag color={statusColor} style={{ fontSize: 13, padding: '4px 12px', fontWeight: 700, borderRadius: 6 }}>
+                        {statusStr}
                       </Tag>
-                      {(req.status || '').toUpperCase() === 'PENDING' && (
+
+                      {statusStr === 'PENDING' && (
                         <button
                           className={styles.secondaryBtn}
-                          style={{ borderColor: '#ef4444', color: '#ef4444', flex: 'none', padding: '6px 12px', height: 'auto', fontSize: '12px' }}
+                          style={{ borderColor: '#ef4444', color: '#ef4444', flex: 'none', padding: '8px 16px', height: 'auto', fontSize: '12px' }}
                           onClick={() => handleRevokeRequestClick(req.id, req.mentorName)}
                         >
-                          Revoke Request
+                          Cancel Request
+                        </button>
+                      )}
+
+                      {statusStr === 'ACCEPTED' && (
+                        <button
+                          className={styles.primaryBtn}
+                          style={{ flex: 'none', padding: '8px 16px', height: 'auto', fontSize: '12px' }}
+                          onClick={() => setActiveTab('Active Mentorships')}
+                        >
+                          View Mentorship →
+                        </button>
+                      )}
+
+                      {(statusStr === 'DECLINED' || statusStr === 'REJECTED' || statusStr === 'CANCELLED') && (
+                        <button
+                          className={styles.secondaryBtn}
+                          style={{ flex: 'none', padding: '8px 16px', height: 'auto', fontSize: '12px', borderColor: '#1b62d4', color: '#1b62d4' }}
+                          onClick={() => handleRequestAgain(req)}
+                        >
+                          Request Again
                         </button>
                       )}
                     </div>
@@ -358,14 +367,14 @@ export const StudentMentorshipPage = () => {
           ) : (
             <div className={styles.emptyState}>
               <FiCalendar size={48} className={styles.emptyIcon} />
-              <h3>No requests found</h3>
-              <p>You have not sent any mentorship requests yet. Go to "Available Mentors" to get started.</p>
+              <h3>No mentorship requests found</h3>
+              <p>{requestFilter !== 'ALL' ? `No requests match filter "${requestFilter}".` : 'You have not sent any mentorship requests yet. Go to "Available Mentors" to get started.'}</p>
             </div>
           )}
         </div>
       )}
 
-      {/* 3. Active Mentorships Tab */}
+      {/* ── 3. Active Mentorships Tab ── */}
       {activeTab === 'Active Mentorships' && (
         <div>
           {filteredActive.length > 0 ? (
@@ -389,12 +398,12 @@ export const StudentMentorshipPage = () => {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <Tag color="blue" style={{ fontSize: 12, padding: '3px 10px', fontWeight: 600, borderRadius: 4 }}>
-                    Active
+                  <Tag color="green" style={{ fontSize: 12, padding: '4px 12px', fontWeight: 700, borderRadius: 6 }}>
+                    ACTIVE
                   </Tag>
                   <button
                     className={styles.primaryBtn}
-                    style={{ flex: 'none', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 8 }}
+                    style={{ flex: 'none', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 8 }}
                     onClick={() => {
                       setActiveSession(session);
                       setIsMeetingOpen(true);
@@ -415,7 +424,7 @@ export const StudentMentorshipPage = () => {
         </div>
       )}
 
-      {/* 4. Meeting History Tab */}
+      {/* ── 4. Meeting History Tab ── */}
       {activeTab === 'Meeting History' && (
         <div>
           {filteredPast.length > 0 ? (
@@ -426,10 +435,10 @@ export const StudentMentorshipPage = () => {
                     {history.mentorName}
                   </h3>
                   <p style={{ margin: '0 0 4px 0', fontSize: 13, color: 'var(--ac-text-secondary)' }}>
-                    <strong>Session Topic:</strong> {history.topic || 'General'} • {history.date || 'N/A'}
+                    <strong>Session Topic:</strong> {history.topic || 'General Guidance'} • {history.date || 'N/A'}
                   </p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#22c55e', fontWeight: 600, marginTop: 6 }}>
-                    <FiCheckCircle /> {history.status || 'Completed'}
+                    <FiCheckCircle /> COMPLETED
                   </div>
                 </div>
 

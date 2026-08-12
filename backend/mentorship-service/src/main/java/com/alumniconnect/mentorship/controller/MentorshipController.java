@@ -63,4 +63,12 @@ public class MentorshipController {
             @RequestParam Integer alumniId) {
         return mentorshipService.rejectMentorshipRequest(requestId, alumniId);
     }
+
+    // Alumni completes an ACCEPTED request (ownership verified by alumniId)
+    @PutMapping("/complete/{requestId}")
+    public MentorshipRequest completeMentorshipRequest(
+            @PathVariable Long requestId,
+            @RequestParam Integer alumniId) {
+        return mentorshipService.completeMentorshipRequest(requestId, alumniId);
+    }
 }

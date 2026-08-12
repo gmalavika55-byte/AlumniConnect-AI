@@ -20,13 +20,13 @@ public class EventController {
     }
 
     @PutMapping("/update")
-    public Event updateEvent(@RequestBody Event event) {
-        return eventService.updateEvent(event);
+    public Event updateEvent(@RequestBody Event event, @RequestParam(required = false) String requesterName) {
+        return eventService.updateEvent(event, requesterName);
     }
 
     @DeleteMapping("/delete/{id}")
-    public String deleteEvent(@PathVariable Integer id) {
-        eventService.deleteEvent(id);
+    public String deleteEvent(@PathVariable Integer id, @RequestParam(required = false) String requesterName) {
+        eventService.deleteEvent(id, requesterName);
         return "Event deleted successfully";
     }
 

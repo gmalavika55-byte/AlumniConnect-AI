@@ -51,6 +51,32 @@ public class MentorshipServiceImpl implements MentorshipService {
 
         MentorshipRequest saved = mentorshipRepository.save(mentorship);
         hydrateUserProfiles(saved);
+
+        // Create notification for target alumni in auth-service
+        if (saved.getAlumniId() != null) {
+            try {
+                String studentName = "A student";
+                if (saved.getStudent() instanceof java.util.Map) {
+                    java.util.Map<?, ?> studentMap = (java.util.Map<?, ?>) saved.getStudent();
+                    if (studentMap.get("name") != null && !studentMap.get("name").toString().trim().isEmpty()) {
+                        studentName = studentMap.get("name").toString().trim();
+                    }
+                }
+
+                java.util.Map<String, Object> notifPayload = new java.util.HashMap<>();
+                notifPayload.put("userId", saved.getAlumniId().longValue());
+                notifPayload.put("userType", "ALUMNI");
+                notifPayload.put("title", "New Mentorship Request");
+                notifPayload.put("message", studentName + " has requested a mentorship session with you.");
+                notifPayload.put("notificationDate", java.time.LocalDateTime.now().toString());
+                notifPayload.put("status", "UNREAD");
+
+                restTemplate.postForObject(authServiceUrl + "/notification/add", notifPayload, Object.class);
+            } catch (Exception e) {
+                System.err.println("Failed to create notification for alumni " + saved.getAlumniId() + ": " + e.getMessage());
+            }
+        }
+
         return saved;
     }
 
@@ -139,6 +165,25 @@ public class MentorshipServiceImpl implements MentorshipService {
         }
 
         request.setStatus("REJECTED");
+        MentorshipRequest saved = mentorshipRepository.save(request);
+        hydrateUserProfiles(saved);
+        return saved;
+    }
+
+    @Override
+    public MentorshipRequest completeMentorshipRequest(Long requestId, Integer alumniId) {
+        MentorshipRequest request = mentorshipRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Mentorship Request not found"));
+
+        if (alumniId == null || !alumniId.equals(request.getAlumniId())) {
+            throw new IllegalArgumentException("You are not authorized to complete this request.");
+        }
+
+        if (!"ACCEPTED".equalsIgnoreCase(request.getStatus())) {
+            throw new IllegalArgumentException("Only ACCEPTED requests can be marked as completed.");
+        }
+
+        request.setStatus("COMPLETED");
         MentorshipRequest saved = mentorshipRepository.save(request);
         hydrateUserProfiles(saved);
         return saved;

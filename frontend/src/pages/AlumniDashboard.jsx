@@ -10,15 +10,17 @@ import {
 } from 'react-icons/fi';
 import { AlumniLayout } from '../components/alumni/AlumniLayout';
 import { useAppContext } from '../context/AppContext';
+import { authService } from '../services/authService';
 import styles from './AlumniDashboard.module.css';
 
 export const AlumniDashboard = () => {
   const navigate = useNavigate();
-  const { alumniRequests, alumniDonations } = useAppContext();
+  const { alumniRequests = [], alumniDonations = 0 } = useAppContext();
+  const user = authService.getCurrentUser();
 
   // Dynamically calculate states based on shared global context
-  const activeCount = alumniRequests.filter(r => r.status === 'Accepted').length;
-  const pendingCount = alumniRequests.filter(r => r.status === 'Pending').length;
+  const activeCount = alumniRequests.filter(r => r?.status?.toUpperCase() === 'ACCEPTED').length;
+  const pendingCount = alumniRequests.filter(r => r?.status?.toUpperCase() === 'PENDING').length;
 
   return (
     <AlumniLayout>
@@ -36,15 +38,21 @@ export const AlumniDashboard = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
           <div>
             <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 6px 0' }}>
-              Welcome back, Rahul Kumar
+              Welcome back, {user?.name || 'Alumni'}
             </h1>
             <p style={{ fontSize: 13.5, color: 'var(--ac-text-secondary)', margin: 0 }}>
-              Senior Software Engineer at <strong>Google India</strong> • Class of 2018 (CSE)
+              {user?.designation || 'Alumni Member'}
+              {user?.currentCompany ? (
+                <> at <strong>{user.currentCompany}</strong></>
+              ) : null}
+              {user?.batch || user?.department ? (
+                <> • {user.batch ? `Class of ${user.batch}` : ''} {user.department ? `(${user.department})` : ''}</>
+              ) : null}
             </p>
           </div>
         </div>
 
-        {/* Update Profile Banner (Replacing Profile Completion Section) */}
+        {/* Update Profile Banner */}
         <div
           style={{
             marginTop: 20,
@@ -121,7 +129,7 @@ export const AlumniDashboard = () => {
             cursor: 'pointer',
             transition: 'transform 0.2s ease'
           }}
-          onClick={() => navigate('/alumni/mentorship', { state: { tab: 'Pending' } })}
+          onClick={() => navigate('/alumni/mentorship', { state: { tab: 'PENDING' } })}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <div style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#fef3c7', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
@@ -152,7 +160,7 @@ export const AlumniDashboard = () => {
             <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-brand)', backgroundColor: 'var(--ac-brand-bg)', padding: '2px 8px', borderRadius: 12 }}>Donor</span>
           </div>
           <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>TOTAL DONATIONS</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '2px 0 0 0' }}>₹{alumniDonations.toLocaleString()}</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '2px 0 0 0' }}>₹{(alumniDonations || 0).toLocaleString()}</div>
         </div>
       </div>
 

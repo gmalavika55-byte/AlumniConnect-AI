@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { LandingPage } from '../pages/LandingPage';
 import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
+import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
 
 // Student Module Pages
 import { StudentDashboard } from '../pages/StudentDashboard';
@@ -41,6 +42,9 @@ export const AppRoutes = () => {
 
       {/* Register Page */}
       <Route path="/register" element={<RegisterPage />} />
+
+      {/* Forgot Password Page */}
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
       {/* Login Page */}
       <Route path="/login" element={<LoginPage />} />
