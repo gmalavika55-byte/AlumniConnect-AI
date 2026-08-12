@@ -98,9 +98,10 @@ public class PaymentServiceImpl implements PaymentService {
 
             Order order = razorpay.orders.create(orderRequest);
             razorpayOrderId = order.get("id");
+            System.out.println("Razorpay Sandbox Order Created: " + razorpayOrderId);
         } catch (Exception e) {
-            // Fallback order ID generation if Razorpay API fails or is offline
-            razorpayOrderId = "order_" + System.currentTimeMillis() + "_" + fundId;
+            System.out.println("Razorpay API Notice: " + e.getMessage() + ". Initializing local Test Mode Order ID.");
+            razorpayOrderId = "order_test_" + System.currentTimeMillis() + "_" + fundId;
         }
 
         return new CreateOrderResponse(

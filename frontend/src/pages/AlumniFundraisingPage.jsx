@@ -231,6 +231,14 @@ export const AlumniFundraisingPage = () => {
       setIsContributeOpen(false);
       const rzp = new window.Razorpay(options);
       rzp.on('payment.failed', function (resp) {
+        console.error("Razorpay Payment Failed Full Diagnostic Log:", {
+          code: resp.error?.code,
+          description: resp.error?.description,
+          source: resp.error?.source,
+          step: resp.error?.step,
+          reason: resp.error?.reason,
+          metadata: resp.error?.metadata
+        });
         message.error(resp.error?.description || "Payment failed. Please try again.");
         setSubmittingPayment(false);
       });
