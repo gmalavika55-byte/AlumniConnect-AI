@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Card, Tag, Button, Modal, Table, Spin, message, Space, Input, Select } from 'antd';
 import { FiPlus, FiCalendar, FiClock, FiMapPin, FiUsers, FiEdit2, FiTrash2, FiEye, FiSearch, FiFilter } from 'react-icons/fi';
 import { AdminLayout } from '../components/admin/AdminLayout';
@@ -6,10 +7,17 @@ import { CreateEventModal } from '../components/admin/CreateEventModal';
 import api from '../services/api';
 
 export const AdminEventsPage = () => {
+  const location = useLocation();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [searchText, setSearchText] = useState('');
-  const [activeStatusTab, setActiveStatusTab] = useState('All');
+  const [activeStatusTab, setActiveStatusTab] = useState((location.state && location.state.tab) || 'All');
+
+  useEffect(() => {
+    if (location.state && location.state.tab) {
+      setActiveStatusTab(location.state.tab);
+    }
+  }, [location.state]);
   const [creatorFilter, setCreatorFilter] = useState('all');
   const [audienceFilter, setAudienceFilter] = useState('ALL');
   

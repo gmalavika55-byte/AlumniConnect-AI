@@ -25,6 +25,71 @@ export const AdminReportsPage = () => {
   const [predictionData, setPredictionData] = useState(null);
   const [predictError, setPredictError] = useState(null);
 
+  // Overall ML Predicted Placement Trend State (starts true during initial fetch)
+  const [overallMlLoading, setOverallMlLoading] = useState(true);
+  const [overallMlData, setOverallMlData] = useState(null);
+  const [overallMlError, setOverallMlError] = useState(null);
+
+  const buildPredictionPayload = (studentObj) => {
+    const rawBatch = String(studentObj?.batch || studentObj?.graduationYear || 2026);
+    const gradYear = parseInt(rawBatch.split('-')[0].trim(), 10) || 2026;
+
+    return {
+      cgpa: studentObj?.cgpa !== null && studentObj?.cgpa !== undefined && !isNaN(studentObj.cgpa) ? parseFloat(studentObj.cgpa) : 7.5,
+      department: (studentObj?.department || 'CSE').toString().trim().toUpperCase(),
+      skills: (studentObj?.skills || 'General Engineering').toString().trim() || 'General Engineering',
+      careerGoal: (studentObj?.careerGoal || 'Software Developer').toString().trim() || 'Software Developer',
+      graduationYear: gradYear
+    };
+  };
+
+  const isEvaluatingRef = useRef(false);
+
+  const fetchOverallMlTrend = async (studentArray) => {
+    if (!Array.isArray(studentArray) || studentArray.length === 0) {
+      setOverallMlData({
+        totalStudentsAssessed: 0,
+        predictedPlacedCount: 0,
+        predictedNotPlacedCount: 0,
+        predictedPlacementRate: 0.0,
+        averagePlacementProbability: 0.0,
+        predictions: []
+      });
+      setOverallMlLoading(false);
+      return;
+    }
+
+    if (isEvaluatingRef.current) return;
+    isEvaluatingRef.current = true;
+
+    setOverallMlLoading(true);
+    setOverallMlError(null);
+
+    try {
+      const batchPayload = studentArray.map(s => buildPredictionPayload(s));
+      console.log(`[ML Batch Request] Evaluating ${batchPayload.length} students via predict-batch:`, batchPayload);
+
+      const res = await fetch('http://localhost:8000/ai/career/predict-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(batchPayload)
+      });
+
+      if (!res.ok) {
+        throw new Error(`Batch prediction endpoint returned status ${res.status}`);
+      }
+
+      const data = await res.json();
+      setOverallMlData(data);
+    } catch (err) {
+      console.error('Error fetching overall ML predictions batch:', err);
+      setOverallMlError(err.message || 'Unable to generate overall ML predicted placement trend.');
+    } finally {
+      setOverallMlLoading(false);
+      isEvaluatingRef.current = false;
+    }
+  };
+
   const fetchAnalytics = async () => {
     setLoading(true);
     setError(null);
@@ -47,13 +112,33 @@ export const AdminReportsPage = () => {
   };
 
   const fetchStudents = async () => {
+    setOverallMlLoading(true);
+    setOverallMlError(null);
     try {
       const res = await api.get('/student/getall');
-      if (Array.isArray(res.data)) {
-        setStudentsList(res.data);
+      const studentData = Array.isArray(res.data) 
+        ? res.data 
+        : (Array.isArray(res.data?.data) ? res.data.data : []);
+
+      setStudentsList(studentData);
+
+      if (studentData.length > 0) {
+        await fetchOverallMlTrend(studentData);
+      } else {
+        setOverallMlData({
+          totalStudentsAssessed: 0,
+          predictedPlacedCount: 0,
+          predictedNotPlacedCount: 0,
+          predictedPlacementRate: 0.0,
+          averagePlacementProbability: 0.0,
+          predictions: []
+        });
+        setOverallMlLoading(false);
       }
     } catch (err) {
       console.error('Error fetching students list for ML evaluation:', err);
+      setOverallMlError('Failed to load student profiles for ML prediction.');
+      setOverallMlLoading(false);
     }
   };
 
@@ -73,13 +158,8 @@ export const AdminReportsPage = () => {
 
     setPredictLoading(true);
     try {
-      const payload = {
-        cgpa: studentObj.cgpa !== null && studentObj.cgpa !== undefined ? parseFloat(studentObj.cgpa) : 7.5,
-        department: (studentObj.department || 'CSE').trim().toUpperCase(),
-        skills: studentObj.skills || 'General Engineering',
-        careerGoal: studentObj.careerGoal || 'Software Developer',
-        graduationYear: parseInt(studentObj.batch || studentObj.graduationYear, 10) || 2026
-      };
+      const payload = buildPredictionPayload(studentObj);
+      console.log(`[ML Individual Request] Evaluating student ID ${studentObj.studentId || studentObj.id} (${studentObj.name}):`, payload);
 
       const res = await fetch('http://localhost:8000/ai/career/predict', {
         method: 'POST',
@@ -341,9 +421,81 @@ export const AdminReportsPage = () => {
                   <FiCpu color="var(--ac-brand)" size={22} /> ML Career Outcome Prediction
                 </h2>
                 <p style={{ fontSize: 13, color: 'var(--ac-text-secondary)', marginTop: 4, margin: 0 }}>
-                  Evaluate individual student placement probability and predicted outcome using trained Random Forest Classifier.
+                  Evaluate aggregate ML placement trends and individual student placement probability using trained Random Forest Classifier.
                 </p>
               </div>
+            </div>
+
+            {/* Overall ML Predicted Placement Trend (Aggregate Cohort Assessment) */}
+            <div style={{ backgroundColor: 'var(--ac-bg-input)', borderRadius: 12, border: '1px solid var(--ac-border)', padding: 20, marginBottom: 24 }}>
+              <h3 style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 14px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <FiBarChart2 color="var(--ac-brand)" size={18} /> ML Predicted Placement Trend (Aggregate Cohort Assessment)
+              </h3>
+
+              {overallMlLoading ? (
+                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                  <Spin size="default" />
+                  <span style={{ marginLeft: 10, fontSize: 13, color: 'var(--ac-text-secondary)', fontWeight: 600 }}>
+                    Evaluating student profiles with Random Forest model (POST /ai/career/predict-batch)...
+                  </span>
+                </div>
+              ) : overallMlError ? (
+                <Alert message="ML Trend Evaluation Note" description={overallMlError} type="warning" showIcon style={{ borderRadius: 8 }} />
+              ) : !overallMlData || overallMlData.totalStudentsAssessed === 0 ? (
+                <div style={{ fontSize: 13, color: 'var(--ac-text-secondary)', fontStyle: 'italic', padding: '8px 0' }}>
+                  No eligible student data available for ML prediction.
+                </div>
+              ) : (
+                <div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
+                    <div style={{ backgroundColor: 'var(--ac-bg-card)', padding: '14px 16px', borderRadius: 10, border: '1px solid var(--ac-border)' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Total Students Assessed</div>
+                      <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--ac-text-primary)', marginTop: 4 }}>
+                        {overallMlData.totalStudentsAssessed}
+                      </div>
+                    </div>
+
+                    <div style={{ backgroundColor: 'var(--ac-bg-card)', padding: '14px 16px', borderRadius: 10, border: '1px solid var(--ac-border)' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Predicted WILL BE PLACED</div>
+                      <div style={{ fontSize: 22, fontWeight: 800, color: '#16a34a', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <FiCheckCircle size={18} /> {overallMlData.predictedPlacedCount}
+                      </div>
+                    </div>
+
+                    <div style={{ backgroundColor: 'var(--ac-bg-card)', padding: '14px 16px', borderRadius: 10, border: '1px solid var(--ac-border)' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Predicted UNLIKELY TO BE PLACED</div>
+                      <div style={{ fontSize: 22, fontWeight: 800, color: '#dc2626', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <FiXCircle size={18} /> {overallMlData.predictedNotPlacedCount}
+                      </div>
+                    </div>
+
+                    <div style={{ backgroundColor: 'var(--ac-bg-card)', padding: '14px 16px', borderRadius: 10, border: '1px solid var(--ac-border)' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Predicted Placement Rate</div>
+                      <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--ac-brand)', marginTop: 4 }}>
+                        {overallMlData.predictedPlacementRate}%
+                      </div>
+                    </div>
+
+                    <div style={{ backgroundColor: 'var(--ac-bg-card)', padding: '14px 16px', borderRadius: 10, border: '1px solid var(--ac-border)' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Avg Placement Probability</div>
+                      <div style={{ fontSize: 22, fontWeight: 800, color: '#0284c7', marginTop: 4 }}>
+                        {overallMlData.averagePlacementProbability}%
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Visual Progress Bar */}
+                  <div style={{ marginTop: 14, backgroundColor: 'var(--ac-bg-card)', padding: '12px 16px', borderRadius: 8, border: '1px solid var(--ac-border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: 'var(--ac-text-primary)', marginBottom: 6 }}>
+                      <span>Predicted Placement Ratio ({overallMlData.predictedPlacedCount} Will Be Placed / {overallMlData.predictedNotPlacedCount} Unlikely)</span>
+                      <span style={{ color: 'var(--ac-brand)', fontWeight: 700 }}>{overallMlData.predictedPlacementRate}% Rate</span>
+                    </div>
+                    <div style={{ height: 8, background: '#fee2e2', borderRadius: 4, overflow: 'hidden', display: 'flex' }}>
+                      <div style={{ height: '100%', width: `${overallMlData.predictedPlacementRate}%`, background: '#16a34a', transition: 'width 0.5s ease-in-out' }} />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Student Selection Control */}
@@ -407,7 +559,7 @@ export const AdminReportsPage = () => {
                     <div style={{ marginTop: 8 }}>
                       <Tag color={predictionData.result.predictedOutcome === 'PLACED' ? 'green' : 'red'} style={{ fontSize: 14, fontWeight: 800, padding: '4px 12px', borderRadius: 6 }}>
                         {predictionData.result.predictedOutcome === 'PLACED' ? <FiCheckCircle style={{ marginRight: 6 }} /> : <FiXCircle style={{ marginRight: 6 }} />}
-                        {predictionData.result.predictedOutcome}
+                        {predictionData.result.predictedOutcome === 'PLACED' ? 'WILL BE PLACED' : 'UNLIKELY TO BE PLACED'}
                       </Tag>
                     </div>
                   </div>

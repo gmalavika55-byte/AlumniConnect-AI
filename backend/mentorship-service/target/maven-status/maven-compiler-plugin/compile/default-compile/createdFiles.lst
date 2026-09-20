@@ -5,14 +5,17 @@ com\alumniconnect\mentorship\config\OpenApiConfig.class
 com\alumniconnect\mentorship\client\AIMatchingClient.class
 com\alumniconnect\mentorship\dto\AIMatchingRequest$AlumniProfileDTO.class
 com\alumniconnect\mentorship\MentorshipApplication.class
+com\alumniconnect\mentorship\entity\MentorshipMessage.class
 com\alumniconnect\mentorship\entity\MentorshipRequest.class
 com\alumniconnect\mentorship\serviceimpl\AIMatchingServiceImpl.class
 com\alumniconnect\mentorship\exception\GlobalExceptionHandler.class
 com\alumniconnect\mentorship\exception\ResourceNotFoundException.class
 com\alumniconnect\mentorship\dto\AIMatchingResponse.class
+com\alumniconnect\mentorship\dto\ChatMessageRequest.class
 com\alumniconnect\mentorship\repository\MentorshipRequestRepository.class
 com\alumniconnect\mentorship\dto\AIMatchingRequest$StudentProfileDTO.class
 com\alumniconnect\mentorship\dto\AIMatchingRequest.class
 com\alumniconnect\mentorship\controller\MentorshipController.class
+com\alumniconnect\mentorship\repository\MentorshipMessageRepository.class
 com\alumniconnect\mentorship\serviceimpl\MentorshipServiceImpl.class
 com\alumniconnect\mentorship\service\AIMatchingService.class

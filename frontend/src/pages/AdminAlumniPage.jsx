@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Table, Tag, Input, Select, Button, Modal, Form, message, Space, Drawer, Spin } from 'antd';
 import { FiPlus, FiSearch, FiEdit2, FiTrash2, FiEye, FiCheck, FiX, FiFileText, FiDownload } from 'react-icons/fi';
 import { AdminLayout } from '../components/admin/AdminLayout';
 import api from '../services/api';
 
 export const AdminAlumniPage = () => {
+  const location = useLocation();
   const [searchText, setSearchText] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState((location.state && location.state.filter) || 'All');
+
+  useEffect(() => {
+    if (location.state && location.state.filter) {
+      setStatusFilter(location.state.filter);
+    }
+  }, [location.state]);
   const [viewAlumni, setViewAlumni] = useState(null);
   const [fetchingProfile, setFetchingProfile] = useState(false);
   const [editAlumni, setEditAlumni] = useState(null);

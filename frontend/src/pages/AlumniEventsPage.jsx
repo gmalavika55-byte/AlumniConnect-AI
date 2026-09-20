@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Tag, Button, Modal, Table, Spin, message, Empty } from 'antd';
 import { FiPlus, FiCalendar, FiClock, FiMapPin, FiUsers, FiEye, FiCheck, FiX, FiList, FiEdit, FiTrash2 } from 'react-icons/fi';
 import { AlumniLayout } from '../components/alumni/AlumniLayout';
@@ -9,12 +10,19 @@ import { authService } from '../services/authService';
 import api from '../services/api';
 
 export const AlumniEventsPage = () => {
+  const location = useLocation();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [selectedRegisterEvent, setSelectedRegisterEvent] = useState(null);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('Available');
+  const [activeTab, setActiveTab] = useState((location.state && location.state.tab) || 'Available');
+
+  useEffect(() => {
+    if (location.state && location.state.tab) {
+      setActiveTab(location.state.tab);
+    }
+  }, [location.state]);
 
   // Registrations View State for Event Organizers
   const [viewRegistrationsEvent, setViewRegistrationsEvent] = useState(null);

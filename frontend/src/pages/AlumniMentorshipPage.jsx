@@ -21,10 +21,41 @@ export const AlumniMentorshipPage = () => {
   const currentAlumniId = currentUser ? (currentUser.alumniId || currentUser.id || null) : null;
 
   useEffect(() => {
-    if (location.state && location.state.tab) {
-      setActiveTab(location.state.tab);
+    if (location.state) {
+      if (location.state.tab) {
+        setActiveTab(location.state.tab);
+      }
+      if (location.state.openChat) {
+        const mId = location.state.mentorshipId;
+        const mText = (location.state.rawText || '').toLowerCase();
+
+        let matchedSession = null;
+        if (mId) {
+          matchedSession = (requests || []).find(r => String(r.id || r.requestId) === String(mId));
+        }
+        if (!matchedSession && mText) {
+          matchedSession = (requests || []).find(r => mText.includes((r.studentName || '').toLowerCase()));
+        }
+        if (!matchedSession && mId) {
+          matchedSession = {
+            id: mId,
+            requestId: mId,
+            studentName: 'Student Chat',
+            status: 'ACCEPTED'
+          };
+        }
+        if (!matchedSession && requests && requests.length > 0) {
+          matchedSession = requests.find(r => r.status === 'ACCEPTED') || requests[0];
+        }
+
+        if (matchedSession) {
+          setActiveTab('ACCEPTED');
+          setChatSession(matchedSession);
+          setIsChatOpen(true);
+        }
+      }
     }
-  }, [location.state]);
+  }, [location.state, requests]);
 
   // Helper: post a notification to auth-service
   const createNotification = async (userId, userType, title, msg) => {

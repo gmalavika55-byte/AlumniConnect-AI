@@ -9,6 +9,7 @@ import {
 import { FaGraduationCap } from 'react-icons/fa';
 import { authService } from '../../services/authService';
 import { useTranslation, useAppContext } from '../../context/AppContext';
+import { handleNotificationNavigation } from '../../utils/notificationNavigation';
 import api from '../../services/api';
 import styles from './StudentLayout.module.css';
 
@@ -239,9 +240,8 @@ export const StudentLayout = ({ children }) => {
                           key={notif.id}
                           className={`${styles.notifItem} ${notif.read ? styles.notifRead : styles.notifUnread}`}
                           onClick={async () => {
-                            if (!notif.read) {
-                              await markNotificationAsRead(notif.id);
-                            }
+                            setShowNotifDropdown(false);
+                            await handleNotificationNavigation(notif, 'student', navigate, markNotificationAsRead);
                           }}
                         >
                           <div className={styles.notifItemHeader}>

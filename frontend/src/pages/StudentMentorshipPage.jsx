@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { message, Tag, Modal, Spin } from 'antd';
 import {
   FiUsers, FiCalendar, FiVideo, FiMessageSquare, FiStar,
@@ -41,6 +41,47 @@ export const StudentMentorshipPage = () => {
     meetingsHistory,
     refreshData
   } = useAppContext();
+
+  useEffect(() => {
+    if (location.state) {
+      if (location.state.tab) {
+        setActiveTab(location.state.tab);
+      }
+      if (location.state.openChat) {
+        const mId = location.state.mentorshipId;
+        const mText = (location.state.rawText || '').toLowerCase();
+
+        let matchedSession = null;
+        if (mId) {
+          matchedSession = (activeMentorships || []).find(s => String(s.id || s.requestId) === String(mId))
+            || (requests || []).find(r => String(r.id || r.requestId) === String(mId));
+        }
+
+        if (!matchedSession && mText) {
+          matchedSession = (activeMentorships || []).find(s => mText.includes((s.mentorName || '').toLowerCase()))
+            || (requests || []).find(r => mText.includes((r.mentorName || '').toLowerCase()));
+        }
+
+        if (!matchedSession && mId) {
+          matchedSession = {
+            id: mId,
+            requestId: mId,
+            mentorName: 'Mentorship Chat',
+            status: 'ACCEPTED'
+          };
+        }
+
+        if (!matchedSession && activeMentorships && activeMentorships.length > 0) {
+          matchedSession = activeMentorships[0];
+        }
+
+        if (matchedSession) {
+          setChatSession(matchedSession);
+          setIsChatOpen(true);
+        }
+      }
+    }
+  }, [location.state, activeMentorships, requests]);
 
   // ── Current Logged-in Student ──
   const currentUser = authService.getCurrentUser();

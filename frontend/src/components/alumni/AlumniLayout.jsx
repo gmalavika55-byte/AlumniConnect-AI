@@ -17,6 +17,7 @@ import {
 import { FaGraduationCap } from 'react-icons/fa';
 import { authService } from '../../services/authService';
 import { useTranslation, useAppContext } from '../../context/AppContext';
+import { handleNotificationNavigation } from '../../utils/notificationNavigation';
 import styles from './AlumniLayout.module.css';
 
 // Helper: derive initials from a name string
@@ -268,9 +269,8 @@ export const AlumniLayout = ({ children, onSearch }) => {
                           key={notif.id}
                           className={`${styles.notifItem} ${notif.read ? styles.notifRead : styles.notifUnread}`}
                           onClick={async () => {
-                            if (!notif.read) {
-                              await markNotificationAsRead(notif.id);
-                            }
+                            setShowNotifDropdown(false);
+                            await handleNotificationNavigation(notif, 'alumni', navigate, markNotificationAsRead);
                           }}
                         >
                           <div className={styles.notifItemHeader}>

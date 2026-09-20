@@ -85,6 +85,19 @@ def fetch_alumni_profiles() -> List[Dict[str, Any]]:
     return []
 
 
+def fetch_student_profiles() -> List[Dict[str, Any]]:
+    """Fetch real Student profiles from Auth/User Service."""
+    try:
+        url = f"{AUTH_SERVICE_URL}/student/getall"
+        response = requests.get(url, timeout=4)
+        if response.status_code == 200 and isinstance(response.json(), list):
+            return response.json()
+    except Exception as e:
+        print(f"[CareerAnalyticsService] Warning: Failed to fetch /student/getall: {e}")
+    return []
+
+
+
 def classify_sector(company: str, role: str) -> str:
     """Helper to classify industry sector based on company and role."""
     comp = (company or "").lower()
@@ -128,8 +141,11 @@ def normalize_skill(skill: str) -> str:
     return s.title()
 
 
+import threading
+
 class CareerAnalyticsEngine:
     def __init__(self):
+        self._model_lock = threading.RLock()
         self.model_pipeline = None
         self.is_trained = False
         self.feature_columns = ['cgpa', 'department', 'skills', 'careerGoal', 'graduationYear']
@@ -143,6 +159,20 @@ class CareerAnalyticsEngine:
             "testSampleCount": 0
         }
         self.feature_importances = []
+
+    def _ensure_model_ready(self):
+        """Thread-safe double-checked locking helper to ensure the ML pipeline is fitted before prediction."""
+        if self.is_trained and self.model_pipeline is not None:
+            return
+
+        with self._model_lock:
+            if self.is_trained and self.model_pipeline is not None:
+                return
+
+            print("[ML MODEL] is_trained=False. Training required=True. Acquiring model lock...")
+            raw_outcomes = fetch_career_outcomes()
+            df = self.preprocess_df(raw_outcomes)
+            self.train_ml_model(df)
 
     def preprocess_df(self, raw_data: List[Dict[str, Any]]) -> pd.DataFrame:
         """Robust cleaning and normalization of raw CAREER_OUTCOME data."""
@@ -197,15 +227,16 @@ class CareerAnalyticsEngine:
 
     def train_ml_model(self, df: pd.DataFrame):
         """
-        Genuinely trains a Scikit-Learn RandomForestClassifier pipeline for Placement Outcome Prediction.
-        Performs 80/20 train/test split, fits on training data, calculates accuracy, precision, recall, F1,
-        and computes dynamic feature importance scores across high-level feature groups.
+        Thread-safely trains a Scikit-Learn RandomForestClassifier pipeline for Placement Outcome Prediction.
+        Performs atomic replacement of self.model_pipeline only after fitting completes successfully.
         """
         if df.empty or len(df) < 5:
-            self.is_trained = False
+            with self._model_lock:
+                self.is_trained = False
             return
 
         try:
+            print("[ML MODEL] Training started...")
             X = df[self.feature_columns].copy()
             y = (df['placementStatus'] == 'PLACED').astype(int)
 
@@ -236,35 +267,24 @@ class CareerAnalyticsEngine:
             else:
                 X_train, X_test, y_train, y_test = X, X, y, y
 
-            # Random Forest Classifier Pipeline with class balancing
-            self.model_pipeline = Pipeline(steps=[
+            # Build candidate pipeline locally
+            candidate_pipeline = Pipeline(steps=[
                 ('preprocessor', preprocessor),
                 ('classifier', RandomForestClassifier(n_estimators=100, max_depth=8, class_weight='balanced', random_state=42))
             ])
 
-            # Fit model on training set
-            self.model_pipeline.fit(X_train, y_train)
+            # Fit candidate pipeline
+            candidate_pipeline.fit(X_train, y_train)
 
             # Evaluate model strictly on test set
-            y_pred = self.model_pipeline.predict(X_test)
+            y_pred = candidate_pipeline.predict(X_test)
             acc = accuracy_score(y_test, y_pred)
             prec = precision_score(y_test, y_pred, zero_division=0)
             rec = recall_score(y_test, y_pred, zero_division=0)
             f1 = f1_score(y_test, y_pred, zero_division=0)
 
-            self.model_metrics = {
-                "accuracy": round(float(acc) * 100.0, 1),
-                "precision": round(float(prec) * 100.0, 1),
-                "recall": round(float(rec) * 100.0, 1),
-                "f1": round(float(f1) * 100.0, 1),
-                "limitedTrainingData": False,
-                "trainingSampleCount": len(X_train),
-                "testSampleCount": len(X_test)
-            }
-
-            # Calculate Feature Importances dynamically from RandomForestClassifier.feature_importances_
-            fitted_preprocessor = self.model_pipeline.named_steps['preprocessor']
-            fitted_classifier = self.model_pipeline.named_steps['classifier']
+            fitted_preprocessor = candidate_pipeline.named_steps['preprocessor']
+            fitted_classifier = candidate_pipeline.named_steps['classifier']
             raw_importances = fitted_classifier.feature_importances_
 
             cat_encoder = fitted_preprocessor.named_transformers_['cat'].named_steps['onehot']
@@ -294,51 +314,107 @@ class CareerAnalyticsEngine:
                     group_importances["Skills"] += float(imp)
 
             total_imp = sum(group_importances.values())
+            feat_importances = []
             if total_imp > 0:
-                self.feature_importances = [
+                feat_importances = [
                     {"feature": k, "importance": round(float(v / total_imp), 3)}
                     for k, v in sorted(group_importances.items(), key=lambda item: item[1], reverse=True)
                 ]
-            else:
-                self.feature_importances = []
 
-            self.is_trained = True
+            metrics = {
+                "accuracy": round(float(acc) * 100.0, 1),
+                "precision": round(float(prec) * 100.0, 1),
+                "recall": round(float(rec) * 100.0, 1),
+                "f1": round(float(f1) * 100.0, 1),
+                "limitedTrainingData": False,
+                "trainingSampleCount": len(X_train),
+                "testSampleCount": len(X_test)
+            }
+
+            # Atomic thread-safe update of shared engine state
+            with self._model_lock:
+                self.model_pipeline = candidate_pipeline
+                self.model_metrics = metrics
+                self.feature_importances = feat_importances
+                self.is_trained = True
+
+            print(f"[ML MODEL] Training completed. classes_={fitted_classifier.classes_}")
         except Exception as e:
             print(f"[CareerAnalyticsService] Error training ML model: {e}")
-            self.is_trained = False
+            import traceback
+            traceback.print_exc()
+            with self._model_lock:
+                if self.model_pipeline is None:
+                    self.is_trained = False
 
     def predict_placement(self, cgpa: float, department: str, skills: str, career_goal: str, graduation_year: int) -> Dict[str, Any]:
         """
-        Executes real Random Forest ML Prediction using model.predict() and model.predict_proba().
+        Executes real Random Forest ML Prediction using thread-safe _ensure_model_ready().
         Strictly NO rule-based fallback if/else prediction logic.
         """
-        # Ensure model is trained on current dataset
-        if not self.is_trained or self.model_pipeline is None:
-            raw_outcomes = fetch_career_outcomes()
-            df = self.preprocess_df(raw_outcomes)
-            self.train_ml_model(df)
+        print(f"[ML MODEL] Prediction request received for cgpa={cgpa}, dept={department}, skills={skills}, goal={career_goal}, year={graduation_year}")
+        self._ensure_model_ready()
 
         if not self.is_trained or self.model_pipeline is None:
             raise RuntimeError("Insufficient historical career outcome data to train the placement prediction model.")
 
+        # Sanitize features safely against None, NaN, empty strings or invalid types
+        try:
+            clean_cgpa = float(cgpa) if (cgpa is not None and not pd.isna(cgpa) and not np.isnan(float(cgpa))) else 7.5
+        except Exception:
+            clean_cgpa = 7.5
+
+        clean_dept = str(department).strip().upper() if (department and not pd.isna(department)) else "CSE"
+        if not clean_dept: clean_dept = "CSE"
+
+        clean_skills = str(skills).strip() if (skills and not pd.isna(skills)) else "General Engineering"
+        if not clean_skills: clean_skills = "General Engineering"
+
+        clean_goal = str(career_goal).strip().title() if (career_goal and not pd.isna(career_goal)) else "Software Developer"
+        if not clean_goal: clean_goal = "Software Developer"
+
+        try:
+            clean_grad_yr = int(str(graduation_year).split('-')[0].strip()) if (graduation_year and not pd.isna(graduation_year)) else 2026
+        except Exception:
+            clean_grad_yr = 2026
+
         sample_df = pd.DataFrame([{
-            'cgpa': cgpa or 7.5,
-            'department': (department or 'CSE').strip().upper(),
-            'skills': (skills or '').strip(),
-            'careerGoal': (career_goal or 'Software Developer').strip().title(),
-            'graduationYear': graduation_year or 2026
+            'cgpa': clean_cgpa,
+            'department': clean_dept,
+            'skills': clean_skills,
+            'careerGoal': clean_goal,
+            'graduationYear': clean_grad_yr
         }])
 
-        # Execute real ML prediction & class probabilities via model.predict() and model.predict_proba()
-        pred_class = int(self.model_pipeline.predict(sample_df)[0])
-        probs = self.model_pipeline.predict_proba(sample_df)[0]
-        classes = list(self.model_pipeline.classes_)
+        pipeline = self.model_pipeline
+        pred_arr = pipeline.predict(sample_df)
+        if len(pred_arr) == 0:
+            raise ValueError("Model prediction returned an empty array.")
+        pred_class = int(pred_arr[0])
 
-        placed_idx = classes.index(1) if 1 in classes else (len(classes) - 1)
-        placed_prob = float(probs[placed_idx]) * 100.0
+        proba_arr = pipeline.predict_proba(sample_df)
+        print(f"[ML MODEL] predict_proba shape={proba_arr.shape}")
+
+        fitted_classifier = pipeline.named_steps['classifier']
+        classes = fitted_classifier.classes_
+        print(f"[ML MODEL] classes_={classes}")
+
+        # Determine index corresponding to class 1 (PLACED) using np.where
+        placed_indices = np.where(classes == 1)[0]
+        if len(placed_indices) > 0:
+            placed_idx = placed_indices[0]
+            placed_prob = float(proba_arr[0][placed_idx]) * 100.0
+        elif len(classes) == 1 and classes[0] == 1:
+            placed_prob = 100.0
+        elif len(classes) == 1 and classes[0] == 0:
+            placed_prob = 0.0
+        else:
+            placed_prob = float(proba_arr[0][-1]) * 100.0
 
         predicted_outcome = "PLACED" if pred_class == 1 else "NOT_PLACED"
         confidence = placed_prob if predicted_outcome == "PLACED" else (100.0 - placed_prob)
+
+        print(f"[ML MODEL] prediction={predicted_outcome}, placement_probability={placed_prob:.2f}%")
 
         return {
             "placementProbability": round(placed_prob, 2),

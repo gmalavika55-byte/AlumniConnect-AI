@@ -21,6 +21,7 @@ import { FaGraduationCap } from 'react-icons/fa';
 import { authService } from '../../services/authService';
 import { notificationService } from '../../services/notificationService';
 import { useTranslation, useAppContext } from '../../context/AppContext';
+import { handleNotificationNavigation } from '../../utils/notificationNavigation';
 import styles from './AdminLayout.module.css';
 
 export const AdminLayout = ({ children, onSearch }) => {
@@ -283,14 +284,17 @@ export const AdminLayout = ({ children, onSearch }) => {
               return (
                 <div
                   key={item.notificationId}
-                  onClick={() => isUnread && handleMarkAsRead(item.notificationId)}
+                  onClick={async () => {
+                    setIsNotifModalOpen(false);
+                    await handleNotificationNavigation(item, 'admin', navigate, handleMarkAsRead);
+                  }}
                   style={{
                     padding: '12px 14px',
                     borderRadius: '8px',
                     backgroundColor: isUnread ? (theme === 'dark' ? '#1e293b' : '#f0f7ff') : (theme === 'dark' ? '#0f172a' : '#ffffff'),
                     border: `1px solid ${isUnread ? '#bfdbfe' : (theme === 'dark' ? '#334155' : '#e2e8f0')}`,
                     marginBottom: '10px',
-                    cursor: isUnread ? 'pointer' : 'default',
+                    cursor: 'pointer',
                     transition: 'all 0.2s ease',
                     position: 'relative'
                   }}
