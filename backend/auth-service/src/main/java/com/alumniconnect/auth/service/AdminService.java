@@ -11,4 +11,5 @@ public interface AdminService {
     List<Admin> getAllAdmins();
     Admin getAdminByEmail(String email);
     Admin login(String email, String password);
+    void changePassword(Integer adminId, String currentPassword, String newPassword);
 }

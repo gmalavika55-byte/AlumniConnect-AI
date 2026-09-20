@@ -295,12 +295,16 @@ export const AppProvider = ({ children }) => {
           time: n.notificationDate ? new Date(n.notificationDate).toLocaleDateString() : 'Just now',
           read: n.status === 'READ'
         });
-        // Filter strictly by userId + userType to prevent cross-user leakage
         const myNotifications = list.filter(n => {
+          const nType = n.userType ? String(n.userType).toUpperCase() : '';
+          if (userRole === 'admin') {
+            return nType === 'ADMIN';
+          }
           const matchesUser = String(n.userId) === String(userId);
-          const matchesRole = n.userType ? String(n.userType).toLowerCase() === userRole : true;
+          const matchesRole = nType === userRole.toUpperCase();
           return matchesUser && matchesRole;
-        }).map(mapNotification);
+        }).map(mapNotification)
+          .sort((a, b) => b.id - a.id);
 
         // Apply notification preferences if they exist
         const filteredMyNotifications = myNotifications.filter(n => {

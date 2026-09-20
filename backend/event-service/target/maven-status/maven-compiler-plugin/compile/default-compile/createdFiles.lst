@@ -4,6 +4,7 @@ com\alumniconnect\event\exception\ResourceNotFoundException.class
 com\alumniconnect\event\controller\EventRegistrationController.class
 com\alumniconnect\event\controller\EventController.class
 com\alumniconnect\event\serviceimpl\EventRegistrationServiceImpl.class
+com\alumniconnect\event\config\OpenApiConfig.class
 com\alumniconnect\event\EventApplication.class
 com\alumniconnect\event\repository\EventRegistrationRepository.class
 com\alumniconnect\event\service\EventRegistrationService.class

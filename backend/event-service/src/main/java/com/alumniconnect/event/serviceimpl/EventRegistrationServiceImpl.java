@@ -130,6 +130,27 @@ public class EventRegistrationServiceImpl implements EventRegistrationService {
         registration.setEvent(event);
         EventRegistration saved = registrationRepository.save(registration);
         hydrateUserProfiles(saved);
+
+        // Send notification to event organizer if enabled in preference
+        try {
+            sendOrganizerNotificationIfEnabled(event, saved);
+        } catch (Exception e) {
+            System.err.println("Non-fatal error sending organizer notification: " + e.getMessage());
+        }
+
+        // Send ADMIN notification for event registration
+        try {
+            java.util.Map<String, Object> adminNotifPayload = new java.util.HashMap<>();
+            adminNotifPayload.put("userId", saved.getRegistrationId() != null ? saved.getRegistrationId().longValue() : eventId.longValue());
+            adminNotifPayload.put("userType", "ADMIN");
+            adminNotifPayload.put("title", "New Event Registration");
+            adminNotifPayload.put("message", "A user has registered for event \"" + (event.getTitle() != null ? event.getTitle() : "Event #" + eventId) + "\".");
+            adminNotifPayload.put("notificationDate", java.time.LocalDateTime.now().toString());
+            adminNotifPayload.put("status", "UNREAD");
+
+            restTemplate.postForObject(authServiceUrl + "/notification/add", adminNotifPayload, Object.class);
+        } catch (Exception e) {}
+
         return saved;
     }
 
@@ -238,5 +259,81 @@ public class EventRegistrationServiceImpl implements EventRegistrationService {
             // Ignore format errors
         }
         return false;
+    }
+
+    private void sendOrganizerNotificationIfEnabled(Event event, EventRegistration registration) {
+        if (event == null || event.getOrganizer() == null || event.getOrganizer().trim().isEmpty()) {
+            return;
+        }
+
+        String organizerName = event.getOrganizer().trim();
+
+        try {
+            // 1. Find organizer Alumni profile from auth-service
+            Object[] alumniList = restTemplate.getForObject(authServiceUrl + "/alumni/getall", Object[].class);
+            if (alumniList == null || alumniList.length == 0) return;
+
+            java.util.Map<?, ?> organizerAlumni = null;
+            for (Object obj : alumniList) {
+                if (obj instanceof java.util.Map) {
+                    java.util.Map<?, ?> map = (java.util.Map<?, ?>) obj;
+                    Object nameObj = map.get("name");
+                    if (nameObj != null && nameObj.toString().trim().equalsIgnoreCase(organizerName)) {
+                        organizerAlumni = map;
+                        break;
+                    }
+                }
+            }
+
+            if (organizerAlumni == null) return;
+
+            Object alumniIdObj = organizerAlumni.get("alumniId");
+            if (alumniIdObj == null) return;
+            Long organizerAlumniId = ((Number) alumniIdObj).longValue();
+
+            // 2. Check organizer's notificationPref JSON setting
+            Object notifPrefObj = organizerAlumni.get("notificationPref");
+            if (notifPrefObj != null) {
+                try {
+                    String notifPrefStr = notifPrefObj.toString();
+                    if (notifPrefStr.contains("\"eventRegistrations\":false")) {
+                        System.out.println("Organizer " + organizerName + " has disabled event registration notifications. Skipping.");
+                        return;
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            // 3. Determine registrant name
+            String registrantName = "A user";
+            if (registration.getAlumniId() != null) {
+                try {
+                    java.util.Map<?, ?> regAlumni = restTemplate.getForObject(authServiceUrl + "/alumni/get/" + registration.getAlumniId(), java.util.Map.class);
+                    if (regAlumni != null && regAlumni.get("name") != null) {
+                        registrantName = regAlumni.get("name").toString().trim();
+                    }
+                } catch (Exception ignored) {}
+            } else if (registration.getStudentId() != null) {
+                try {
+                    java.util.Map<?, ?> regStudent = restTemplate.getForObject(authServiceUrl + "/student/get/" + registration.getStudentId(), java.util.Map.class);
+                    if (regStudent != null && regStudent.get("name") != null) {
+                        registrantName = regStudent.get("name").toString().trim();
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            // 4. Send notification to organizer
+            java.util.Map<String, Object> notif = new java.util.HashMap<>();
+            notif.put("userId", organizerAlumniId);
+            notif.put("userType", "ALUMNI");
+            notif.put("title", "New Event Registration");
+            notif.put("message", registrantName + " registered for your event \"" + (event.getTitle() != null ? event.getTitle() : "Event") + "\".");
+            notif.put("notificationDate", java.time.LocalDateTime.now().toString());
+            notif.put("status", "UNREAD");
+
+            restTemplate.postForObject(authServiceUrl + "/notification/add", notif, Object.class);
+            System.out.println("Event registration notification sent to organizer " + organizerName + " (ID " + organizerAlumniId + ")");
+        } catch (Exception e) {
+            System.err.println("Failed to send event registration notification to organizer: " + e.getMessage());
+        }
     }
 }

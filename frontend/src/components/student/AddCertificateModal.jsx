@@ -6,18 +6,32 @@ export const AddCertificateModal = ({ visible, onClose, onAddCertificate }) => {
   const [form] = Form.useForm();
   const [fileList, setFileList] = useState([]);
 
+  const handleBeforeUpload = (file) => {
+    if (file.size > 5 * 1024 * 1024) {
+      message.error('File size exceeds maximum limit of 5 MB.');
+      return Upload.LIST_IGNORE;
+    }
+    const name = file.name.toLowerCase();
+    if (!name.endsWith('.pdf') && !name.endsWith('.jpg') && !name.endsWith('.jpeg') && !name.endsWith('.png')) {
+      message.error('Invalid file format. Only PDF, JPG, JPEG, and PNG files are allowed.');
+      return Upload.LIST_IGNORE;
+    }
+    return false;
+  };
+
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
+      const selectedFile = fileList.length > 0 ? fileList[0].originFileObj || fileList[0] : null;
+
       const newCert = {
         name: values.name,
         organization: values.organization,
         issueDate: values.issueDate ? values.issueDate.format('MMM YYYY') : 'Recent',
         url: values.url || '#',
-        fileName: fileList.length > 0 ? fileList[0].name : null
+        file: selectedFile
       };
-      onAddCertificate(newCert);
-      message.success(`Certificate "${values.name}" added successfully!`);
+      await onAddCertificate(newCert);
       form.resetFields();
       setFileList([]);
       onClose();
@@ -61,19 +75,20 @@ export const AddCertificateModal = ({ visible, onClose, onAddCertificate }) => {
           <DatePicker picker="month" style={{ width: '100%' }} />
         </Form.Item>
 
-        <Form.Item name="url" label="Certificate URL / Verification Link">
-          <Input placeholder="https://coursera.org/verify/..." />
-        </Form.Item>
-
-        <Form.Item label="Upload Certificate File">
+        <Form.Item label="Upload Certificate File (PDF / Image, Max 5MB)">
           <Upload
-            beforeUpload={() => false}
+            beforeUpload={handleBeforeUpload}
             fileList={fileList}
             onChange={({ fileList }) => setFileList(fileList)}
             maxCount={1}
+            accept=".pdf,.jpg,.jpeg,.png"
           >
-            <Button icon={<FiUpload />}>Upload PDF / Image</Button>
+            <Button icon={<FiUpload />}>Select File from Computer</Button>
           </Upload>
+        </Form.Item>
+
+        <Form.Item name="url" label="Legacy External Link (Optional)">
+          <Input placeholder="https://coursera.org/verify/..." />
         </Form.Item>
       </Form>
     </Modal>

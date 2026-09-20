@@ -19,9 +19,29 @@ public class EventServiceImpl implements EventService {
     @Autowired
     private EventRegistrationRepository registrationRepository;
 
+    @Autowired
+    private org.springframework.web.client.RestTemplate restTemplate;
+
+    @org.springframework.beans.factory.annotation.Value("${auth-service.url:http://localhost:8101}")
+    private String authServiceUrl;
+
     @Override
     public Event addEvent(Event event) {
-        return eventRepository.save(event);
+        Event saved = eventRepository.save(event);
+        try {
+            java.util.Map<String, Object> notifPayload = new java.util.HashMap<>();
+            notifPayload.put("userId", saved.getEventId().longValue());
+            notifPayload.put("userType", "ADMIN");
+            notifPayload.put("title", "New Event Created");
+            notifPayload.put("message", "A new event (" + (saved.getTitle() != null ? saved.getTitle() : "Event #" + saved.getEventId()) + ") has been created.");
+            notifPayload.put("notificationDate", java.time.LocalDateTime.now().toString());
+            notifPayload.put("status", "UNREAD");
+
+            restTemplate.postForObject(authServiceUrl + "/notification/add", notifPayload, Object.class);
+        } catch (Exception e) {
+            System.err.println("Failed to send ADMIN event creation notification: " + e.getMessage());
+        }
+        return saved;
     }
 
     @Override
@@ -33,14 +53,30 @@ public class EventServiceImpl implements EventService {
         Event existing = eventRepository.findById(event.getEventId())
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found with ID: " + event.getEventId()));
 
-        if (requesterName == null || requesterName.trim().isEmpty() ||
-            existing.getOrganizer() == null || !existing.getOrganizer().trim().equalsIgnoreCase(requesterName.trim())) {
-            throw new IllegalArgumentException("Access denied. Only the event organizer can update this event.");
+        boolean isAdmin = requesterName == null || requesterName.trim().isEmpty() ||
+                          requesterName.trim().equalsIgnoreCase("ADMIN") ||
+                          requesterName.trim().equalsIgnoreCase("KCE Admin") ||
+                          requesterName.trim().toLowerCase().contains("admin");
+
+        if (!isAdmin && (existing.getOrganizer() == null || !existing.getOrganizer().trim().equalsIgnoreCase(requesterName.trim()))) {
+            throw new IllegalArgumentException("Access denied. Only the event organizer or Admin can update this event.");
         }
 
-        // Ensure organizer and eventId remain unchanged
-        event.setOrganizer(existing.getOrganizer());
-        return eventRepository.save(event);
+        // Ensure eventId remains unchanged
+        Event saved = eventRepository.save(event);
+        try {
+            java.util.Map<String, Object> notifPayload = new java.util.HashMap<>();
+            notifPayload.put("userId", saved.getEventId().longValue());
+            notifPayload.put("userType", "ADMIN");
+            notifPayload.put("title", "Event Updated");
+            notifPayload.put("message", "Event \"" + (saved.getTitle() != null ? saved.getTitle() : "Event #" + saved.getEventId()) + "\" has been updated.");
+            notifPayload.put("notificationDate", java.time.LocalDateTime.now().toString());
+            notifPayload.put("status", "UNREAD");
+
+            restTemplate.postForObject(authServiceUrl + "/notification/add", notifPayload, Object.class);
+        } catch (Exception e) {}
+
+        return saved;
     }
 
     @Override
@@ -49,14 +85,30 @@ public class EventServiceImpl implements EventService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found with ID: " + eventId));
 
-        if (requesterName == null || requesterName.trim().isEmpty() ||
-            event.getOrganizer() == null || !event.getOrganizer().trim().equalsIgnoreCase(requesterName.trim())) {
-            throw new IllegalArgumentException("Access denied. Only the event organizer can delete this event.");
+        boolean isAdmin = requesterName == null || requesterName.trim().isEmpty() ||
+                          requesterName.trim().equalsIgnoreCase("ADMIN") ||
+                          requesterName.trim().equalsIgnoreCase("KCE Admin") ||
+                          requesterName.trim().toLowerCase().contains("admin");
+
+        if (!isAdmin && (event.getOrganizer() == null || !event.getOrganizer().trim().equalsIgnoreCase(requesterName.trim()))) {
+            throw new IllegalArgumentException("Access denied. Only the event organizer or Admin can delete this event.");
         }
 
         // Clean up associated registrations first to prevent FK constraint errors
         registrationRepository.deleteByEventEventId(eventId);
         eventRepository.delete(event);
+
+        try {
+            java.util.Map<String, Object> notifPayload = new java.util.HashMap<>();
+            notifPayload.put("userId", eventId.longValue());
+            notifPayload.put("userType", "ADMIN");
+            notifPayload.put("title", "Event Cancelled");
+            notifPayload.put("message", "Event \"" + (event.getTitle() != null ? event.getTitle() : "Event #" + eventId) + "\" has been cancelled.");
+            notifPayload.put("notificationDate", java.time.LocalDateTime.now().toString());
+            notifPayload.put("status", "UNREAD");
+
+            restTemplate.postForObject(authServiceUrl + "/notification/add", notifPayload, Object.class);
+        } catch (Exception e) {}
     }
 
     @Override

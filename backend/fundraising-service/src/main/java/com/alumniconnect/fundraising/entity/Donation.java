@@ -28,6 +28,9 @@ public class Donation {
     @Column(name = "PAYMENT_STATUS")
     private String paymentStatus;
 
+    @Column(name = "TRANSACTION_ID")
+    private String transactionId;
+
     // Transient field to hold details fetched dynamically from auth-service
     @Transient
     private Object alumni;
@@ -36,13 +39,14 @@ public class Donation {
     }
 
     public Donation(Long donationId, Fundraising fundraising, Integer alumniId,
-                    Double amount, LocalDate donationDate, String paymentStatus) {
+                    Double amount, LocalDate donationDate, String paymentStatus, String transactionId) {
         this.donationId = donationId;
         this.fundraising = fundraising;
         this.alumniId = alumniId;
         this.amount = amount;
         this.donationDate = donationDate;
         this.paymentStatus = paymentStatus;
+        this.transactionId = transactionId;
     }
 
     public Long getDonationId() {
@@ -91,6 +95,14 @@ public class Donation {
 
     public void setPaymentStatus(String paymentStatus) {
         this.paymentStatus = paymentStatus;
+    }
+
+    public String getTransactionId() {
+        return transactionId;
+    }
+
+    public void setTransactionId(String transactionId) {
+        this.transactionId = transactionId;
     }
 
     public Object getAlumni() {

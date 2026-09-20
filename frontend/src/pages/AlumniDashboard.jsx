@@ -6,7 +6,9 @@ import {
   FiCalendar,
   FiHeart,
   FiClock,
-  FiArrowRight
+  FiArrowRight,
+  FiBriefcase,
+  FiMapPin
 } from 'react-icons/fi';
 import { AlumniLayout } from '../components/alumni/AlumniLayout';
 import { useAppContext } from '../context/AppContext';
@@ -24,7 +26,7 @@ export const AlumniDashboard = () => {
 
   return (
     <AlumniLayout>
-      {/* Welcome & Update Profile Hero Bar */}
+      {/* Welcome Hero Bar */}
       <div
         className={styles.welcomeBar}
         style={{
@@ -46,53 +48,105 @@ export const AlumniDashboard = () => {
                 <> at <strong>{user.currentCompany}</strong></>
               ) : null}
               {user?.batch || user?.department ? (
-                <> • {user.batch ? `Class of ${user.batch}` : ''} {user.department ? `(${user.department})` : ''}</>
+                <> &bull; {user.batch ? `Class of ${user.batch}` : ''} {user.department ? `(${user.department})` : ''}</>
               ) : null}
             </p>
           </div>
         </div>
+      </div>
 
-        {/* Update Profile Banner */}
-        <div
-          style={{
-            marginTop: 20,
-            paddingTop: 16,
-            borderTop: '1px solid var(--ac-border)',
+      {/* Professional Profile Card */}
+      <div
+        style={{
+          backgroundColor: 'var(--ac-bg-card)',
+          borderRadius: 16,
+          border: '1px solid var(--ac-border)',
+          padding: 24,
+          marginBottom: 24,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 20
+        }}
+      >
+        {/* Left: Avatar + Info */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18, flex: 1, minWidth: 0 }}>
+          {/* Avatar circle */}
+          <div style={{
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            backgroundColor: 'var(--ac-brand-bg)',
+            color: 'var(--ac-brand)',
             display: 'flex',
-            justifyContent: 'space-between',
             alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: 16,
-            cursor: 'pointer'
-          }}
-          onClick={() => navigate('/alumni/profile')}
-        >
-          <div>
-            <h4 style={{ margin: '0 0 4px 0', fontSize: 14, fontWeight: 700, color: 'var(--ac-text-primary)' }}>
-              Keep your professional profile active
+            justifyContent: 'center',
+            fontSize: 24,
+            flexShrink: 0
+          }}>
+            <FiUser />
+          </div>
+
+          {/* Profile text details */}
+          <div style={{ minWidth: 0 }}>
+            <h4 style={{ margin: '0 0 3px 0', fontSize: 15, fontWeight: 700, color: 'var(--ac-text-primary)' }}>
+              Your Professional Profile
             </h4>
-            <p style={{ margin: 0, fontSize: 12.5, color: 'var(--ac-text-secondary)' }}>
-              Update your achievements, current role, or adjust your mentorship preferences to assist students.
+
+            {/* Department • Batch */}
+            {(user?.department || user?.batch) && (
+              <p style={{ margin: '0 0 4px 0', fontSize: 13, color: 'var(--ac-text-secondary)', display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                <FiBriefcase size={12} style={{ color: 'var(--ac-brand)', flexShrink: 0 }} />
+                {[user?.department, user?.batch ? `Batch ${user.batch}` : null].filter(Boolean).join(' • ')}
+              </p>
+            )}
+
+            {/* Designation at Company */}
+            {(user?.designation || user?.currentCompany) && (
+              <p style={{ margin: '0 0 4px 0', fontSize: 13, color: 'var(--ac-text-secondary)', display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                <FiBriefcase size={12} style={{ color: '#10b981', flexShrink: 0 }} />
+                {[user?.designation, user?.currentCompany].filter(Boolean).join(' at ')}
+              </p>
+            )}
+
+            {/* Location */}
+            {user?.location && (
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--ac-text-secondary)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <FiMapPin size={12} style={{ color: '#ef4444', flexShrink: 0 }} />
+                {user.location}
+              </p>
+            )}
+
+            <p style={{ margin: '8px 0 0 0', fontSize: 12.5, color: 'var(--ac-text-secondary)' }}>
+              Keep your professional profile up to date so students and alumni can learn more about your experience.
             </p>
           </div>
-          <button
-            className={styles.primaryBtn}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: 'var(--ac-brand)',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: 8,
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6
-            }}
-          >
-            Update Profile <FiArrowRight />
-          </button>
         </div>
+
+        {/* Right: Update Profile button */}
+        <button
+          onClick={() => navigate('/alumni/profile')}
+          style={{
+            padding: '9px 18px',
+            backgroundColor: 'var(--ac-brand)',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: 8,
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 13.5,
+            flexShrink: 0,
+            transition: 'background-color 0.2s ease'
+          }}
+          onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#1d4ed8')}
+          onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'var(--ac-brand)')}
+        >
+          Update Profile <FiArrowRight />
+        </button>
       </div>
 
       {/* Mentorship & Fundraising Statistics Cards Row */}
@@ -107,7 +161,7 @@ export const AlumniDashboard = () => {
             cursor: 'pointer',
             transition: 'transform 0.2s ease'
           }}
-          onClick={() => navigate('/alumni/mentorship', { state: { tab: 'Accepted' } })}
+          onClick={() => navigate('/alumni/mentorship', { state: { tab: 'ACCEPTED' } })}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <div style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: 'var(--ac-brand-bg)', color: 'var(--ac-brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>

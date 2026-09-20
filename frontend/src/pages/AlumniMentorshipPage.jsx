@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Tag, Button, message, Modal } from 'antd';
-import { FiUsers, FiCheck, FiX, FiEye, FiClock, FiCalendar } from 'react-icons/fi';
+import { FiUsers, FiCheck, FiX, FiEye, FiClock, FiCalendar, FiVideo, FiMessageSquare } from 'react-icons/fi';
 import { AlumniLayout } from '../components/alumni/AlumniLayout';
+import { MentorshipChatModal } from '../components/common/MentorshipChatModal';
 import { useAppContext } from '../context/AppContext';
 import { authService } from '../services/authService';
 import api from '../services/api';
@@ -13,6 +14,11 @@ export const AlumniMentorshipPage = () => {
   const { alumniRequests: requests, refreshData } = useAppContext();
 
   const [activeTab, setActiveTab] = useState('PENDING');
+  const [chatSession, setChatSession] = useState(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+
+  const currentUser = authService.getCurrentUser();
+  const currentAlumniId = currentUser ? (currentUser.alumniId || currentUser.id || null) : null;
 
   useEffect(() => {
     if (location.state && location.state.tab) {
@@ -99,6 +105,31 @@ export const AlumniMentorshipPage = () => {
     } catch (err) {
       console.error('Error completing session:', err);
       const errorMsg = err.response?.data || 'Failed to mark mentorship request as completed.';
+      message.error(errorMsg);
+    }
+  };
+
+  const handleJoinVideoSession = async (req) => {
+    const alumni = authService.getCurrentUser();
+    if (!alumni?.alumniId) {
+      message.error('Alumni session missing. Please log in again.');
+      return;
+    }
+    try {
+      const res = await api.get(`/mentorship/join/${req.id}?userId=${alumni.alumniId}&userType=ALUMNI`);
+      const link = res.data?.meetingLink || (typeof res.data === 'string' ? res.data : null);
+      if (link) {
+        message.success('Opening authenticated 8x8 JaaS video session in a new tab...');
+        window.open(link, '_blank');
+      } else {
+        message.error('Video session link is not available.');
+      }
+    } catch (err) {
+      console.error('Error joining video session:', err);
+      const errData = err.response?.data;
+      const errorMsg = typeof errData === 'string'
+        ? errData
+        : (errData?.message || 'You are not authorized to join this mentorship session.');
       message.error(errorMsg);
     }
   };
@@ -251,52 +282,88 @@ export const AlumniMentorshipPage = () => {
               </div>
 
               {/* Action Buttons */}
-              <div style={{ paddingTop: 16, borderTop: '1px solid var(--ac-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-                <Button
-                  type="default"
-                  icon={<FiEye />}
-                  style={{ fontWeight: 600, height: 38 }}
-                  onClick={() => navigate(`/alumni/student/${req.studentId || req.id}`, { state: { student: req } })}
-                >
-                  View Profile
-                </Button>
-
-                {req.status === 'PENDING' && (
-                  <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ paddingTop: 16, borderTop: '1px solid var(--ac-border)', marginTop: 16 }}>
+                {req.status === 'ACCEPTED' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
                     <Button
-                      type="primary"
-                      icon={<FiCheck />}
-                      style={{ backgroundColor: '#16a34a', borderColor: '#16a34a', fontWeight: 600, height: 38 }}
-                      onClick={() => handleAccept(req)}
+                      type="default"
+                      icon={<FiEye />}
+                      style={{ fontWeight: 600, height: 38, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      onClick={() => navigate(`/alumni/student/${req.studentId || req.id}`, { state: { student: req } })}
                     >
-                      Accept
+                      View Profile
                     </Button>
                     <Button
                       type="primary"
-                      danger
-                      icon={<FiX />}
-                      style={{ fontWeight: 600, height: 38 }}
-                      onClick={() => handleDecline(req)}
+                      icon={<FiVideo />}
+                      style={{ backgroundColor: '#2563eb', borderColor: '#2563eb', fontWeight: 600, height: 38, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      onClick={() => handleJoinVideoSession(req)}
                     >
-                      Decline
+                      Join Video Session
+                    </Button>
+                    <Button
+                      type="default"
+                      icon={<FiMessageSquare />}
+                      style={{ fontWeight: 600, height: 38, width: '100%', borderColor: '#1b62d4', color: '#1b62d4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      onClick={() => {
+                        setChatSession(req);
+                        setIsChatOpen(true);
+                      }}
+                    >
+                      Chat with Student
+                    </Button>
+                    <Button
+                      type="default"
+                      icon={<FiCheck />}
+                      style={{ fontWeight: 600, height: 38, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      onClick={() => handleComplete(req)}
+                    >
+                      Complete Session
                     </Button>
                   </div>
-                )}
-
-                {req.status === 'ACCEPTED' && (
-                  <Button
-                    type="primary"
-                    icon={<FiCheck />}
-                    style={{ backgroundColor: 'var(--ac-brand)', borderColor: 'var(--ac-brand)', fontWeight: 600, height: 38 }}
-                    onClick={() => handleComplete(req)}
-                  >
-                    Complete Session
-                  </Button>
-                )}
-
-                {(req.status === 'COMPLETED' || req.status === 'REJECTED') && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--ac-text-secondary)' }}>
-                    <FiCalendar /> <span>{req.status === 'COMPLETED' ? `Completed: ${req.completionDate}` : 'Request Declined'}</span>
+                ) : req.status === 'PENDING' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
+                    <Button
+                      type="default"
+                      icon={<FiEye />}
+                      style={{ fontWeight: 600, height: 38, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      onClick={() => navigate(`/alumni/student/${req.studentId || req.id}`, { state: { student: req } })}
+                    >
+                      View Profile
+                    </Button>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, width: '100%' }}>
+                      <Button
+                        type="primary"
+                        icon={<FiCheck />}
+                        style={{ backgroundColor: '#16a34a', borderColor: '#16a34a', fontWeight: 600, height: 38, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        onClick={() => handleAccept(req)}
+                      >
+                        Accept
+                      </Button>
+                      <Button
+                        type="primary"
+                        danger
+                        icon={<FiX />}
+                        style={{ fontWeight: 600, height: 38, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        onClick={() => handleDecline(req)}
+                      >
+                        Decline
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
+                    <Button
+                      type="default"
+                      icon={<FiEye />}
+                      style={{ fontWeight: 600, height: 38, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      onClick={() => navigate(`/alumni/student/${req.studentId || req.id}`, { state: { student: req } })}
+                    >
+                      View Profile
+                    </Button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--ac-text-secondary)', justifyContent: 'center', marginTop: 4 }}>
+                      <FiCalendar /> <span>{req.status === 'COMPLETED' ? `Completed: ${req.completionDate}` : 'Request Declined'}</span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -304,6 +371,20 @@ export const AlumniMentorshipPage = () => {
           ))}
         </div>
       )}
+
+      {/* Mentorship Chat Modal */}
+      <MentorshipChatModal
+        visible={isChatOpen}
+        onClose={() => {
+          setIsChatOpen(false);
+          setChatSession(null);
+        }}
+        mentorship={chatSession}
+        currentUser={{
+          userId: currentAlumniId,
+          userType: 'ALUMNI'
+        }}
+      />
     </AlumniLayout>
   );
 };

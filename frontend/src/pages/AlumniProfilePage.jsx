@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { message, Modal, Form, Input, Button, Tag } from 'antd';
 import {
   FiEdit2, FiPlus, FiBookOpen, FiUser, FiBriefcase,
-  FiLink, FiAward, FiFileText, FiExternalLink, FiTrash2
+  FiLink, FiAward, FiFileText, FiExternalLink, FiTrash2, FiUpload
 } from 'react-icons/fi';
 import { AlumniLayout } from '../components/alumni/AlumniLayout';
 import { authService } from '../services/authService';
@@ -280,14 +280,87 @@ export const AlumniProfilePage = () => {
     message.success(`Removed "${removed.title} at ${removed.company}" from career journey.`);
   };
 
+  const fileInputRef = React.useRef(null);
+
   // View Resume Link Handler
-  const handleViewResume = () => {
+  const handleViewResume = async () => {
     const url = profile.resumeUrl;
-    if (url && url.trim() !== '' && url !== '#') {
-      const fullUrl = url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`;
-      window.open(fullUrl, '_blank', 'noopener,noreferrer');
-    } else {
-      message.warning('Resume link/document URL is not available.');
+    if (!url || typeof url !== 'string' || url.trim() === '' || url === '#') {
+      message.warning('Resume document URL is not available.');
+      return;
+    }
+    const trimmed = url.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      window.open(trimmed, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    try {
+      message.loading('Retrieving document...');
+      const response = await api.get(trimmed, { responseType: 'blob' });
+      const contentType = response.headers['content-type'] || 'application/pdf';
+      const disposition = response.headers['content-disposition'] || '';
+
+      const blob = new Blob([response.data], { type: contentType });
+      const blobUrl = URL.createObjectURL(blob);
+
+      if (disposition.includes('attachment') || contentType.includes('msword') || contentType.includes('wordprocessingml')) {
+        let filename = 'document';
+        const filenameMatch = disposition.match(/filename="?([^"]+)"?/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1];
+        }
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        window.open(blobUrl, '_blank');
+      }
+    } catch (err) {
+      console.error('Error retrieving document:', err);
+      if (err.response?.status === 404) {
+        message.error('Document file not found on server.');
+      } else if (err.response?.status === 401 || err.response?.status === 403) {
+        message.error('Unauthorized access to document.');
+      } else {
+        message.error('Failed to retrieve document.');
+      }
+    }
+  };
+
+  const handleResumeUpload = async (e) => {
+    const file = e.target.files[0];
+    const alumniUser = authService.getCurrentUser();
+    if (!file || !alumniUser || !alumniUser.alumniId) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      message.error('File size exceeds maximum limit of 5 MB.');
+      return;
+    }
+
+    const name = file.name.toLowerCase();
+    if (!name.endsWith('.pdf') && !name.endsWith('.doc') && !name.endsWith('.docx')) {
+      message.error('Invalid file format. Only PDF, DOC, and DOCX files are allowed.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      message.loading('Uploading resume...');
+      const res = await api.post(`/alumni/${alumniUser.alumniId}/resume/upload`, formData);
+      message.success(`Resume "${file.name}" uploaded successfully!`);
+      await fetchBackendProfile();
+    } catch (err) {
+      console.error('Alumni resume upload error:', err);
+      const errMsg = typeof err.response?.data === 'string'
+        ? err.response.data
+        : (err.response?.data?.message || 'Failed to upload resume file.');
+      message.error(errMsg);
     }
   };
 
@@ -407,6 +480,13 @@ export const AlumniProfilePage = () => {
 
   return (
     <AlumniLayout>
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        accept=".pdf,.doc,.docx"
+        onChange={handleResumeUpload}
+      />
       {/* Cover Banner & Profile Card */}
       <div
         style={{
@@ -490,24 +570,11 @@ export const AlumniProfilePage = () => {
 
             <Button
               type="primary"
-              icon={<FiFileText />}
+              icon={<FiUpload />}
               style={{ background: "#2563eb", borderColor: "#2563eb", height: 42, borderRadius: 8, fontWeight: 600 }}
-              onClick={() => {
-                editForm.setFieldsValue({
-                  name: profile.name,
-                  role: profile.role,
-                  company: profile.company,
-                  dept: profile.dept,
-                  location: profile.location,
-                  linkedin: profile.linkedin,
-                  resumeName: profile.resumeName,
-                  resumeUrl: profile.resumeUrl,
-                  bio: profile.bio
-                });
-                setIsEditOpen(true);
-              }}
+              onClick={() => fileInputRef.current?.click()}
             >
-              {profile.resumeName ? 'Change Resume Link' : 'Set Resume Link'}
+              {profile.resumeName || profile.resumeUrl ? 'Upload / Replace Resume' : 'Upload Resume File'}
             </Button>
           </div>
         </div>
@@ -733,25 +800,12 @@ export const AlumniProfilePage = () => {
                       </Button>
                     )}
                     <Button
-                      icon={<FiEdit2 />}
+                      icon={<FiUpload />}
                       size="small"
                       style={{ fontWeight: 600 }}
-                      onClick={() => {
-                        editForm.setFieldsValue({
-                          name: profile.name,
-                          role: profile.role,
-                          company: profile.company,
-                          dept: profile.dept,
-                          location: profile.location,
-                          linkedin: profile.linkedin,
-                          resumeName: profile.resumeName,
-                          resumeUrl: profile.resumeUrl,
-                          bio: profile.bio
-                        });
-                        setIsEditOpen(true);
-                      }}
+                      onClick={() => fileInputRef.current?.click()}
                     >
-                      Change Link
+                      Replace File
                     </Button>
                     <Button
                       icon={<FiTrash2 />}
@@ -766,25 +820,12 @@ export const AlumniProfilePage = () => {
                 ) : (
                   <Button
                     type="primary"
-                    icon={<FiPlus />}
+                    icon={<FiUpload />}
                     size="small"
                     style={{ fontWeight: 600, backgroundColor: '#1b62d4' }}
-                    onClick={() => {
-                      editForm.setFieldsValue({
-                        name: profile.name,
-                        role: profile.role,
-                        company: profile.company,
-                        dept: profile.dept,
-                        location: profile.location,
-                        linkedin: profile.linkedin,
-                        resumeName: profile.resumeName,
-                        resumeUrl: profile.resumeUrl,
-                        bio: profile.bio
-                      });
-                      setIsEditOpen(true);
-                    }}
+                    onClick={() => fileInputRef.current?.click()}
                   >
-                    Set Resume Link
+                    Upload Computer File
                   </Button>
                 )}
               </div>

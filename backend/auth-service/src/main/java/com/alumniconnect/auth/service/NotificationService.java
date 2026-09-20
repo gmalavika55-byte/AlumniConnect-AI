@@ -9,4 +9,12 @@ public interface NotificationService {
     void deleteNotification(Long notificationId);
     Notification getNotificationById(Long notificationId);
     List<Notification> getAllNotifications();
+    List<Notification> getAdminNotifications();
+    long getAdminUnreadCount();
+    Notification markNotificationAsRead(Long notificationId);
+    void markAllAdminNotificationsAsRead();
+
+    List<Notification> getUserNotifications(String userType, Long userId);
+    long getUserUnreadCount(String userType, Long userId);
+    void markAllUserNotificationsAsRead(String userType, Long userId);
 }

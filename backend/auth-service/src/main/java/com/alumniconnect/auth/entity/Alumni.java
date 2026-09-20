@@ -217,4 +217,15 @@ public class Alumni {
     public void setResumeUrl(String resumeUrl) {
         this.resumeUrl = resumeUrl;
     }
+
+    @Column(name = "NOTIFICATION_PREF")
+    private String notificationPref;
+
+    public String getNotificationPref() {
+        return notificationPref;
+    }
+
+    public void setNotificationPref(String notificationPref) {
+        this.notificationPref = notificationPref;
+    }
 }

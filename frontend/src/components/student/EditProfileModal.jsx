@@ -78,8 +78,8 @@ export const EditProfileModal = ({ visible, onClose, profileData, onSave }) => {
               { value: 'Mechanical Engineering', label: 'Mech' }
             ]} />
           </Form.Item>
-          <Form.Item name="semester" label="Semester">
-            <Input />
+          <Form.Item name="semester" label="Current Year">
+            <Input placeholder="e.g. Year 3 or 3rd Year" />
           </Form.Item>
           <Form.Item name="cgpa" label="Current CGPA">
             <Input />

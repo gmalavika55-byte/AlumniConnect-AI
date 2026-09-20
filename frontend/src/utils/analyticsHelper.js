@@ -1,136 +1,157 @@
 /**
  * Reusable analytics helper functions for computing alumni career trajectory statistics
- * derived dynamically from mockAlumni dataset.
+ * derived dynamically from real backend datasets.
  */
 
-export const classifySector = (role, company) => {
-  const text = `${role} ${company}`.toLowerCase();
-  if (text.includes('ai') || text.includes('research') || text.includes('deepmind')) {
-    return 'AI & Advanced Research';
+export const classifySector = (company, role) => {
+  const text = `${company || ''} ${role || ''}`.toLowerCase().trim();
+  if (!text) return 'Software & Services';
+  
+  if (text.includes('google') || text.includes('amazon') || text.includes('microsoft') || text.includes('deepmind') || text.includes('azure') || text.includes('aws')) {
+    return 'Big Tech & Cloud';
   }
-  if (text.includes('stripe') || text.includes('fintech') || text.includes('finance')) {
+  if (text.includes('stripe') || text.includes('fintech') || text.includes('finance') || text.includes('pay')) {
     return 'Finance / FinTech';
   }
-  if (text.includes('product') || text.includes('figma') || text.includes('design') || text.includes('ux')) {
+  if (text.includes('product') || text.includes('design') || text.includes('ux') || text.includes('figma')) {
     return 'Product & Design';
   }
-  if (text.includes('microsoft') || text.includes('azure') || text.includes('cloud') || text.includes('systems') || text.includes('software') || text.includes('engineer')) {
-    return 'IT / Software';
+  if (text.includes('tcs') || text.includes('wipro') || text.includes('infosys') || text.includes('cognizant') || text.includes('accenture')) {
+    return 'IT Services & Consulting';
   }
-  return 'Other';
+  return 'Software & Services';
 };
 
-export const calculateAlumniOverview = (alumni = []) => {
-  const total = alumni.length;
-  const uniqueCompanies = new Set(alumni.map(a => a.company)).size;
-  const uniqueRoles = new Set(alumni.map(a => a.role)).size;
-  const uniqueDepts = new Set(alumni.map(a => a.department)).size;
-
-  return {
-    total,
-    uniqueCompanies,
-    uniqueRoles,
-    uniqueDepts
-  };
+export const normalizeSkillName = (rawSkill) => {
+  if (!rawSkill) return '';
+  const s = rawSkill.trim();
+  const lower = s.toLowerCase();
+  if (lower === 'java') return 'Java';
+  if (lower === 'python') return 'Python';
+  if (lower === 'react' || lower === 'react.js' || lower === 'reactjs') return 'React.js';
+  if (lower === 'spring boot' || lower === 'springboot' || lower === 'spring') return 'Spring Boot';
+  if (lower === 'sql' || lower === 'mysql' || lower === 'oracle') return 'SQL / Database';
+  if (lower === 'cloud' || lower === 'cloud architecture' || lower === 'aws') return 'Cloud Architecture';
+  if (lower === 'go' || lower === 'golang' || lower === 'go / golang') return 'Go / Golang';
+  if (lower === 'kubernetes' || lower === 'k8s') return 'Kubernetes';
+  return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
-export const calculateSectorDistribution = (alumni = []) => {
-  const total = alumni.length;
-  const counts = {};
-  alumni.forEach(a => {
-    const sector = classifySector(a.role, a.company);
-    counts[sector] = (counts[sector] || 0) + 1;
+export const calculateDepartmentPlacementRates = (students = [], alumni = []) => {
+  const deptMap = {};
+
+  // Process students
+  students.forEach(s => {
+    const dept = s.department ? s.department.trim() : 'General';
+    if (!deptMap[dept]) {
+      deptMap[dept] = { studentsCount: 0, alumniCount: 0, placedCount: 0 };
+    }
+    deptMap[dept].studentsCount += 1;
   });
 
-  return Object.keys(counts).map(sector => ({
-    sector,
-    count: counts[sector],
-    percentage: total > 0 ? ((counts[sector] / total) * 100).toFixed(1) : '0.0'
-  })).sort((a, b) => b.count - a.count);
-};
-
-export const calculateRoleDistribution = (alumni = []) => {
-  const total = alumni.length;
-  const counts = {};
+  // Process alumni
   alumni.forEach(a => {
-    counts[a.role] = (counts[a.role] || 0) + 1;
+    const dept = a.department ? a.department.trim() : 'General';
+    if (!deptMap[dept]) {
+      deptMap[dept] = { studentsCount: 0, alumniCount: 0, placedCount: 0 };
+    }
+    deptMap[dept].alumniCount += 1;
+    if (a.currentCompany || a.designation) {
+      deptMap[dept].placedCount += 1;
+    }
   });
 
-  return Object.keys(counts).map(role => ({
-    role,
-    count: counts[role],
-    percentage: total > 0 ? ((counts[role] / total) * 100).toFixed(1) : '0.0'
-  })).sort((a, b) => b.count - a.count);
-};
+  const results = Object.keys(deptMap).map(dept => {
+    const data = deptMap[dept];
+    const totalDept = data.studentsCount + data.alumniCount;
+    let rateStr = 'N/A';
+    let numericRate = 0;
 
-export const calculateTopCompanies = (alumni = []) => {
-  const counts = {};
-  alumni.forEach(a => {
-    counts[a.company] = (counts[a.company] || 0) + 1;
-  });
+    if (totalDept > 0) {
+      numericRate = Math.min(Math.round((data.alumniCount / totalDept) * 100 * 10) / 10, 100);
+      rateStr = `${numericRate}%`;
+    }
 
-  return Object.keys(counts).map(company => ({
-    company,
-    count: counts[company]
-  })).sort((a, b) => b.count - a.count);
-};
+    return {
+      name: dept,
+      rate: rateStr,
+      numericRate: numericRate,
+      studentsCount: data.studentsCount,
+      alumniCount: data.alumniCount,
+      placedCount: data.placedCount
+    };
+  }).sort((a, b) => b.numericRate - a.numericRate);
 
-export const calculateBatchTrends = (alumni = []) => {
-  // Returns career outcome profiles grouped by batch (year of graduation)
-  const trends = [...alumni].sort((a, b) => Number(a.batch) - Number(b.batch));
-  return trends.map(a => ({
-    batch: a.batch,
-    company: a.company,
-    role: a.role,
-    sector: classifySector(a.role, a.company)
-  }));
+  return results;
 };
 
 export const calculateDepartmentOutcomes = (alumni = []) => {
   const depts = {};
   alumni.forEach(a => {
-    const dept = a.department;
+    const dept = a.department ? a.department.trim() : 'General';
     if (!depts[dept]) {
-      depts[dept] = { count: 0, roles: [], companies: [], sectors: [] };
+      depts[dept] = { count: 0, roles: {}, sectors: {} };
     }
     depts[dept].count += 1;
-    depts[dept].roles.push(a.role);
-    depts[dept].companies.push(a.company);
-    depts[dept].sectors.push(classifySector(a.role, a.company));
+    
+    const role = a.designation ? a.designation.trim() : 'Software Engineer';
+    const sector = classifySector(a.currentCompany, a.designation);
+
+    depts[dept].roles[role] = (depts[dept].roles[role] || 0) + 1;
+    depts[dept].sectors[sector] = (depts[dept].sectors[sector] || 0) + 1;
   });
 
-  return Object.keys(depts).map(dept => ({
-    department: dept,
-    count: depts[dept].count,
-    dominantSector: depts[dept].sectors[0], // first mapped sector
-    dominantRole: depts[dept].roles[0]     // first mapped role
-  }));
+  return Object.keys(depts).map(dept => {
+    const data = depts[dept];
+
+    // Find dominant sector
+    let topSector = 'N/A';
+    let maxSecCount = 0;
+    Object.keys(data.sectors).forEach(sec => {
+      if (data.sectors[sec] > maxSecCount) {
+        maxSecCount = data.sectors[sec];
+        topSector = sec;
+      }
+    });
+
+    // Find dominant role
+    let topRole = 'N/A';
+    let maxRoleCount = 0;
+    Object.keys(data.roles).forEach(r => {
+      if (data.roles[r] > maxRoleCount) {
+        maxRoleCount = data.roles[r];
+        topRole = r;
+      }
+    });
+
+    return {
+      department: dept,
+      count: data.count,
+      dominantSector: topSector,
+      dominantRole: topRole
+    };
+  }).sort((a, b) => b.count - a.count);
 };
 
-export const calculateSkillDistribution = (alumni = []) => {
-  const counts = {};
-  alumni.forEach(a => {
-    if (Array.isArray(a.skills)) {
-      a.skills.forEach(skill => {
-        counts[skill] = (counts[skill] || 0) + 1;
-      });
-    }
-  });
+export const extractSkillsFromUsers = (students = [], alumni = []) => {
+  const skillCounts = {};
 
-  return Object.keys(counts).map(skill => ({
+  const processSkillsStr = (str) => {
+    if (!str) return;
+    const parts = str.split(',');
+    parts.forEach(p => {
+      const norm = normalizeSkillName(p);
+      if (norm) {
+        skillCounts[norm] = (skillCounts[norm] || 0) + 1;
+      }
+    });
+  };
+
+  students.forEach(s => processSkillsStr(s.skills));
+  alumni.forEach(a => processSkillsStr(a.skills));
+
+  return Object.keys(skillCounts).map(skill => ({
     skill,
-    count: counts[skill]
-  })).sort((a, b) => b.count - a.count);
-};
-
-export const calculateLocationDistribution = (alumni = []) => {
-  const counts = {};
-  alumni.forEach(a => {
-    counts[a.location] = (counts[a.location] || 0) + 1;
-  });
-
-  return Object.keys(counts).map(location => ({
-    location,
-    count: counts[location]
+    count: skillCounts[skill]
   })).sort((a, b) => b.count - a.count);
 };

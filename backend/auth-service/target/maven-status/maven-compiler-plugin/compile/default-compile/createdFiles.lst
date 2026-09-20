@@ -3,12 +3,15 @@ com\alumniconnect\auth\exception\GlobalExceptionHandler.class
 com\alumniconnect\auth\controller\NotificationController.class
 com\alumniconnect\auth\service\AdminService.class
 com\alumniconnect\auth\entity\Certificate.class
+com\alumniconnect\auth\serviceimpl\AdminPermissionServiceImpl.class
 com\alumniconnect\auth\serviceimpl\OtpServiceImpl.class
+com\alumniconnect\auth\entity\AdminPermission.class
 com\alumniconnect\auth\controller\AuthController.class
 com\alumniconnect\auth\serviceimpl\NotificationServiceImpl.class
 com\alumniconnect\auth\serviceimpl\AlumniServiceImpl.class
 com\alumniconnect\auth\entity\Alumni.class
 com\alumniconnect\auth\AuthApplication.class
+com\alumniconnect\auth\service\AdminPermissionService.class
 com\alumniconnect\auth\serviceimpl\StudentServiceImpl.class
 com\alumniconnect\auth\repository\PasswordResetOtpRepository.class
 com\alumniconnect\auth\controller\StudentController.class
@@ -20,6 +23,7 @@ com\alumniconnect\auth\exception\ResourceNotFoundException.class
 com\alumniconnect\auth\service\EmailService.class
 com\alumniconnect\auth\entity\Student.class
 com\alumniconnect\auth\controller\AdminController.class
+com\alumniconnect\auth\entity\ChangePasswordRequest.class
 com\alumniconnect\auth\entity\ResetPasswordRequest.class
 com\alumniconnect\auth\controller\CertificateController.class
 com\alumniconnect\auth\repository\CertificateRepository.class
@@ -29,10 +33,13 @@ com\alumniconnect\auth\controller\AlumniController.class
 com\alumniconnect\auth\entity\LoginRequest.class
 com\alumniconnect\auth\repository\AlumniRepository.class
 com\alumniconnect\auth\serviceimpl\AdminServiceImpl.class
+com\alumniconnect\auth\controller\AdminPermissionController.class
 com\alumniconnect\auth\service\StudentService.class
 com\alumniconnect\auth\repository\NotificationRepository.class
+com\alumniconnect\auth\repository\AdminPermissionRepository.class
 com\alumniconnect\auth\serviceimpl\EmailServiceImpl.class
 com\alumniconnect\auth\entity\VerifyOtpRequest.class
+com\alumniconnect\auth\config\OpenApiConfig.class
 com\alumniconnect\auth\entity\Notification.class
 com\alumniconnect\auth\serviceimpl\CertificateServiceImpl.class
 com\alumniconnect\auth\service\CertificateService.class

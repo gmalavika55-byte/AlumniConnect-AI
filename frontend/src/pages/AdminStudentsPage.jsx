@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Tag, Input, Select, Button, Modal, Form, message, Space, Drawer } from 'antd';
-import { FiPlus, FiSearch, FiEdit2, FiTrash2, FiEye, FiBookOpen, FiFileText, FiDownload } from 'react-icons/fi';
+import { Table, Tag, Input, Select, Button, Modal, Form, message, Space, Drawer, Spin } from 'antd';
+import { FiPlus, FiSearch, FiEdit2, FiTrash2, FiEye, FiDownload } from 'react-icons/fi';
 import { AdminLayout } from '../components/admin/AdminLayout';
 import { AddStudentModal } from '../components/admin/AddStudentModal';
 import api from '../services/api';
@@ -10,10 +10,12 @@ export const AdminStudentsPage = () => {
   const [deptFilter, setDeptFilter] = useState('All');
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [viewStudent, setViewStudent] = useState(null);
+  const [fetchingProfile, setFetchingProfile] = useState(false);
   const [editStudent, setEditStudent] = useState(null);
   const [editForm] = Form.useForm();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const fetchStudents = async () => {
     setLoading(true);
@@ -22,20 +24,20 @@ export const AdminStudentsPage = () => {
       const data = res.data || [];
       const mapped = data.map(s => ({
         id: s.studentId,
-        registerNumber: s.registerNo || 'N/A',
-        fullName: s.name,
-        email: s.email,
-        department: s.department || 'N/A',
-        batchYear: s.batch || '2026',
-        cgpa: s.cgpa ? String(s.cgpa) : '0.0',
-        phone: s.mobile || 'N/A',
+        registerNumber: s.registerNo || 'Not provided',
+        fullName: s.name || 'Not provided',
+        email: s.email || 'Not provided',
+        department: s.department || 'Not provided',
+        batchYear: s.batch || 'Not provided',
+        cgpa: s.cgpa !== null && s.cgpa !== undefined ? String(s.cgpa) : 'Not provided',
+        phone: s.mobile || 'Not provided',
         status: 'Active',
         rawStudent: s
       }));
       setStudents(mapped);
     } catch (err) {
       console.error("Error loading students", err);
-      message.error("Failed to load students list.");
+      message.error("Failed to load students list from server.");
     } finally {
       setLoading(false);
     }
@@ -52,13 +54,53 @@ export const AdminStudentsPage = () => {
         registerNumber: editStudent.registerNumber,
         email: editStudent.email,
         department: editStudent.department,
+        batchYear: editStudent.batchYear,
         cgpa: editStudent.cgpa
       });
     }
   }, [editStudent, editForm]);
 
-  const handleAddStudent = (newStudent) => {
-    fetchStudents();
+  const handleOpenViewDrawer = async (record) => {
+    setFetchingProfile(true);
+    try {
+      const res = await api.get(`/student/get/${record.id}`);
+      const s = res.data || record.rawStudent || {};
+      setViewStudent({
+        id: s.studentId,
+        registerNumber: s.registerNo || 'Not provided',
+        fullName: s.name || 'Not provided',
+        email: s.email || 'Not provided',
+        phone: s.mobile || 'Not provided',
+        department: s.department || 'Not provided',
+        course: s.course || 'Not provided',
+        batchYear: s.batch || 'Not provided',
+        cgpa: s.cgpa !== null && s.cgpa !== undefined ? String(s.cgpa) : 'Not provided',
+        skills: s.skills || 'Not provided',
+        careerGoal: s.careerGoal || 'Not provided',
+        github: s.github || 'Not provided',
+        portfolio: s.portfolio || 'Not provided',
+        linkedin: s.linkedin || 'Not provided'
+      });
+    } catch (err) {
+      console.error("Error fetching student profile:", err);
+      message.error("Failed to load latest student profile details.");
+      setViewStudent(null);
+    } finally {
+      setFetchingProfile(false);
+    }
+  };
+
+  const handleAddStudentSubmit = async (payload) => {
+    try {
+      const res = await api.post('/auth/student/register', payload);
+      message.success(`Student "${res.data?.name || payload.name}" created successfully!`);
+      await fetchStudents();
+    } catch (err) {
+      console.error("Error creating student:", err);
+      const errMsg = err.response?.data?.message || err.response?.data || "Failed to create student. Check for duplicate email/register number.";
+      message.error(typeof errMsg === 'string' ? errMsg : "Failed to create student.");
+      throw err;
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -66,22 +108,28 @@ export const AdminStudentsPage = () => {
       const values = await editForm.validateFields();
       if (!editStudent) return;
 
+      setSavingEdit(true);
       const payload = {
         ...editStudent.rawStudent,
         name: values.fullName,
         registerNo: values.registerNumber,
+        email: values.email,
         department: values.department,
         batch: values.batchYear,
-        cgpa: parseFloat(values.cgpa || '0')
+        cgpa: values.cgpa ? parseFloat(values.cgpa) : editStudent.rawStudent?.cgpa
       };
 
       await api.put('/student/update', payload);
       message.success(`Student "${values.fullName}" updated!`);
       setEditStudent(null);
-      fetchStudents();
+      await fetchStudents();
     } catch (err) {
+      if (err.errorFields) return;
       console.error("Error updating student:", err);
-      message.error("Failed to update student.");
+      const errMsg = err.response?.data?.message || err.response?.data || "Failed to update student.";
+      message.error(typeof errMsg === 'string' ? errMsg : "Failed to update student.");
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -94,20 +142,23 @@ export const AdminStudentsPage = () => {
       async onOk() {
         try {
           await api.delete(`/student/delete/${student.id}`);
-          message.success('Student record removed');
+          message.success('Student record removed successfully.');
           fetchStudents();
         } catch (err) {
           console.error("Error deleting student:", err);
-          message.error("Failed to delete student.");
+          const errMsg = err.response?.data?.message || "Cannot delete student because dependent records exist.";
+          message.error(errMsg);
         }
       }
     });
   };
 
   const filteredStudents = students.filter(s => {
-    const matchesSearch = s.fullName.toLowerCase().includes(searchText.toLowerCase()) ||
-                          s.registerNumber.toLowerCase().includes(searchText.toLowerCase()) ||
-                          s.email.toLowerCase().includes(searchText.toLowerCase());
+    const query = searchText.trim().toLowerCase();
+    const matchesSearch = !query ||
+                          (s.fullName || '').toLowerCase().includes(query) ||
+                          (s.registerNumber || '').toLowerCase().includes(query) ||
+                          (s.email || '').toLowerCase().includes(query);
     const matchesDept = deptFilter === 'All' || s.department === deptFilter;
     return matchesSearch && matchesDept;
   });
@@ -161,7 +212,7 @@ export const AdminStudentsPage = () => {
             type="text"
             icon={<FiEye />}
             style={{ color: '#0284c7' }}
-            onClick={() => setViewStudent(record)}
+            onClick={() => handleOpenViewDrawer(record)}
           >
             View
           </Button>
@@ -196,7 +247,7 @@ export const AdminStudentsPage = () => {
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 4px 0' }}>Student Management</h1>
           <p style={{ fontSize: 13.5, color: 'var(--ac-text-secondary)', margin: 0 }}>
-            Manage student enrollments, academic records, department allocation, and profiles.
+            Manage student enrollments, academic records, department allocation, and profiles. Total Enrolled: <strong>{students.length}</strong>
           </p>
         </div>
 
@@ -257,6 +308,7 @@ export const AdminStudentsPage = () => {
           columns={columns}
           dataSource={filteredStudents}
           rowKey="id"
+          loading={loading}
           pagination={{ pageSize: 6 }}
         />
       </div>
@@ -267,39 +319,108 @@ export const AdminStudentsPage = () => {
         placement="right"
         width={460}
         onClose={() => setViewStudent(null)}
-        open={!!viewStudent}
+        open={!!viewStudent || fetchingProfile}
       >
-        {viewStudent && (
+        {fetchingProfile ? (
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <Spin size="large" />
+            <p style={{ marginTop: 16, color: 'var(--ac-text-secondary)', fontWeight: 600 }}>Loading profile...</p>
+          </div>
+        ) : viewStudent ? (
           <div>
             <div style={{ textAlign: 'center', paddingBottom: 20, borderBottom: '1px solid var(--ac-border)' }}>
               <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#071330', color: 'white', fontSize: 24, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto' }}>
-                {viewStudent.fullName.split(' ').map(n => n[0]).join('')}
+                {(viewStudent.fullName || 'S').split(' ').map(n => n[0]).join('')}
               </div>
               <h2 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 4px 0', color: 'var(--ac-text-primary)' }}>{viewStudent.fullName}</h2>
-              <span style={{ color: 'var(--ac-brand)', fontWeight: 700 }}>{viewStudent.registerNumber}</span>
+              <span style={{ color: 'var(--ac-brand)', fontWeight: 700 }}>Reg No: {viewStudent.registerNumber}</span>
             </div>
 
-            <div style={{ padding: '20px 0', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ padding: '20px 0', display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {/* Section 1: Personal Information */}
               <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Department</span>
-                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{viewStudent.department}</p>
+                <h4 style={{ fontSize: 12, fontWeight: 800, color: 'var(--ac-brand)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--ac-border)', paddingBottom: 6, marginBottom: 12 }}>
+                  Personal Information
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Full Name</span>
+                    <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{viewStudent.fullName}</p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Email Address</span>
+                    <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{viewStudent.email}</p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Mobile Number</span>
+                    <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{viewStudent.phone}</p>
+                  </div>
+                  {viewStudent.careerGoal !== 'Not provided' && (
+                    <div>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Career Goal</span>
+                      <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{viewStudent.careerGoal}</p>
+                    </div>
+                  )}
+                </div>
               </div>
+
+              {/* Section 2: Academic Information */}
               <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Academic Batch</span>
-                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{viewStudent.batchYear}</p>
+                <h4 style={{ fontSize: 12, fontWeight: 800, color: 'var(--ac-brand)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--ac-border)', paddingBottom: 6, marginBottom: 12 }}>
+                  Academic Information
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Student ID</span>
+                    <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{viewStudent.id}</p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Register Number</span>
+                    <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{viewStudent.registerNumber}</p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Department</span>
+                    <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{viewStudent.department}</p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Academic Batch</span>
+                    <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{viewStudent.batchYear}</p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Current CGPA</span>
+                    <p style={{ margin: '2px 0 0 0', fontWeight: 700, color: '#059669' }}>{viewStudent.cgpa !== 'Not provided' ? `${viewStudent.cgpa} / 10.0` : 'Not provided'}</p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Current CGPA</span>
-                <p style={{ margin: '2px 0 0 0', fontWeight: 700, color: '#059669' }}>{viewStudent.cgpa} / 10.0</p>
-              </div>
-              <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Email Address</span>
-                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{viewStudent.email}</p>
-              </div>
-              <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Mobile Number</span>
-                <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{viewStudent.phone}</p>
-              </div>
+
+              {/* Section 3: Technical & Professional Profiles */}
+              {(viewStudent.skills !== 'Not provided' || viewStudent.linkedin !== 'Not provided' || viewStudent.github !== 'Not provided') && (
+                <div>
+                  <h4 style={{ fontSize: 12, fontWeight: 800, color: 'var(--ac-brand)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--ac-border)', paddingBottom: 6, marginBottom: 12 }}>
+                    Technical & Professional Links
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {viewStudent.skills !== 'Not provided' && (
+                      <div>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Skills</span>
+                        <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{viewStudent.skills}</p>
+                      </div>
+                    )}
+                    {viewStudent.linkedin !== 'Not provided' && (
+                      <div>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>LinkedIn Profile</span>
+                        <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-brand)' }}>{viewStudent.linkedin}</p>
+                      </div>
+                    )}
+                    {viewStudent.github !== 'Not provided' && (
+                      <div>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>GitHub</span>
+                        <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: 'var(--ac-text-primary)' }}>{viewStudent.github}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div style={{ paddingTop: 16, borderTop: '1px solid var(--ac-border)' }}>
@@ -308,7 +429,7 @@ export const AdminStudentsPage = () => {
               </Button>
             </div>
           </div>
-        )}
+        ) : null}
       </Drawer>
 
       {/* Edit Student Modal */}
@@ -318,6 +439,7 @@ export const AdminStudentsPage = () => {
         onCancel={() => setEditStudent(null)}
         onOk={handleSaveEdit}
         okText="Save Changes"
+        confirmLoading={savingEdit}
       >
         <Form form={editForm} layout="vertical">
           <Form.Item name="fullName" label="Full Name" rules={[{ required: true }]}>
@@ -326,16 +448,21 @@ export const AdminStudentsPage = () => {
           <Form.Item name="registerNumber" label="Register Number" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="email" label="Email" rules={[{ required: true }]}>
+          <Form.Item name="email" label="Email Address" rules={[{ required: true, type: 'email' }]}>
             <Input />
           </Form.Item>
           <Form.Item name="department" label="Department" rules={[{ required: true }]}>
             <Select options={[
-              { value: 'Computer Science & Engineering', label: 'Computer Science' },
+              { value: 'Computer Science & Engineering', label: 'Computer Science & Engineering' },
               { value: 'Information Technology', label: 'Information Technology' },
-              { value: 'Electronics & Communication', label: 'Electronics & Comm.' },
-              { value: 'Mechanical Engineering', label: 'Mechanical' }
+              { value: 'Electronics & Communication', label: 'Electronics & Communication' },
+              { value: 'Electrical & Electronics', label: 'Electrical & Electronics' },
+              { value: 'Mechanical Engineering', label: 'Mechanical Engineering' },
+              { value: 'Civil Engineering', label: 'Civil Engineering' }
             ]} />
+          </Form.Item>
+          <Form.Item name="batchYear" label="Year / Batch" rules={[{ required: true, message: 'Please enter year or batch (e.g. 2024-2028)' }]}>
+            <Input placeholder="e.g. 2024-2028 or 2026" />
           </Form.Item>
           <Form.Item name="cgpa" label="CGPA">
             <Input />
@@ -347,7 +474,7 @@ export const AdminStudentsPage = () => {
       <AddStudentModal
         visible={isAddOpen}
         onClose={() => setIsAddOpen(false)}
-        onAddStudent={handleAddStudent}
+        onAddStudent={handleAddStudentSubmit}
       />
     </AdminLayout>
   );

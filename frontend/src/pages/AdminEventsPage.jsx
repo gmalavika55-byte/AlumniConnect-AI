@@ -1,23 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Tag, Button, Modal, Form, Input, DatePicker, Select, message, Space, Table, Spin } from 'antd';
-import { FiPlus, FiCalendar, FiClock, FiMapPin, FiUsers, FiEdit2, FiTrash2, FiEye, FiSearch } from 'react-icons/fi';
+import { Card, Tag, Button, Modal, Table, Spin, message, Space, Input, Select } from 'antd';
+import { FiPlus, FiCalendar, FiClock, FiMapPin, FiUsers, FiEdit2, FiTrash2, FiEye, FiSearch, FiFilter } from 'react-icons/fi';
 import { AdminLayout } from '../components/admin/AdminLayout';
 import { CreateEventModal } from '../components/admin/CreateEventModal';
 import api from '../services/api';
 
 export const AdminEventsPage = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
   const [searchText, setSearchText] = useState('');
   const [activeStatusTab, setActiveStatusTab] = useState('All');
   const [creatorFilter, setCreatorFilter] = useState('all');
+  const [audienceFilter, setAudienceFilter] = useState('ALL');
+  
+  // Registration Modal State
   const [viewParticipantsEvent, setViewParticipantsEvent] = useState(null);
-  const [editEvent, setEditEvent] = useState(null);
-  const [editForm] = Form.useForm();
-  const [events, setEvents] = useState([]);
   const [participantsList, setParticipantsList] = useState([]);
   const [loadingParticipants, setLoadingParticipants] = useState(false);
 
+  const [events, setEvents] = useState([]);
+  const [loadingEvents, setLoadingEvents] = useState(false);
+
+  // Helper to determine status dynamically from eventDate
+  const calculateEventStatus = (eventDateStr, backendStatus) => {
+    if (!eventDateStr) return backendStatus || 'Upcoming';
+    const eventDate = new Date(eventDateStr);
+    const today = new Date();
+
+    const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+    const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    if (eventDay > todayDay) {
+      return 'Upcoming';
+    } else if (eventDay.getTime() === todayDay.getTime()) {
+      return 'Ongoing';
+    } else {
+      return 'Past';
+    }
+  };
+
   const fetchEvents = async () => {
+    setLoadingEvents(true);
     try {
       const res = await api.get('/event/getall');
       const data = res.data || [];
@@ -26,50 +49,44 @@ export const AdminEventsPage = () => {
         const year = dateObj.getFullYear();
         const month = String(dateObj.getMonth() + 1).padStart(2, '0');
         const day = String(dateObj.getDate()).padStart(2, '0');
+        const formattedDate = `${year}-${month}-${day}`;
+        const calculatedStatus = calculateEventStatus(e.eventDate, e.status);
+        const normAudience = String(e.audience || 'BOTH').toUpperCase();
+
         return {
           id: e.eventId,
-          title: e.title,
+          title: e.title || 'Untitled Event',
           category: e.category || 'General',
-          date: `${year}-${month}-${day}`,
-          time: `${e.startTime || '10:00 AM'} - ${e.endTime || '12:00 PM'}`,
+          date: formattedDate,
+          time: (e.startTime && e.endTime) ? `${e.startTime} - ${e.endTime}` : (e.startTime || '10:00 AM - 12:00 PM'),
           location: e.venue || 'Virtual',
           speaker: e.organizer || 'Guest Speaker',
-          registeredCount: 0,
-          capacity: e.maxParticipants || 150,
-          organizer: e.organizer || 'Admin',
-          status: e.status || 'Upcoming',
+          registeredCount: e.registeredCount !== null && e.registeredCount !== undefined ? Number(e.registeredCount) : 0,
+          capacity: e.maxParticipants || 100,
+          organizer: e.organizer || 'KCE Admin',
+          status: calculatedStatus,
           description: e.description || '',
           eventDate: e.eventDate,
           venue: e.venue,
           startTime: e.startTime,
           endTime: e.endTime,
-          maxParticipants: e.maxParticipants
+          maxParticipants: e.maxParticipants,
+          audience: normAudience,
+          rawEvent: e
         };
       });
       setEvents(mapped);
     } catch (err) {
       console.error("Error loading events", err);
       message.error("Failed to load events from server.");
+    } finally {
+      setLoadingEvents(false);
     }
   };
 
   useEffect(() => {
     fetchEvents();
   }, []);
-
-  useEffect(() => {
-    if (editEvent) {
-      editForm.setFieldsValue({
-        title: editEvent.title,
-        category: editEvent.category,
-        organizer: editEvent.organizer,
-        capacity: editEvent.maxParticipants || editEvent.capacity,
-        date: editEvent.date || (editEvent.eventDate ? new Date(editEvent.eventDate).toISOString().split('T')[0] : ''),
-        time: editEvent.time || `${editEvent.startTime || '10:00 AM'} - ${editEvent.endTime || '12:00 PM'}`,
-        location: editEvent.venue || editEvent.location
-      });
-    }
-  }, [editEvent, editForm]);
 
   const loadParticipants = async (eventId) => {
     setLoadingParticipants(true);
@@ -78,16 +95,16 @@ export const AdminEventsPage = () => {
       const data = res.data || [];
       const mapped = data.map(r => ({
         id: r.registrationId,
-        name: r.student?.name || r.alumni?.name || 'User',
+        name: r.student?.name || r.alumni?.name || 'Registered Participant',
         role: r.studentId ? 'Student' : 'Alumni',
         email: r.student?.email || r.alumni?.email || 'N/A',
         date: r.registrationDate ? new Date(r.registrationDate).toLocaleDateString() : 'N/A',
-        status: 'Confirmed'
+        status: r.attendanceStatus || 'Confirmed'
       }));
       setParticipantsList(mapped);
     } catch (err) {
       console.error("Error fetching participants:", err);
-      message.error("Failed to load participants.");
+      message.error("Failed to load participant registrations.");
     } finally {
       setLoadingParticipants(false);
     }
@@ -104,80 +121,95 @@ export const AdminEventsPage = () => {
   const handleAddEvent = async (newEvent) => {
     const payload = {
       title: newEvent.title,
-      category: newEvent.category || 'Technical Workshop',
-      description: newEvent.description,
-      eventDate: newEvent.date ? newEvent.date.toISOString() : new Date().toISOString(),
-      startTime: newEvent.startTime || '04:00 PM',
-      endTime: newEvent.endTime || '06:00 PM',
+      category: newEvent.category || 'Webinar',
+      audience: newEvent.audience || 'BOTH',
+      description: newEvent.description || '',
+      eventDate: newEvent.date ? newEvent.date : (newEvent.eventDate ? newEvent.eventDate.format('YYYY-MM-DD') : new Date().toISOString().split('T')[0]),
+      startTime: newEvent.time ? (newEvent.time.split('-')[0]?.trim() || '10:00 AM') : '10:00 AM',
+      endTime: newEvent.time ? (newEvent.time.split('-')[1]?.trim() || '12:00 PM') : '12:00 PM',
       venue: newEvent.location || 'Virtual',
-      organizer: newEvent.organizer || 'Dr. Sarah Jenkins (Admin)',
-      maxParticipants: parseInt(newEvent.capacity || 150),
+      organizer: newEvent.organizer || 'KCE Admin',
+      maxParticipants: parseInt(newEvent.capacity || 100, 10),
       status: 'UPCOMING'
     };
 
     try {
       await api.post('/event/add', payload);
-      message.success('Event created successfully!');
+      message.success('Event created and published successfully!');
       setIsCreateOpen(false);
-      fetchEvents();
+      await fetchEvents();
     } catch (err) {
       console.error("Error creating event:", err);
-      message.error("Failed to create event.");
+      const errMsg = err.response?.data?.message || err.response?.data || "Failed to create event.";
+      message.error(typeof errMsg === 'string' ? errMsg : "Failed to create event.");
     }
   };
 
-  const handleSaveEdit = async () => {
+  const handleUpdateEvent = async (updatedData) => {
     try {
-      const values = await editForm.validateFields();
       const payload = {
-        ...editEvent,
-        eventId: editEvent.id,
-        title: values.title,
-        category: values.category,
-        organizer: values.organizer,
-        maxParticipants: parseInt(values.capacity),
-        eventDate: values.date ? new Date(values.date).toISOString() : new Date().toISOString(),
-        startTime: values.time?.split('-')[0]?.trim() || '10:00 AM',
-        endTime: values.time?.split('-')[1]?.trim() || '12:00 PM',
-        venue: values.location
+        ...editingEvent?.rawEvent,
+        eventId: updatedData.id,
+        title: updatedData.title,
+        category: updatedData.category || 'Webinar',
+        audience: updatedData.audience || 'BOTH',
+        description: updatedData.description || '',
+        eventDate: updatedData.date ? updatedData.date : new Date().toISOString().split('T')[0],
+        startTime: updatedData.time ? (updatedData.time.split('-')[0]?.trim() || '10:00 AM') : '10:00 AM',
+        endTime: updatedData.time ? (updatedData.time.split('-')[1]?.trim() || '12:00 PM') : '12:00 PM',
+        venue: updatedData.location || 'Virtual',
+        organizer: updatedData.organizer || 'KCE Admin',
+        maxParticipants: parseInt(updatedData.capacity || 100, 10),
+        status: 'UPCOMING'
       };
 
-      await api.put('/event/update', payload);
-      message.success(`Event "${values.title}" updated successfully!`);
-      setEditEvent(null);
-      fetchEvents();
+      await api.put('/event/update?requesterName=ADMIN', payload);
+      message.success(`Event "${updatedData.title}" updated successfully!`);
+      setIsCreateOpen(false);
+      setEditingEvent(null);
+      await fetchEvents();
     } catch (err) {
       console.error("Error updating event:", err);
-      message.error("Failed to update event.");
+      const errMsg = err.response?.data?.message || err.response?.data || "Failed to update event.";
+      message.error(typeof errMsg === 'string' ? errMsg : "Failed to update event.");
     }
   };
 
   const handleDeleteEvent = (eventItem) => {
     Modal.confirm({
       title: `Delete Event "${eventItem.title}"?`,
-      content: 'This will notify registered attendees and remove the event from student and alumni portals.',
+      content: 'Are you sure you want to delete this event? Registered attendees will be notified and the record will be permanently removed.',
       okText: 'Delete Event',
       okType: 'danger',
       async onOk() {
         try {
-          await api.delete(`/event/delete/${eventItem.id}`);
-          message.success('Event deleted successfully');
-          fetchEvents();
+          await api.delete(`/event/delete/${eventItem.id}?requesterName=ADMIN`);
+          message.success('Event deleted successfully.');
+          await fetchEvents();
         } catch (err) {
           console.error("Error deleting event:", err);
-          message.error("Failed to delete event.");
+          const errMsg = err.response?.data?.message || "Failed to delete event.";
+          message.error(errMsg);
         }
       }
     });
   };
 
+  // Filter combination: Search + Status Tab + Creator Filter + Audience Filter
   const filteredEvents = events.filter(e => {
-    const matchesSearch = e.title.toLowerCase().includes(searchText.toLowerCase()) ||
-                          e.category.toLowerCase().includes(searchText.toLowerCase()) ||
-                          e.speaker.toLowerCase().includes(searchText.toLowerCase());
-    
+    const query = searchText.trim().toLowerCase();
+    const matchesSearch = !query ||
+                          (e.title || '').toLowerCase().includes(query) ||
+                          (e.category || '').toLowerCase().includes(query) ||
+                          (e.speaker || '').toLowerCase().includes(query) ||
+                          (e.description || '').toLowerCase().includes(query) ||
+                          (e.location || '').toLowerCase().includes(query);
+
     const matchesStatus = activeStatusTab === 'All' ? true : e.status === activeStatusTab;
-    const isCreatedByAdmin = e.organizer?.toLowerCase().includes('admin');
+
+    const orgLower = (e.organizer || '').toLowerCase();
+    const isCreatedByAdmin = orgLower.includes('admin') || orgLower.includes('jenkins') || orgLower.includes('kce');
+    
     let matchesCreator = true;
     if (creatorFilter === 'admin') {
       matchesCreator = isCreatedByAdmin;
@@ -185,7 +217,16 @@ export const AdminEventsPage = () => {
       matchesCreator = !isCreatedByAdmin;
     }
 
-    return matchesSearch && matchesStatus && matchesCreator;
+    let matchesAudience = true;
+    if (audienceFilter === 'STUDENTS') {
+      matchesAudience = e.audience === 'STUDENTS';
+    } else if (audienceFilter === 'ALUMNI') {
+      matchesAudience = e.audience === 'ALUMNI';
+    } else if (audienceFilter === 'BOTH') {
+      matchesAudience = e.audience === 'BOTH' || e.audience === 'EVERYONE' || !e.audience;
+    }
+
+    return matchesSearch && matchesStatus && matchesCreator && matchesAudience;
   });
 
   const studentsList = participantsList.filter(p => p.role === 'Student');
@@ -193,11 +234,12 @@ export const AdminEventsPage = () => {
 
   return (
     <AdminLayout onSearch={setSearchText}>
+      {/* Header Bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 4px 0' }}>Event & Webinar Management</h1>
           <p style={{ fontSize: 13.5, color: 'var(--ac-text-secondary)', margin: 0 }}>
-            Create and schedule campus reunions, webinars, hackathons, and monitor participant registrations.
+            Create and schedule campus meetings, webinars, hackathons, and monitor participant registrations. Total Events: <strong>{events.length}</strong>
           </p>
         </div>
 
@@ -205,13 +247,16 @@ export const AdminEventsPage = () => {
           type="primary"
           icon={<FiPlus />}
           style={{ backgroundColor: 'var(--ac-brand)', border: 'none', height: 42, borderRadius: 8, fontWeight: 600 }}
-          onClick={() => setIsCreateOpen(true)}
+          onClick={() => {
+            setEditingEvent(null);
+            setIsCreateOpen(true);
+          }}
         >
           Create New Event
         </Button>
       </div>
 
-      {/* Event Status Filtering Tabs */}
+      {/* Status Filtering Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, borderBottom: '1px solid var(--ac-border)', paddingBottom: 10, flexWrap: 'wrap' }}>
         {['All', 'Upcoming', 'Ongoing', 'Past'].map((tab) => (
           <button
@@ -234,9 +279,9 @@ export const AdminEventsPage = () => {
         ))}
       </div>
 
-      {/* Search Input and Creator Filter Dropdown */}
+      {/* Search Input, Creator Filter, and Audience Filter Bar */}
       <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 14, padding: 18, border: '1px solid var(--ac-border)', marginBottom: 24, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ flex: 1, minWidth: 260 }}>
+        <div style={{ flex: 1, minWidth: 240 }}>
           <Input
             prefix={<FiSearch style={{ color: 'var(--ac-text-secondary)', marginRight: 6 }} />}
             placeholder="Search events by title, category, or speaker..."
@@ -245,6 +290,8 @@ export const AdminEventsPage = () => {
             style={{ borderRadius: 8 }}
           />
         </div>
+
+        {/* Creator Filter */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ac-text-secondary)' }}>Created By:</span>
           <Select
@@ -255,95 +302,145 @@ export const AdminEventsPage = () => {
               { value: 'admin', label: 'Admin Created' },
               { value: 'alumni', label: 'Alumni Created' }
             ]}
-            style={{ width: 180 }}
+            style={{ width: 160 }}
+          />
+        </div>
+
+        {/* Audience Filter */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ac-text-secondary)' }}>Event For:</span>
+          <Select
+            value={audienceFilter}
+            onChange={setAudienceFilter}
+            options={[
+              { value: 'ALL', label: 'All Audiences' },
+              { value: 'STUDENTS', label: 'Students' },
+              { value: 'ALUMNI', label: 'Alumni' },
+              { value: 'BOTH', label: 'Everyone' }
+            ]}
+            style={{ width: 160 }}
           />
         </div>
       </div>
 
-      {/* Event Cards Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 24 }}>
-        {filteredEvents.map(eventItem => {
-          const isAdminCreated = eventItem.organizer?.toLowerCase().includes('admin');
-          return (
-            <div key={eventItem.id} style={{
-              backgroundColor: 'var(--ac-bg-card)',
-              borderRadius: 16,
-              border: '1px solid var(--ac-border)',
-              padding: 24,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)'
-            }}>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 6 }}>
-                  <Tag color={eventItem.category === 'Hackathon' ? 'purple' : eventItem.category === 'Webinar' ? 'blue' : 'orange'} style={{ fontWeight: 700 }}>
-                    {eventItem.category}
-                  </Tag>
+      {/* Event Cards Grid / Loading State */}
+      {loadingEvents ? (
+        <div style={{ textAlign: 'center', padding: '60px 0' }}>
+          <Spin size="large" />
+          <p style={{ marginTop: 16, color: 'var(--ac-text-secondary)', fontWeight: 600 }}>Loading event catalog...</p>
+        </div>
+      ) : filteredEvents.length === 0 ? (
+        <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', padding: 48, textAlign: 'center', color: 'var(--ac-text-secondary)' }}>
+          <FiCalendar size={48} color="var(--ac-text-muted)" style={{ marginBottom: 16 }} />
+          <h3 style={{ fontSize: 16, color: 'var(--ac-text-primary)', margin: '0 0 4px 0' }}>No events found</h3>
+          <p style={{ fontSize: 13.5, margin: 0 }}>No events match the selected status, search query, or audience filter.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 24 }}>
+          {filteredEvents.map(eventItem => {
+            const orgLower = (eventItem.organizer || '').toLowerCase();
+            const isAdminCreated = orgLower.includes('admin') || orgLower.includes('jenkins') || orgLower.includes('kce');
+            const isFull = eventItem.registeredCount >= eventItem.capacity;
+
+            return (
+              <div key={eventItem.id} style={{
+                backgroundColor: 'var(--ac-bg-card)',
+                borderRadius: 16,
+                border: '1px solid var(--ac-border)',
+                padding: 24,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)'
+              }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <Tag color={eventItem.category === 'Hackathon' ? 'purple' : eventItem.category === 'Webinar' ? 'blue' : 'orange'} style={{ fontWeight: 700 }}>
+                        {eventItem.category}
+                      </Tag>
+
+                      {/* Audience Badge */}
+                      {eventItem.audience === 'STUDENTS' && (
+                        <Tag color="purple" style={{ fontWeight: 600 }}>Students</Tag>
+                      )}
+                      {eventItem.audience === 'ALUMNI' && (
+                        <Tag color="orange" style={{ fontWeight: 600 }}>Alumni</Tag>
+                      )}
+                      {(eventItem.audience === 'BOTH' || eventItem.audience === 'EVERYONE' || !eventItem.audience) && (
+                        <Tag color="cyan" style={{ fontWeight: 600 }}>Everyone</Tag>
+                      )}
+                    </div>
+
+                    <Space>
+                      <Tag color={isAdminCreated ? 'geekblue' : 'gold'} style={{ fontWeight: 700 }}>
+                        {isAdminCreated ? 'Admin' : 'Alumni'}
+                      </Tag>
+                      <Tag color={eventItem.status === 'Upcoming' ? 'success' : eventItem.status === 'Ongoing' ? 'processing' : 'default'} style={{ fontWeight: 600 }}>
+                        {eventItem.status.toUpperCase()}
+                      </Tag>
+                      {isFull && <Tag color="red" style={{ fontWeight: 700 }}>FULL</Tag>}
+                    </Space>
+                  </div>
+
+                  <h3 style={{ fontSize: 18, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 10px 0', lineHeight: 1.3 }}>
+                    {eventItem.title}
+                  </h3>
+                  <p style={{ fontSize: 13, color: 'var(--ac-text-secondary)', margin: '0 0 16px 0', lineHeight: 1.5 }}>
+                    {eventItem.description}
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13, color: 'var(--ac-text-primary)', marginBottom: 20 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <FiCalendar color="var(--ac-brand)" /> <strong>{eventItem.date}</strong> ({eventItem.time})
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <FiMapPin color="var(--ac-brand)" /> {eventItem.location}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <FiUsers color="var(--ac-brand)" /> 
+                      <span style={{ color: 'var(--ac-text-primary)' }}>
+                        <strong>{eventItem.registeredCount}</strong> / {eventItem.capacity} Capacity
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--ac-text-secondary)', marginTop: 4 }}>
+                      Organizer: <strong>{eventItem.organizer}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Bar */}
+                <div style={{ paddingTop: 16, borderTop: '1px solid var(--ac-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Button
+                    type="text"
+                    icon={<FiEye />}
+                    style={{ color: 'var(--ac-brand)', fontWeight: 600 }}
+                    onClick={() => setViewParticipantsEvent(eventItem)}
+                  >
+                    View Registrations
+                  </Button>
                   <Space>
-                    <Tag color={isAdminCreated ? 'geekblue' : 'gold'} style={{ fontWeight: 700 }}>
-                      {isAdminCreated ? 'Admin' : 'Alumni'}
-                    </Tag>
-                    <Tag color={eventItem.status === 'Upcoming' ? 'success' : eventItem.status === 'Ongoing' ? 'processing' : 'default'} style={{ fontWeight: 600 }}>
-                      {eventItem.status}
-                    </Tag>
+                    <Button
+                      type="text"
+                      icon={<FiEdit2 />}
+                      onClick={() => {
+                        setEditingEvent(eventItem);
+                        setIsCreateOpen(true);
+                      }}
+                    />
+                    <Button
+                      type="text"
+                      danger
+                      icon={<FiTrash2 />}
+                      onClick={() => handleDeleteEvent(eventItem)}
+                    />
                   </Space>
                 </div>
-
-                <h3 style={{ fontSize: 18, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 10px 0', lineHeight: 1.3 }}>
-                  {eventItem.title}
-                </h3>
-                <p style={{ fontSize: 13, color: 'var(--ac-text-secondary)', margin: '0 0 16px 0', lineHeight: 1.5 }}>
-                  {eventItem.description}
-                </p>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13, color: 'var(--ac-text-primary)', marginBottom: 20 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <FiCalendar color="var(--ac-brand)" /> <strong>{eventItem.date}</strong> ({eventItem.time})
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <FiMapPin color="var(--ac-brand)" /> {eventItem.location}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <FiUsers color="var(--ac-brand)" /> 
-                    <span style={{ color: 'var(--ac-text-primary)' }}>
-                      <strong>{eventItem.registeredCount}</strong> / {eventItem.capacity} Capacity
-                    </span>
-                  </div>
-                </div>
               </div>
-
-              {/* Action Bar */}
-              <div style={{ paddingTop: 16, borderTop: '1px solid var(--ac-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Button
-                  type="text"
-                  icon={<FiEye />}
-                  style={{ color: 'var(--ac-brand)', fontWeight: 600 }}
-                  onClick={() => setViewParticipantsEvent(eventItem)}
-                >
-                  View Registrations
-                </Button>
-                <Space>
-                  <Button
-                    type="text"
-                    icon={<FiEdit2 />}
-                    onClick={() => {
-                      setEditEvent(eventItem);
-                      editForm.setFieldsValue(eventItem);
-                    }}
-                  />
-                  <Button
-                    type="text"
-                    danger
-                    icon={<FiTrash2 />}
-                    onClick={() => handleDeleteEvent(eventItem)}
-                  />
-                </Space>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* View Participants Modal */}
       <Modal
@@ -360,102 +457,72 @@ export const AdminEventsPage = () => {
         <div style={{ marginBottom: 16, fontWeight: 600, color: 'var(--ac-text-primary)' }}>
           Total Registrations: {viewParticipantsEvent?.registeredCount || 0} / {viewParticipantsEvent?.capacity || 0} Capacity
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Students Group */}
-          <div>
-            <h4 style={{ color: 'var(--ac-text-primary)', borderBottom: '1px solid var(--ac-border)', paddingBottom: 6, fontWeight: 700, marginBottom: 10 }}>
-              Students ({studentsList.length})
-            </h4>
-            {studentsList.length > 0 ? (
-              <Table
-                dataSource={studentsList}
-                rowKey="id"
-                pagination={false}
-                size="small"
-                columns={[
-                  { title: 'Name', dataIndex: 'name', key: 'name', render: (t) => <strong style={{ color: 'var(--ac-text-primary)' }}>{t}</strong> },
-                  { title: 'Email', dataIndex: 'email', key: 'email', render: (t) => <span style={{ color: 'var(--ac-text-primary)' }}>{t}</span> },
-                  { title: 'Reg. Date', dataIndex: 'date', key: 'date', render: (t) => <span style={{ color: 'var(--ac-text-secondary)' }}>{t}</span> },
-                  { title: 'Status', dataIndex: 'status', key: 'status', render: (s) => <Tag color="success">{s}</Tag> }
-                ]}
-              />
-            ) : (
-              <div style={{ color: 'var(--ac-text-secondary)', padding: '10px 0' }}>No students registered yet.</div>
-            )}
+        {loadingParticipants ? (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <Spin size="medium" />
+            <p style={{ marginTop: 12, color: 'var(--ac-text-secondary)' }}>Loading participants...</p>
           </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* Students Group */}
+            <div>
+              <h4 style={{ color: 'var(--ac-text-primary)', borderBottom: '1px solid var(--ac-border)', paddingBottom: 6, fontWeight: 700, marginBottom: 10 }}>
+                Students ({studentsList.length})
+              </h4>
+              {studentsList.length > 0 ? (
+                <Table
+                  dataSource={studentsList}
+                  rowKey="id"
+                  pagination={false}
+                  size="small"
+                  columns={[
+                    { title: 'Name', dataIndex: 'name', key: 'name', render: (t) => <strong style={{ color: 'var(--ac-text-primary)' }}>{t}</strong> },
+                    { title: 'Email', dataIndex: 'email', key: 'email', render: (t) => <span style={{ color: 'var(--ac-text-primary)' }}>{t}</span> },
+                    { title: 'Reg. Date', dataIndex: 'date', key: 'date', render: (t) => <span style={{ color: 'var(--ac-text-secondary)' }}>{t}</span> },
+                    { title: 'Status', dataIndex: 'status', key: 'status', render: (s) => <Tag color="success">{s}</Tag> }
+                  ]}
+                />
+              ) : (
+                <div style={{ color: 'var(--ac-text-secondary)', padding: '10px 0' }}>No students registered yet.</div>
+              )}
+            </div>
 
-          {/* Alumni Group */}
-          <div>
-            <h4 style={{ color: 'var(--ac-text-primary)', borderBottom: '1px solid var(--ac-border)', paddingBottom: 6, fontWeight: 700, marginBottom: 10 }}>
-              Alumni ({alumniList.length})
-            </h4>
-            {alumniList.length > 0 ? (
-              <Table
-                dataSource={alumniList}
-                rowKey="id"
-                pagination={false}
-                size="small"
-                columns={[
-                  { title: 'Name', dataIndex: 'name', key: 'name', render: (t) => <strong style={{ color: 'var(--ac-text-primary)' }}>{t}</strong> },
-                  { title: 'Email', dataIndex: 'email', key: 'email', render: (t) => <span style={{ color: 'var(--ac-text-primary)' }}>{t}</span> },
-                  { title: 'Reg. Date', dataIndex: 'date', key: 'date', render: (t) => <span style={{ color: 'var(--ac-text-secondary)' }}>{t}</span> },
-                  { title: 'Status', dataIndex: 'status', key: 'status', render: (s) => <Tag color="success">{s}</Tag> }
-                ]}
-              />
-            ) : (
-              <div style={{ color: 'var(--ac-text-secondary)', padding: '10px 0' }}>No alumni registered yet.</div>
-            )}
+            {/* Alumni Group */}
+            <div>
+              <h4 style={{ color: 'var(--ac-text-primary)', borderBottom: '1px solid var(--ac-border)', paddingBottom: 6, fontWeight: 700, marginBottom: 10 }}>
+                Alumni ({alumniList.length})
+              </h4>
+              {alumniList.length > 0 ? (
+                <Table
+                  dataSource={alumniList}
+                  rowKey="id"
+                  pagination={false}
+                  size="small"
+                  columns={[
+                    { title: 'Name', dataIndex: 'name', key: 'name', render: (t) => <strong style={{ color: 'var(--ac-text-primary)' }}>{t}</strong> },
+                    { title: 'Email', dataIndex: 'email', key: 'email', render: (t) => <span style={{ color: 'var(--ac-text-primary)' }}>{t}</span> },
+                    { title: 'Reg. Date', dataIndex: 'date', key: 'date', render: (t) => <span style={{ color: 'var(--ac-text-secondary)' }}>{t}</span> },
+                    { title: 'Status', dataIndex: 'status', key: 'status', render: (s) => <Tag color="success">{s}</Tag> }
+                  ]}
+                />
+              ) : (
+                <div style={{ color: 'var(--ac-text-secondary)', padding: '10px 0' }}>No alumni registered yet.</div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </Modal>
 
-      {/* Edit Event Modal */}
-      <Modal
-        title={`Edit Event "${editEvent?.title}"`}
-        open={!!editEvent}
-        onCancel={() => setEditEvent(null)}
-        onOk={handleSaveEdit}
-        okText="Save Event Changes"
-      >
-        <Form form={editForm} layout="vertical">
-          <Form.Item name="title" label="Event Title" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="category" label="Category" rules={[{ required: true }]}>
-            <Select options={[
-              { value: 'Webinar', label: 'Webinar' },
-              { value: 'Hackathon', label: 'Hackathon' },
-              { value: 'Networking', label: 'Networking Reunion' },
-              { value: 'Workshop', label: 'Workshop' }
-            ]} />
-          </Form.Item>
-          <Form.Item name="organizer" label="Event Organizer" rules={[{ required: true }]}>
-            <Select options={[
-              { value: 'Dr. Sarah Jenkins (Admin)', label: 'Dr. Sarah Jenkins (Admin)' },
-              { value: 'Arun Kumar (Alumni)', label: 'Arun Kumar (Alumni)' },
-              { value: 'Priya Sankar (Alumni)', label: 'Priya Sankar (Alumni)' }
-            ]} />
-          </Form.Item>
-          <Form.Item name="capacity" label="Max Capacity (seats)" rules={[{ required: true }]}>
-            <Input type="number" />
-          </Form.Item>
-          <Form.Item name="date" label="Date (YYYY-MM-DD)">
-            <Input />
-          </Form.Item>
-          <Form.Item name="time" label="Time">
-            <Input />
-          </Form.Item>
-          <Form.Item name="location" label="Location">
-            <Input />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      {/* Create Event Modal */}
+      {/* Shared Create / Edit Event Modal matching Alumni Module */}
       <CreateEventModal
         visible={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
+        onClose={() => {
+          setIsCreateOpen(false);
+          setEditingEvent(null);
+        }}
         onAddEvent={handleAddEvent}
+        onUpdateEvent={handleUpdateEvent}
+        editingEvent={editingEvent}
       />
     </AdminLayout>
   );

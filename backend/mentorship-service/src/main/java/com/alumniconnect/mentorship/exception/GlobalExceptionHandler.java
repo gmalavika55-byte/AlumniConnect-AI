@@ -19,6 +19,12 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<String> handleSecurity(SecurityException ex) {
+        System.out.println("Security Exception caught in mentorship-service: " + ex.getMessage());
+        return new ResponseEntity<>(ex.getMessage(), HttpStatus.FORBIDDEN);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleException(Exception ex) {
         System.out.println("Exception caught in mentorship-service GlobalExceptionHandler: "

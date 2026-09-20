@@ -100,6 +100,20 @@ public class DonationServiceImpl implements DonationService {
 
         Donation saved = donationRepository.save(donation);
         hydrateUserProfiles(saved);
+
+        // Send ADMIN notification for donation
+        try {
+            java.util.Map<String, Object> adminNotifPayload = new java.util.HashMap<>();
+            adminNotifPayload.put("userId", saved.getDonationId());
+            adminNotifPayload.put("userType", "ADMIN");
+            adminNotifPayload.put("title", "Donation Received");
+            adminNotifPayload.put("message", "A new donation of ₹" + saved.getAmount() + " has been successfully received.");
+            adminNotifPayload.put("notificationDate", java.time.LocalDateTime.now().toString());
+            adminNotifPayload.put("status", "UNREAD");
+
+            restTemplate.postForObject(authServiceUrl + "/notification/add", adminNotifPayload, Object.class);
+        } catch (Exception e) {}
+
         return saved;
     }
 

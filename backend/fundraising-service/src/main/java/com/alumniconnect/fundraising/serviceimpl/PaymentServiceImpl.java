@@ -3,17 +3,19 @@ package com.alumniconnect.fundraising.serviceimpl;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Optional;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
+import jakarta.annotation.PostConstruct;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import org.springframework.web.client.RestTemplate;
 
 import com.alumniconnect.fundraising.dto.CreateOrderRequest;
 import com.alumniconnect.fundraising.dto.CreateOrderResponse;
@@ -21,6 +23,7 @@ import com.alumniconnect.fundraising.dto.VerifyPaymentRequest;
 import com.alumniconnect.fundraising.entity.Donation;
 import com.alumniconnect.fundraising.entity.Fundraising;
 import com.alumniconnect.fundraising.exception.ResourceNotFoundException;
+import com.alumniconnect.fundraising.repository.DonationRepository;
 import com.alumniconnect.fundraising.repository.FundraisingRepository;
 import com.alumniconnect.fundraising.service.DonationService;
 import com.alumniconnect.fundraising.service.PaymentService;
@@ -34,17 +37,35 @@ public class PaymentServiceImpl implements PaymentService {
     private FundraisingRepository fundraisingRepository;
 
     @Autowired
+    private DonationRepository donationRepository;
+
+    @Autowired
     private DonationService donationService;
 
-    @Value("${razorpay.key.id:rzp_test_5173AlumniKCE}")
+    @Autowired
+    private RestTemplate restTemplate;
+
+    @Value("${auth-service.url:http://localhost:8101}")
+    private String authServiceUrl;
+
+    @Value("${razorpay.key.id:}")
     private String razorpayKeyId;
 
-    @Value("${razorpay.key.secret:secret123testKeyRazorpay456}")
+    @Value("${razorpay.key.secret:}")
     private String razorpayKeySecret;
 
-    // Cache to prevent duplicate payment callbacks
-    private final Set<String> processedPayments = ConcurrentHashMap.newKeySet();
-    private final ConcurrentHashMap<String, Donation> processedDonationMap = new ConcurrentHashMap<>();
+    @PostConstruct
+    public void initDiagnosticLog() {
+        boolean isKeyConfigured = razorpayKeyId != null && !razorpayKeyId.trim().isEmpty();
+        boolean isSecretConfigured = razorpayKeySecret != null && !razorpayKeySecret.trim().isEmpty();
+        String prefix = (isKeyConfigured && razorpayKeyId.length() >= 8) ? razorpayKeyId.substring(0, 8) + "..." : (isKeyConfigured ? razorpayKeyId : "NOT_SET");
+
+        System.out.println("=== RAZORPAY CONFIGURATION DIAGNOSTIC ===");
+        System.out.println("Razorpay Key ID Configured: " + isKeyConfigured);
+        System.out.println("Razorpay Key ID Prefix:     " + prefix);
+        System.out.println("Razorpay Secret Configured: " + isSecretConfigured);
+        System.out.println("=========================================");
+    }
 
     @Override
     public CreateOrderResponse createOrder(CreateOrderRequest request) {
@@ -56,6 +77,10 @@ public class PaymentServiceImpl implements PaymentService {
         }
         if (request.getFundId() == null) {
             throw new IllegalArgumentException("Campaign ID must be specified.");
+        }
+
+        if (razorpayKeyId == null || razorpayKeyId.trim().isEmpty() || razorpayKeySecret == null || razorpayKeySecret.trim().isEmpty()) {
+            throw new IllegalArgumentException("Razorpay Order Creation Failed: RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables are missing or not configured in backend environment.");
         }
 
         Long fundId = request.getFundId();
@@ -89,19 +114,23 @@ public class PaymentServiceImpl implements PaymentService {
         long amountInPaise = Math.round(request.getAmount() * 100);
         String razorpayOrderId = null;
 
+        String keyPrefix = razorpayKeyId.length() >= 8 ? razorpayKeyId.substring(0, 8) : razorpayKeyId;
+        System.out.println("Creating Razorpay Order via Razorpay API -> Fund ID: " + fundId + ", Amount: ₹" + request.getAmount() + " (" + amountInPaise + " paise), Key ID Prefix: " + keyPrefix);
+
         try {
             RazorpayClient razorpay = new RazorpayClient(razorpayKeyId, razorpayKeySecret);
             JSONObject orderRequest = new JSONObject();
             orderRequest.put("amount", amountInPaise);
             orderRequest.put("currency", "INR");
-            orderRequest.put("receipt", "rcpt_" + fundId + "_" + System.currentTimeMillis());
+            orderRequest.put("receipt", "rcpt_fund_" + fundId + "_alumni_" + request.getAlumniId() + "_" + System.currentTimeMillis());
 
             Order order = razorpay.orders.create(orderRequest);
             razorpayOrderId = order.get("id");
-            System.out.println("Razorpay Sandbox Order Created: " + razorpayOrderId);
+            String orderStatus = order.get("status");
+            System.out.println("Real Razorpay API Order Created Successfully: " + razorpayOrderId + " [Status: " + orderStatus + "]");
         } catch (Exception e) {
-            System.out.println("Razorpay API Notice: " + e.getMessage() + ". Initializing local Test Mode Order ID.");
-            razorpayOrderId = "order_test_" + System.currentTimeMillis() + "_" + fundId;
+            System.err.println("Razorpay API Order Creation Error: " + e.getMessage());
+            throw new IllegalArgumentException("Razorpay Order Creation Failed: " + e.getMessage() + ". Please ensure valid RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables are set.");
         }
 
         return new CreateOrderResponse(
@@ -132,15 +161,14 @@ public class PaymentServiceImpl implements PaymentService {
 
         String paymentId = request.getRazorpayPaymentId().trim();
 
-        // Duplicate payment protection
-        if (processedPayments.contains(paymentId)) {
-            Donation existing = processedDonationMap.get(paymentId);
-            if (existing != null) {
-                return existing;
-            }
+        // 1. Persistent Duplicate Payment Protection across service restarts
+        Optional<Donation> existingDonation = donationRepository.findByTransactionId(paymentId);
+        if (existingDonation.isPresent()) {
+            System.out.println("Duplicate Payment Callback Detected for Payment ID " + paymentId + ". Returning existing donation.");
+            return existingDonation.get();
         }
 
-        // Verify Razorpay HMAC-SHA256 Signature
+        // 2. Server-side HMAC-SHA256 Signature Verification
         boolean isSignatureValid = verifyHmacSha256(
             request.getRazorpayOrderId().trim(),
             paymentId,
@@ -152,23 +180,106 @@ public class PaymentServiceImpl implements PaymentService {
             throw new IllegalArgumentException("Payment verification failed. Invalid Razorpay signature.");
         }
 
-        // Prepare donation entity and delegate to existing DonationServiceImpl
+        // 3. Prepare donation entity and delegate to existing DonationServiceImpl
         Donation donation = new Donation();
         donation.setAmount(request.getAmount());
         donation.setAlumniId(request.getAlumniId());
         donation.setDonationDate(LocalDate.now());
         donation.setPaymentStatus("SUCCESS");
+        donation.setTransactionId(paymentId);
 
         Fundraising f = new Fundraising();
         f.setFundId(request.getFundId());
         donation.setFundraising(f);
 
-        Donation saved = donationService.processDonation(donation);
+        Donation savedDonation = donationService.processDonation(donation);
 
-        processedPayments.add(paymentId);
-        processedDonationMap.put(paymentId, saved);
+        // 4. Create Alumni & Admin Notifications after successful verification & persistence
+        try {
+            sendDonationNotifications(savedDonation, request.getFundId());
+        } catch (Exception e) {
+            System.err.println("Failed to send donation notifications: " + e.getMessage());
+        }
 
-        return saved;
+        return savedDonation;
+    }
+
+    private void sendDonationNotifications(Donation donation, Long fundId) {
+        if (donation == null || donation.getAmount() == null) return;
+
+        String campaignTitle = "Fundraising Campaign";
+        if (fundId != null) {
+            try {
+                Fundraising f = fundraisingRepository.findById(fundId).orElse(null);
+                if (f != null && f.getTitle() != null) {
+                    campaignTitle = f.getTitle();
+                }
+            } catch (Exception ignored) {}
+        }
+
+        String formattedAmount = String.format("%,d", Math.round(donation.getAmount()));
+
+        // 1. Alumni Notification
+        if (donation.getAlumniId() != null) {
+            try {
+                java.util.Map<String, Object> alumniNotif = new java.util.HashMap<>();
+                alumniNotif.put("userId", donation.getAlumniId().longValue());
+                alumniNotif.put("userType", "ALUMNI");
+                alumniNotif.put("title", "Donation Successful");
+                alumniNotif.put("message", "Your contribution of ₹" + formattedAmount + " to \"" + campaignTitle + "\" was successful.");
+                alumniNotif.put("notificationDate", java.time.LocalDateTime.now().toString());
+                alumniNotif.put("status", "UNREAD");
+
+                restTemplate.postForObject(authServiceUrl + "/notification/add", alumniNotif, Object.class);
+                System.out.println("Donation notification sent to Alumni ID " + donation.getAlumniId());
+            } catch (Exception e) {
+                System.err.println("Failed to send Alumni donation notification: " + e.getMessage());
+            }
+        }
+
+        // 2. Admin Notification
+        try {
+            java.util.List<Long> adminIds = new java.util.ArrayList<>();
+            try {
+                Object[] admins = restTemplate.getForObject(authServiceUrl + "/admin/getall", Object[].class);
+                if (admins != null && admins.length > 0) {
+                    for (Object obj : admins) {
+                        if (obj instanceof java.util.Map) {
+                            java.util.Map<?, ?> adminMap = (java.util.Map<?, ?>) obj;
+                            Object adminIdObj = adminMap.get("adminId");
+                            if (adminIdObj instanceof Number) {
+                                adminIds.add(((Number) adminIdObj).longValue());
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("Failed to fetch admin list from auth-service, using default admin ID 5: " + e.getMessage());
+            }
+
+            if (adminIds.isEmpty()) {
+                adminIds.add(5L); // Default Admin ID from database
+            }
+
+            for (Long adminId : adminIds) {
+                try {
+                    java.util.Map<String, Object> adminNotif = new java.util.HashMap<>();
+                    adminNotif.put("userId", adminId);
+                    adminNotif.put("userType", "ADMIN");
+                    adminNotif.put("title", "New Fundraising Contribution");
+                    adminNotif.put("message", "An alumni has contributed ₹" + formattedAmount + " to \"" + campaignTitle + "\".");
+                    adminNotif.put("notificationDate", java.time.LocalDateTime.now().toString());
+                    adminNotif.put("status", "UNREAD");
+
+                    restTemplate.postForObject(authServiceUrl + "/notification/add", adminNotif, Object.class);
+                    System.out.println("Donation notification sent to Admin ID " + adminId);
+                } catch (Exception ex) {
+                    System.err.println("Failed to send Admin donation notification to ID " + adminId + ": " + ex.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error creating admin notifications: " + e.getMessage());
+        }
     }
 
     private boolean verifyHmacSha256(String orderId, String paymentId, String signature, String secret) {

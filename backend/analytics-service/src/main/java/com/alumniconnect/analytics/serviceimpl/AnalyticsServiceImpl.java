@@ -42,22 +42,23 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                 Map<?, ?> alumni = (Map<?, ?>) obj;
                 
                 String company = (String) alumni.get("currentCompany");
-                if (company != null && !company.isEmpty()) {
-                    companies.put(company, companies.getOrDefault(company, 0) + 1);
+                if (company != null && !company.trim().isEmpty()) {
+                    companies.put(company.trim(), companies.getOrDefault(company.trim(), 0) + 1);
                 }
 
                 String role = (String) alumni.get("designation");
-                if (role != null && !role.isEmpty()) {
-                    roles.put(role, roles.getOrDefault(role, 0) + 1);
+                if (role != null && !role.trim().isEmpty()) {
+                    roles.put(role.trim(), roles.getOrDefault(role.trim(), 0) + 1);
                 }
 
                 String skillsStr = (String) alumni.get("skills");
-                if (skillsStr != null && !skillsStr.isEmpty()) {
+                if (skillsStr != null && !skillsStr.trim().isEmpty()) {
                     String[] skillsArr = skillsStr.split(",");
                     for (String s : skillsArr) {
                         String skill = s.trim();
                         if (!skill.isEmpty()) {
-                            skillsMap.put(skill, skillsMap.getOrDefault(skill, 0) + 1);
+                            String normSkill = normalizeSkill(skill);
+                            skillsMap.put(normSkill, skillsMap.getOrDefault(normSkill, 0) + 1);
                         }
                     }
                 }
@@ -131,17 +132,29 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         return result;
     }
 
+    private String normalizeSkill(String skill) {
+        if (skill == null || skill.trim().isEmpty()) return "";
+        String s = skill.trim();
+        String lower = s.toLowerCase();
+        if ("java".equals(lower)) return "Java";
+        if ("python".equals(lower)) return "Python";
+        if ("react".equals(lower) || "react.js".equals(lower) || "reactjs".equals(lower)) return "React.js";
+        if ("spring boot".equals(lower) || "springboot".equals(lower) || "spring".equals(lower)) return "Spring Boot";
+        if ("sql".equals(lower) || "mysql".equals(lower) || "oracle".equals(lower)) return "SQL";
+        return s.substring(0, 1).toUpperCase() + s.substring(1);
+    }
+
     private String classifySector(String company, String role) {
-        if (company == null) return "Other";
+        if (company == null) return "Software & Services";
         String lowerCompany = company.toLowerCase();
         if (lowerCompany.contains("google") || lowerCompany.contains("amazon") || lowerCompany.contains("microsoft") || lowerCompany.contains("aws")) {
-            return "Big Tech";
+            return "Big Tech & Cloud";
         }
-        if (lowerCompany.contains("flipkart") || lowerCompany.contains("strype") || lowerCompany.contains("shopify")) {
-            return "E-Commerce / Fintech";
+        if (lowerCompany.contains("flipkart") || lowerCompany.contains("stripe") || lowerCompany.contains("shopify") || lowerCompany.contains("fintech")) {
+            return "Finance / FinTech";
         }
-        if (lowerCompany.contains("tcs") || lowerCompany.contains("wipro") || lowerCompany.contains("cognizant") || lowerCompany.contains("infosys")) {
-            return "IT Services";
+        if (lowerCompany.contains("tcs") || lowerCompany.contains("wipro") || lowerCompany.contains("cognizant") || lowerCompany.contains("infosys") || lowerCompany.contains("accenture")) {
+            return "IT Services & Consulting";
         }
         return "Software & Services";
     }
@@ -154,11 +167,14 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
         for (Object obj : alumniList) {
             Map<?, ?> alumni = (Map<?, ?>) obj;
-            Integer exp = (Integer) alumni.get("experience");
-            if (exp != null) {
-                if (exp <= 2) entryLevelCount++;
-                else if (exp <= 5) midLevelCount++;
-                else seniorLevelCount++;
+            Object expObj = alumni.get("experience");
+            if (expObj != null) {
+                try {
+                    int exp = Integer.parseInt(expObj.toString());
+                    if (exp <= 2) entryLevelCount++;
+                    else if (exp <= 5) midLevelCount++;
+                    else seniorLevelCount++;
+                } catch (Exception ignored) {}
             }
         }
 

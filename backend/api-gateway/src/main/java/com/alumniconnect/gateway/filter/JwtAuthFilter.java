@@ -78,7 +78,9 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
                path.startsWith("/auth/alumni/register") ||
                path.startsWith("/auth/forgot-password") ||
                path.startsWith("/auth/verify-otp") ||
-               path.startsWith("/auth/reset-password");
+               path.startsWith("/auth/reset-password") ||
+               path.contains("/swagger-ui") ||
+               path.contains("/v3/api-docs");
     }
 
     private Mono<Void> onError(ServerWebExchange exchange, String err, HttpStatus status) {

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { authService } from '../services/authService';
 import React, { useState, useRef } from 'react';
-import { message, Modal, Input } from 'antd';
+import { message, Modal, Input, Button } from 'antd';
 import api from "../services/api";
 import {
   FiEdit2,
@@ -131,28 +131,124 @@ export const StudentProfilePage = () => {
     }
   };
 
-  const openSafeResumeUrl = (url) => {
+  const openSafeResumeUrl = async (url) => {
     if (!url || typeof url !== 'string' || url.trim() === '' || url === '#') {
-      message.warning('Resume link / document URL is not available.');
+      message.warning('Document URL is not available.');
       return;
     }
     const trimmed = url.trim();
-    const fullUrl = (trimmed.startsWith('http://') || trimmed.startsWith('https://'))
-      ? trimmed
-      : `https://${trimmed}`;
-    window.open(fullUrl, '_blank', 'noopener,noreferrer');
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      window.open(trimmed, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    try {
+      message.loading('Retrieving document...');
+      const response = await api.get(trimmed, { responseType: 'blob' });
+      const contentType = response.headers['content-type'] || 'application/pdf';
+      const disposition = response.headers['content-disposition'] || '';
+
+      const blob = new Blob([response.data], { type: contentType });
+      const blobUrl = URL.createObjectURL(blob);
+
+      if (disposition.includes('attachment') || contentType.includes('msword') || contentType.includes('wordprocessingml')) {
+        let filename = 'document';
+        const filenameMatch = disposition.match(/filename="?([^"]+)"?/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1];
+        }
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        window.open(blobUrl, '_blank');
+      }
+    } catch (err) {
+      console.error('Error retrieving document:', err);
+      if (err.response?.status === 404) {
+        message.error('Document file not found on server.');
+      } else if (err.response?.status === 401 || err.response?.status === 403) {
+        message.error('Unauthorized access to document.');
+      } else {
+        message.error('Failed to retrieve document.');
+      }
+    }
   };
 
-  const handleResumeUpload = (e) => {
+  const handleResumeUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setProfile(prev => ({
-        ...prev,
-        resumeName: file.name,
-        resumeSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`
-      }));
-      message.success(`Resume "${file.name}" selected!`);
+    if (!file || !student) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      message.error('File size exceeds maximum limit of 5 MB.');
+      return;
     }
+
+    const name = file.name.toLowerCase();
+    if (!name.endsWith('.pdf') && !name.endsWith('.doc') && !name.endsWith('.docx')) {
+      message.error('Invalid file format. Only PDF, DOC, and DOCX files are allowed.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      message.loading('Uploading resume...');
+      const res = await api.post(`/student/${student.studentId}/resume/upload`, formData);
+      message.success(`Resume "${file.name}" uploaded successfully!`);
+      await fetchFreshProfile();
+    } catch (err) {
+      console.error('Resume upload error:', err);
+      const errMsg = typeof err.response?.data === 'string'
+        ? err.response.data
+        : (err.response?.data?.message || 'Failed to upload resume file.');
+      message.error(errMsg);
+    }
+  };
+
+  const handleDeleteResume = () => {
+    Modal.confirm({
+      title: 'Remove Primary Resume?',
+      content: 'Are you sure you want to delete your saved resume details from your profile?',
+      okText: 'Remove Resume',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      async onOk() {
+        if (!student || !student.studentId) return;
+
+        try {
+          const profileRes = await api.get(`/student/get/${student.studentId}`);
+          const freshStudent = profileRes.data;
+          const updatedStudent = {
+            ...freshStudent,
+            resumeName: '',
+            resumeUrl: ''
+          };
+          const res = await api.put('/student/update', updatedStudent);
+          const savedUser = res.data;
+
+          localStorage.setItem('alumni_user_data', JSON.stringify({
+            ...savedUser,
+            role: student.role
+          }));
+
+          setProfile(prev => ({
+            ...prev,
+            resumeName: '',
+            resumeUrl: ''
+          }));
+
+          message.success('Resume removed successfully!');
+        } catch (err) {
+          console.error('Error deleting resume:', err);
+          message.error('Failed to remove resume from profile.');
+        }
+      }
+    });
   };
 
   const handleAddSkill = async (newSkill) => {
@@ -250,15 +346,27 @@ export const StudentProfilePage = () => {
 
   const handleAddCertificate = async (newCert) => {
     if (!student) return;
-    const payload = {
-      studentId: student.studentId,
-      certificateName: newCert.name,
-      organization: newCert.organization,
-      issueDate: newCert.issueDate,
-      certificateUrl: newCert.url || '#'
-    };
     try {
-      await api.post('/certificate/add', payload);
+      if (newCert.file) {
+        const formData = new FormData();
+        formData.append('studentId', student.studentId);
+        formData.append('certificateName', newCert.name);
+        formData.append('organization', newCert.organization);
+        formData.append('issueDate', newCert.issueDate);
+        if (newCert.url) formData.append('url', newCert.url);
+        formData.append('file', newCert.file);
+
+        await api.post('/certificate/upload', formData);
+      } else {
+        const payload = {
+          studentId: student.studentId,
+          certificateName: newCert.name,
+          organization: newCert.organization,
+          issueDate: newCert.issueDate,
+          certificateUrl: newCert.url || '#'
+        };
+        await api.post('/certificate/add', payload);
+      }
       message.success(`Certificate "${newCert.name}" added successfully!`);
       await fetchCertificates();
     } catch (err) {
@@ -382,8 +490,8 @@ export const StudentProfilePage = () => {
             <button className={styles.editBtn} onClick={() => setIsEditModalOpen(true)}>
               <FiEdit2 /> Edit Profile
             </button>
-            <button className={styles.uploadResumeBtn} onClick={() => setIsEditModalOpen(true)}>
-              <FiFileText /> {profile.resumeName || profile.resumeUrl ? 'Change Resume Link' : 'Set Resume Link'}
+            <button className={styles.uploadResumeBtn} onClick={() => fileInputRef.current?.click()}>
+              <FiUpload /> {profile.resumeName || profile.resumeUrl ? 'Upload / Change Resume' : 'Upload Resume File'}
             </button>
           </div>
         </div>
@@ -609,7 +717,8 @@ export const StudentProfilePage = () => {
                 <FiFileText style={{ color: '#1b62d4' }} /> Primary Resume
               </h3>
             </div>
-            <div className={styles.resumeBox}>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 12, padding: 16, gap: 12, flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 180 }}>
                 <h4 style={{ margin: 0, fontSize: 14, color: '#0f1e36' }}>
                   {profile.resumeName || profile.resumeUrl ? (
@@ -619,25 +728,53 @@ export const StudentProfilePage = () => {
                   )}
                 </h4>
                 <span style={{ fontSize: 11, color: '#64748b', marginTop: 4, display: 'block', wordBreak: 'break-all' }}>
-                  {profile.resumeUrl ? profile.resumeUrl : 'No document link provided'}
+                  {profile.resumeUrl ? profile.resumeUrl : 'No document uploaded yet'}
                 </span>
               </div>
+
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                {profile.resumeUrl && (
-                  <button
-                    className={styles.addBtnSmall}
-                    style={{ backgroundColor: '#1b62d4', color: '#ffffff', borderColor: '#1b62d4' }}
-                    onClick={() => openSafeResumeUrl(profile.resumeUrl)}
+                {profile.resumeName || profile.resumeUrl ? (
+                  <>
+                    {profile.resumeUrl && (
+                      <Button
+                        icon={<FiExternalLink />}
+                        type="primary"
+                        size="small"
+                        style={{ fontWeight: 600, backgroundColor: '#1b62d4', borderColor: '#1b62d4' }}
+                        onClick={() => openSafeResumeUrl(profile.resumeUrl)}
+                      >
+                        View Resume
+                      </Button>
+                    )}
+                    <Button
+                      icon={<FiUpload />}
+                      size="small"
+                      style={{ fontWeight: 600 }}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Replace File
+                    </Button>
+                    <Button
+                      icon={<FiTrash2 />}
+                      danger
+                      size="small"
+                      style={{ fontWeight: 600 }}
+                      onClick={handleDeleteResume}
+                    >
+                      Remove
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    type="primary"
+                    icon={<FiUpload />}
+                    size="small"
+                    style={{ fontWeight: 600, backgroundColor: '#1b62d4', borderColor: '#1b62d4' }}
+                    onClick={() => fileInputRef.current?.click()}
                   >
-                    <FiExternalLink /> View Resume
-                  </button>
+                    Upload Computer File
+                  </Button>
                 )}
-                <button
-                  className={styles.addBtnSmall}
-                  onClick={() => setIsEditModalOpen(true)}
-                >
-                  <FiEdit2 /> {profile.resumeName || profile.resumeUrl ? 'Change Link' : 'Set Resume Link'}
-                </button>
               </div>
             </div>
           </div>

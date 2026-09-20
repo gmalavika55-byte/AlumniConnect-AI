@@ -4,10 +4,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import com.alumniconnect.fundraising.entity.Donation;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface DonationRepository extends JpaRepository<Donation, Long> {
     List<Donation> findByFundraisingFundId(Long fundId);
     List<Donation> findByAlumniId(Integer alumniId);
     List<Donation> findByPaymentStatus(String paymentStatus);
+    Optional<Donation> findByTransactionId(String transactionId);
 }

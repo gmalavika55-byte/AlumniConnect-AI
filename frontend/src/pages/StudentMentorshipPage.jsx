@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { message, Tag, Modal } from 'antd';
+import { message, Tag, Modal, Spin } from 'antd';
 import {
   FiUsers, FiCalendar, FiVideo, FiMessageSquare, FiStar,
-  FiClock, FiCheckCircle, FiRefreshCw, FiXCircle, FiCheck, FiArrowRight
+  FiClock, FiCheckCircle, FiRefreshCw, FiXCircle, FiCheck, FiArrowRight, FiCpu, FiZap, FiCheckSquare
 } from 'react-icons/fi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { RequestMentorshipModal } from '../components/student/RequestMentorshipModal';
 import { JoinMeetingModal } from '../components/student/JoinMeetingModal';
 import { LeaveFeedbackModal } from '../components/student/LeaveFeedbackModal';
+import { MentorshipChatModal } from '../components/common/MentorshipChatModal';
 import { useAppContext } from '../context/AppContext';
 import { authService } from '../services/authService';
 import api from '../services/api';
@@ -24,6 +25,13 @@ export const StudentMentorshipPage = () => {
   const [activeSession, setActiveSession] = useState(null);
   const [isMeetingOpen, setIsMeetingOpen] = useState(false);
   const [feedbackSession, setFeedbackSession] = useState(null);
+  const [chatSession, setChatSession] = useState(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+
+  // AI Matching Recommendation State
+  const [aiRecommendations, setAiRecommendations] = useState([]);
+  const [loadingAi, setLoadingAi] = useState(false);
+  const [hasSearchedAi, setHasSearchedAi] = useState(false);
 
   const {
     searchQuery,
@@ -36,7 +44,7 @@ export const StudentMentorshipPage = () => {
 
   // ── Current Logged-in Student ──
   const currentUser = authService.getCurrentUser();
-  const currentStudentId = currentUser ? (currentUser.studentId || null) : null;
+  const currentStudentId = currentUser ? (currentUser.studentId || currentUser.id || null) : null;
 
   const handleRequestClick = (mentor) => {
     if (!currentStudentId) {
@@ -47,8 +55,32 @@ export const StudentMentorshipPage = () => {
     setIsRequestModalOpen(true);
   };
 
+  const handleFetchAiRecommendations = async () => {
+    if (!currentStudentId) {
+      message.error('Please log in as a student to receive AI recommendations.');
+      return;
+    }
+    setLoadingAi(true);
+    try {
+      const res = await api.get(`/mentorship/ai/recommendations/${currentStudentId}`);
+      const recs = res.data?.recommendations || [];
+      setAiRecommendations(recs);
+      setHasSearchedAi(true);
+      if (recs.length > 0) {
+        message.success(`Found ${recs.length} AI-recommended mentors for your career goals!`);
+      } else {
+        message.info('No suitable mentors are currently available. Please try again later.');
+      }
+    } catch (err) {
+      console.error('Error fetching AI recommendations:', err);
+      message.error('Unable to load AI mentor recommendations. Please check server connection.');
+    } finally {
+      setLoadingAi(false);
+    }
+  };
+
   const handleRequestSuccess = async (reqData) => {
-    const mentor = mentors.find(m => String(m.id) === String(reqData.mentorId));
+    const mentor = mentors.find(m => String(m.id) === String(reqData.mentorId)) || { id: reqData.mentorId, name: selectedMentor?.name };
     if (!mentor) {
       message.error('Mentor not found.');
       return;
@@ -67,7 +99,7 @@ export const StudentMentorshipPage = () => {
         requestDate: new Date().toISOString().split('T')[0]
       };
       await api.post('/mentorship/add', payload);
-      message.success(`Mentorship request submitted successfully to ${mentor.name}!`);
+      message.success(`Mentorship request submitted successfully to ${mentor.name || selectedMentor?.name || 'Alumni Mentor'}!`);
       await refreshData();
     } catch (err) {
       console.error('Error creating mentorship request:', err);
@@ -120,7 +152,6 @@ export const StudentMentorshipPage = () => {
   };
 
   // ── 1. Available Mentors Filter ──
-  // A mentor MUST NOT appear in Available Mentors if the student currently has a PENDING or ACCEPTED/ACTIVE request/relationship with that mentor!
   const availableMentorsList = (mentors || []).filter(m => {
     const mentorReqs = (requests || []).filter(r => String(r.mentorId) === String(m.id));
     const hasPendingOrAccepted = mentorReqs.some(r => {
@@ -218,6 +249,151 @@ export const StudentMentorshipPage = () => {
       {/* ── 1. Available Mentors Tab ── */}
       {activeTab === 'Available Mentors' && (
         <>
+          {/* ================================================== */}
+          {/* AI MENTORSHIP MATCHING RECOMMENDATION SECTION     */}
+          {/* ================================================== */}
+          <div style={{
+            backgroundColor: 'var(--ac-bg-card)',
+            borderRadius: 16,
+            border: '1px solid var(--ac-brand)',
+            padding: 24,
+            marginBottom: 32,
+            boxShadow: '0 4px 20px rgba(27, 98, 212, 0.08)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 16 }}>
+              <div style={{ flex: '1 1 300px' }}>
+                <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--ac-text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <FiCpu color="var(--ac-brand)" size={22} /> AI Recommended Mentors
+                </h2>
+                <p style={{ fontSize: 13.5, color: 'var(--ac-text-secondary)', margin: '4px 0 0 0' }}>
+                  Machine-learning recommendations matching your career goals, technical skills, department, and course.
+                </p>
+              </div>
+
+              <button
+                className={styles.primaryBtn}
+                disabled={loadingAi}
+                onClick={handleFetchAiRecommendations}
+                style={{
+                  backgroundColor: 'var(--ac-brand)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  height: 42,
+                  width: '240px',
+                  maxWidth: '100%',
+                  flex: 'none',
+                  padding: '0 20px',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  borderRadius: 10,
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {loadingAi ? <Spin size="small" /> : <FiZap size={16} />}
+                {loadingAi ? 'Calculating Match Scores...' : 'Find Best Mentors'}
+              </button>
+            </div>
+
+            {/* AI Results */}
+            {loadingAi ? (
+              <div style={{ textAlign: 'center', padding: '30px 0' }}>
+                <Spin size="large" />
+                <p style={{ marginTop: 12, color: 'var(--ac-text-secondary)', fontWeight: 600 }}>
+                  Analyzing career goals and calculating TF-IDF skill cosine vectors...
+                </p>
+              </div>
+            ) : hasSearchedAi && aiRecommendations.length > 0 ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginTop: 20 }}>
+                {aiRecommendations.map((rec) => (
+                  <div key={rec.alumniId} style={{
+                    backgroundColor: 'var(--ac-bg-input)',
+                    borderRadius: 12,
+                    border: '1px solid var(--ac-border)',
+                    padding: 18,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justify: 'space-between'
+                  }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                        <div>
+                          <h4 style={{ fontSize: 16, fontWeight: 800, color: 'var(--ac-text-primary)', margin: 0 }}>
+                            {rec.name}
+                          </h4>
+                          <p style={{ fontSize: 13, color: 'var(--ac-text-secondary)', margin: '2px 0 0 0' }}>
+                            {rec.designation} {rec.company && rec.company !== 'N/A' ? `at ${rec.company}` : ''}
+                          </p>
+                          <p style={{ fontSize: 12, color: 'var(--ac-text-muted)', margin: '2px 0 0 0' }}>
+                            {rec.department} • {rec.experience > 0 ? `${rec.experience} yrs exp` : 'Alumni'}
+                          </p>
+                        </div>
+
+                        <Tag color="green" style={{ fontSize: 13, fontWeight: 800, padding: '4px 10px', borderRadius: 20 }}>
+                          {rec.matchScore}% Match
+                        </Tag>
+                      </div>
+
+                      {/* Matching Reasons List */}
+                      <div style={{ marginTop: 12, marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {(rec.reasons || []).map((reason, rIdx) => (
+                          <div key={rIdx} style={{ fontSize: 12.5, color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <FiCheck size={14} color="#16a34a" /> {reason}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+                      <button
+                        className={styles.secondaryBtn}
+                        style={{ flex: 1, height: 36, fontSize: 12.5 }}
+                        onClick={() => {
+                          const mentorObj = mentors.find(m => String(m.id) === String(rec.alumniId)) || {
+                            id: rec.alumniId,
+                            name: rec.name,
+                            role: rec.designation,
+                            company: rec.company,
+                            department: rec.department
+                          };
+                          navigate(`/student/mentor/${rec.alumniId}`, { state: { mentor: mentorObj } });
+                        }}
+                      >
+                        View Profile
+                      </button>
+                      <button
+                        className={styles.primaryBtn}
+                        style={{ flex: 1, height: 36, fontSize: 12.5 }}
+                        onClick={() => {
+                          const mentorObj = mentors.find(m => String(m.id) === String(rec.alumniId)) || {
+                            id: rec.alumniId,
+                            name: rec.name,
+                            role: rec.designation,
+                            company: rec.company,
+                            department: rec.department
+                          };
+                          handleRequestClick(mentorObj);
+                        }}
+                      >
+                        Request Mentorship
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : hasSearchedAi && aiRecommendations.length === 0 ? (
+              <p style={{ color: 'var(--ac-text-secondary)', margin: '16px 0 0 0', fontWeight: 500 }}>
+                No suitable mentors are currently available. Please try again later.
+              </p>
+            ) : null}
+          </div>
+
+          {/* All Available Mentors Grid */}
+          <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ac-text-primary)', marginBottom: 16 }}>
+            All Available Mentors
+          </h3>
+
           {availableMentorsList.length > 0 ? (
             <div className={styles.mentorGrid}>
               {availableMentorsList.map(mentor => (
@@ -229,7 +405,6 @@ export const StudentMentorshipPage = () => {
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <h3 className={styles.mentorName}>{mentor.name}</h3>
-                        <span className={styles.matchPill}>{mentor.match}</span>
                       </div>
                       <p className={styles.mentorRole}>{mentor.role} at <strong>{mentor.company}</strong></p>
                       <div style={{ fontSize: 12, color: '#eab308', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
@@ -341,13 +516,25 @@ export const StudentMentorshipPage = () => {
                       )}
 
                       {statusStr === 'ACCEPTED' && (
-                        <button
-                          className={styles.primaryBtn}
-                          style={{ flex: 'none', padding: '8px 16px', height: 'auto', fontSize: '12px' }}
-                          onClick={() => setActiveTab('Active Mentorships')}
-                        >
-                          View Mentorship →
-                        </button>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            className={styles.primaryBtn}
+                            style={{ flex: 'none', padding: '8px 16px', height: 'auto', fontSize: '12px' }}
+                            onClick={() => setActiveTab('Active Mentorships')}
+                          >
+                            View Mentorship →
+                          </button>
+                          <button
+                            className={styles.secondaryBtn}
+                            style={{ flex: 'none', padding: '8px 16px', height: 'auto', fontSize: '12px', borderColor: '#1b62d4', color: '#1b62d4', display: 'flex', alignItems: 'center', gap: 4 }}
+                            onClick={() => {
+                              setChatSession(req);
+                              setIsChatOpen(true);
+                            }}
+                          >
+                            <FiMessageSquare /> Chat with Mentor
+                          </button>
+                        </div>
                       )}
 
                       {(statusStr === 'DECLINED' || statusStr === 'REJECTED' || statusStr === 'CANCELLED') && (
@@ -410,6 +597,16 @@ export const StudentMentorshipPage = () => {
                     }}
                   >
                     <FiVideo /> Join Live Call
+                  </button>
+                  <button
+                    className={styles.secondaryBtn}
+                    style={{ flex: 'none', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 8, borderColor: '#1b62d4', color: '#1b62d4' }}
+                    onClick={() => {
+                      setChatSession(session);
+                      setIsChatOpen(true);
+                    }}
+                  >
+                    <FiMessageSquare /> Chat with Mentor
                   </button>
                 </div>
               </div>
@@ -484,6 +681,20 @@ export const StudentMentorshipPage = () => {
         visible={!!feedbackSession}
         session={feedbackSession}
         onClose={() => setFeedbackSession(null)}
+      />
+
+      {/* Mentorship Chat Modal */}
+      <MentorshipChatModal
+        visible={isChatOpen}
+        onClose={() => {
+          setIsChatOpen(false);
+          setChatSession(null);
+        }}
+        mentorship={chatSession}
+        currentUser={{
+          userId: currentStudentId,
+          userType: 'STUDENT'
+        }}
       />
     </StudentLayout>
   );

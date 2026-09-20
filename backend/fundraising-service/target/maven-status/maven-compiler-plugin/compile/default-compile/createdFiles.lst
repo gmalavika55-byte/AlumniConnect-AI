@@ -16,4 +16,5 @@ com\alumniconnect\fundraising\serviceimpl\PaymentServiceImpl.class
 com\alumniconnect\fundraising\service\DonationService.class
 com\alumniconnect\fundraising\dto\CreateOrderRequest.class
 com\alumniconnect\fundraising\exception\GlobalExceptionHandler.class
+com\alumniconnect\fundraising\config\OpenApiConfig.class
 com\alumniconnect\fundraising\repository\FundraisingRepository.class

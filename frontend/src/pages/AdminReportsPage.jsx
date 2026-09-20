@@ -1,172 +1,218 @@
-import React, { useState, useEffect } from 'react';
-import { Button, Tag, Table, message, Spin } from 'antd';
-import { FiDownload, FiBriefcase, FiCpu, FiUsers } from 'react-icons/fi';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
+import { Button, Tag, Table, Alert, Spin, Modal, Select, Progress } from 'antd';
+import { FiDownload, FiBriefcase, FiCpu, FiUser, FiCheckCircle, FiXCircle, FiInfo, FiBarChart2 } from 'react-icons/fi';
 import { AdminLayout } from '../components/admin/AdminLayout';
 import { downloadCsv } from '../utils/exportCsv';
-import {
-  calculateAlumniOverview,
-  calculateSectorDistribution,
-  calculateRoleDistribution,
-  calculateTopCompanies,
-  calculateBatchTrends,
-  calculateDepartmentOutcomes,
-  calculateSkillDistribution,
-  calculateLocationDistribution
-} from '../utils/analyticsHelper';
 import api from '../services/api';
 
 export const AdminReportsPage = () => {
+  const location = useLocation();
+  const studentDemographicsRef = useRef(null);
+  const alumniDistributionRef = useRef(null);
+  const mlPredictionRef = useRef(null);
+  const [highlightedSection, setHighlightedSection] = useState(null);
+
   const [loading, setLoading] = useState(true);
-  const [overview, setOverview] = useState({ total: 0, uniqueCompanies: 0, uniqueRoles: 0, uniqueDepts: 0 });
-  const [sectors, setSectors] = useState([]);
-  const [roles, setRoles] = useState([]);
-  const [companies, setCompanies] = useState([]);
-  const [batchTrends, setBatchTrends] = useState([]);
-  const [departmentOutcomes, setDepartmentOutcomes] = useState([]);
-  const [skills, setSkills] = useState([]);
-  const [locations, setLocations] = useState([]);
+  const [error, setError] = useState(null);
+  const [careerAnalytics, setCareerAnalytics] = useState(null);
+  const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false);
 
-  const [placementStats, setPlacementStats] = useState({
-    overallPlacementRate: '94.2%',
-    studentsPlaced: '856 / 1,200',
-    avgPackage: '₹12.8 LPA',
-    highestPackage: '₹32.0 LPA',
-    drivesCount: '124 Companies'
-  });
-
-  const [placementCompanies, setPlacementCompanies] = useState([
-    { key: '1', company: 'Google DeepMind', hired: 8, package: '₹32.0 LPA', year: '2026 Drive' },
-    { key: '2', company: 'Stripe Payments', hired: 15, package: '₹22.0 LPA', year: '2026 Drive' },
-    { key: '3', company: 'Amazon AWS', hired: 42, package: '₹18.5 LPA', year: '2026 Drive' },
-    { key: '4', company: 'Wipro Digital', hired: 78, package: '₹6.5 LPA', year: '2025/26 Cycle' },
-    { key: '5', company: 'Infosys Systems', hired: 112, package: '₹5.8 LPA', year: '2025/26 Cycle' }
-  ]);
+  // ML Prediction State
+  const [studentsList, setStudentsList] = useState([]);
+  const [selectedStudentId, setSelectedStudentId] = useState(null);
+  const [predictLoading, setPredictLoading] = useState(false);
+  const [predictionData, setPredictionData] = useState(null);
+  const [predictError, setPredictError] = useState(null);
 
   const fetchAnalytics = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      
-      const careerRes = await api.get('/career/getall');
-      const careerData = careerRes.data || {};
-
-      const placementRes = await api.get('/placement/getall');
-      const placementData = placementRes.data || {};
-
-      const alumniRes = await api.get('/alumni/getall');
-      const allAlumni = alumniRes.data || [];
-
-      const localOverview = calculateAlumniOverview(allAlumni);
-      const localBatchTrends = calculateBatchTrends(allAlumni);
-      const localDeptOutcomes = calculateDepartmentOutcomes(allAlumni);
-      const localLocations = calculateLocationDistribution(allAlumni);
-
-      setOverview(localOverview);
-      setBatchTrends(localBatchTrends);
-      setDepartmentOutcomes(localDeptOutcomes);
-      setLocations(localLocations);
-
-      if (careerData.sectorDistribution) {
-        const totalAlumni = careerData.totalAlumniProfiles || allAlumni.length || 1;
-        const mappedSectors = Object.keys(careerData.sectorDistribution).map(k => ({
-          sector: k,
-          count: careerData.sectorDistribution[k],
-          percentage: ((careerData.sectorDistribution[k] / totalAlumni) * 100).toFixed(1)
-        })).sort((a,b) => b.count - a.count);
-        setSectors(mappedSectors);
+      const response = await fetch('http://localhost:8000/ai/career/analytics');
+      if (!response.ok) {
+        throw new Error(`AI Analytics Service returned status ${response.status}`);
       }
-
-      if (careerData.roleDistribution) {
-        const totalAlumni = careerData.totalAlumniProfiles || allAlumni.length || 1;
-        const mappedRoles = Object.keys(careerData.roleDistribution).map(k => ({
-          role: k,
-          count: careerData.roleDistribution[k],
-          percentage: ((careerData.roleDistribution[k] / totalAlumni) * 100).toFixed(1)
-        })).sort((a,b) => b.count - a.count);
-        setRoles(mappedRoles);
+      const data = await response.json();
+      if (data.status === 'degraded') {
+        throw new Error(data.message || 'Career analytics data is currently degraded.');
       }
-
-      if (careerData.employerOrganizations) {
-        const mappedCompanies = Object.keys(careerData.employerOrganizations).map(k => ({
-          company: k,
-          count: careerData.employerOrganizations[k]
-        })).sort((a,b) => b.count - a.count);
-        setCompanies(mappedCompanies);
-      }
-
-      if (careerData.skillsDistribution) {
-        const mappedSkills = Object.keys(careerData.skillsDistribution).map(k => ({
-          skill: k,
-          count: careerData.skillsDistribution[k]
-        })).sort((a,b) => b.count - a.count);
-        setSkills(mappedSkills);
-      }
-
-      if (placementData.overallPlacementRate !== undefined) {
-        setPlacementStats({
-          overallPlacementRate: `${placementData.overallPlacementRate}%`,
-          studentsPlaced: `${placementData.totalAlumniPlaced} / ${placementData.totalStudentsCount}`,
-          avgPackage: `₹${placementData.averageSalaryPackage} LPA`,
-          highestPackage: `₹${placementData.highestSalaryPackage} LPA`,
-          drivesCount: `${placementData.placementDrivesCount} Companies`
-        });
-      }
-
-      if (placementData.placementDrives && placementData.placementDrives.length > 0) {
-        const mappedDrives = placementData.placementDrives.map((d, idx) => ({
-          key: String(idx + 1),
-          company: d.company || 'Unknown',
-          hired: d.hired || d.studentsHired || 0,
-          package: `₹${d.package || d.salaryPackage} LPA`,
-          year: d.year || d.driveYear || '2026 Drive'
-        }));
-        setPlacementCompanies(mappedDrives);
-      }
-
+      setCareerAnalytics(data);
     } catch (err) {
-      console.error("Error loading analytics data:", err);
-      message.error("Failed to load institutional reports.");
+      console.error('Error fetching live AI Career Analytics:', err);
+      setError('Career analytics are currently unavailable.');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchAnalytics();
-  }, []);
-
-  const handleExportFullAnalytics = () => {
-    const headers = ['Metric / Segment', 'Field Name / Category', 'Aggregated Outcome'];
-    const rows = [
-      ['Placement Metrics', 'Overall Placement Rate', placementStats.overallPlacementRate],
-      ['Placement Metrics', 'Students Placed', placementStats.studentsPlaced],
-      ['Placement Metrics', 'Average Salary Package', placementStats.avgPackage],
-      ['Placement Metrics', 'Highest Salary Package', placementStats.highestPackage],
-      ['Placement Metrics', 'Placement Drives', placementStats.drivesCount],
-      ['Career Overview', 'Total Profiles Evaluated', `${overview.total}`],
-      ['Career Overview', 'Unique Active Companies', `${overview.uniqueCompanies}`],
-      ['Career Overview', 'Distinct Job Roles', `${overview.uniqueRoles}`],
-      ['Career Overview', 'Departments Represented', `${overview.uniqueDepts}`],
-      ...sectors.map(s => ['Alumni Sector Distribution', s.sector, `${s.count} (${s.percentage}%)`]),
-      ...roles.map(r => ['Top Career Roles', r.role, `${r.count} (${r.percentage}%)`]),
-      ...skills.map(sk => ['Professional Specialization Skills', sk.skill, `${sk.count} occurrences`]),
-      ...locations.map(loc => ['Placement Locations', loc.location, `${loc.count} alumni`])
-    ];
-
-    downloadCsv('KCE_Institutional_Placement_Career_Report_2026.csv', rows, headers);
-    message.success('Official KCE Institutional Report exported successfully!');
+  const fetchStudents = async () => {
+    try {
+      const res = await api.get('/student/getall');
+      if (Array.isArray(res.data)) {
+        setStudentsList(res.data);
+      }
+    } catch (err) {
+      console.error('Error fetching students list for ML evaluation:', err);
+    }
   };
 
-  const primarySectorName = sectors[0]?.sector || 'N/A';
-  const primaryRoleName = roles[0]?.role || 'N/A';
-  const topSkillName = skills[0]?.skill || 'N/A';
+  useEffect(() => {
+    fetchAnalytics();
+    fetchStudents();
+  }, []);
+
+  const handleSelectStudent = async (studentId) => {
+    setSelectedStudentId(studentId);
+    setPredictionData(null);
+    setPredictError(null);
+    if (!studentId) return;
+
+    const studentObj = studentsList.find(s => String(s.studentId) === String(studentId));
+    if (!studentObj) return;
+
+    setPredictLoading(true);
+    try {
+      const payload = {
+        cgpa: studentObj.cgpa !== null && studentObj.cgpa !== undefined ? parseFloat(studentObj.cgpa) : 7.5,
+        department: (studentObj.department || 'CSE').trim().toUpperCase(),
+        skills: studentObj.skills || 'General Engineering',
+        careerGoal: studentObj.careerGoal || 'Software Developer',
+        graduationYear: parseInt(studentObj.batch || studentObj.graduationYear, 10) || 2026
+      };
+
+      const res = await fetch('http://localhost:8000/ai/career/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        throw new Error(`Prediction API returned status ${res.status}`);
+      }
+
+      const data = await res.json();
+      setPredictionData({
+        student: studentObj,
+        result: data
+      });
+    } catch (err) {
+      console.error('Error fetching student ML prediction:', err);
+      setPredictError('Unable to generate ML career outcome prediction for the selected student.');
+    } finally {
+      setPredictLoading(false);
+    }
+  };
+
+  // Target Section Smooth Scroll & Visual Highlight Effect
+  useEffect(() => {
+    if (!loading && location.state?.scrollTo) {
+      const target = location.state.scrollTo;
+      if (target === 'student-demographics') {
+        const scrollTimer = setTimeout(() => {
+          studentDemographicsRef.current?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
+          setHighlightedSection('student-demographics');
+        }, 150);
+
+        const clearHighlightTimer = setTimeout(() => {
+          setHighlightedSection(null);
+        }, 2000);
+
+        return () => {
+          clearTimeout(scrollTimer);
+          clearTimeout(clearHighlightTimer);
+        };
+      } else if (target === 'alumni-distribution') {
+        const scrollTimer = setTimeout(() => {
+          alumniDistributionRef.current?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
+          setHighlightedSection('alumni-distribution');
+        }, 150);
+
+        const clearHighlightTimer = setTimeout(() => {
+          setHighlightedSection(null);
+        }, 2000);
+
+        return () => {
+          clearTimeout(scrollTimer);
+          clearTimeout(clearHighlightTimer);
+        };
+      }
+    }
+  }, [loading, location.state]);
+
+  // Derived state from live AI analytics
+  const overview = careerAnalytics?.overview || {};
+  const departmentAnalytics = careerAnalytics?.departmentAnalytics || [];
+  const companyAnalytics = careerAnalytics?.companyAnalytics || [];
+  const skillAnalytics = careerAnalytics?.skillAnalytics || [];
+  const alumniAnalytics = careerAnalytics?.alumniAnalytics || {};
+  const aiInsights = careerAnalytics?.aiInsights || [];
+
+  // Format overview metrics
+  const overallPlacementRate = overview.placementRate !== undefined ? `${overview.placementRate}%` : 'N/A';
+  const studentsPlaced = overview.placedStudents !== undefined ? `${overview.placedStudents} / ${overview.totalOutcomes}` : 'N/A';
+  
+  const rawAvgPkg = overview.averagePackage ?? overview.averageSalaryPackage;
+  const avgPkgVal = (rawAvgPkg !== undefined && rawAvgPkg !== null && !isNaN(Number(rawAvgPkg)) && Number(rawAvgPkg) > 0)
+    ? Number(rawAvgPkg)
+    : null;
+  const avgPackage = avgPkgVal !== null ? `₹${avgPkgVal.toFixed(2)} LPA` : 'N/A';
+
+  const highestPackage = overview.highestPackage !== undefined ? `₹${overview.highestPackage} LPA` : 'N/A';
+  const drivesCount = companyAnalytics.length > 0 ? `${companyAnalytics.length} Companies` : 'N/A';
+
+  // Format Sector distribution
+  const totalAlumni = alumniAnalytics.totalAlumni || 1;
+  const sectorList = Object.keys(alumniAnalytics.sectorDistribution || {}).map(sectorName => {
+    const count = alumniAnalytics.sectorDistribution[sectorName];
+    const percentage = ((count / totalAlumni) * 100).toFixed(1);
+    return { sector: sectorName, count, percentage };
+  }).sort((a, b) => b.count - a.count);
+
+  // Format Placement Breakdown Table
+  const placementCompaniesTable = companyAnalytics.map((c, idx) => ({
+    key: String(idx + 1),
+    company: c.company,
+    hired: c.studentsPlaced,
+    package: `Avg ₹${c.averagePackage} LPA (Max ₹${c.highestPackage} LPA)`,
+    year: 'Historical Data'
+  }));
+
+  // CSV Export handler using live data
+  const handleExportFullAnalytics = () => {
+    if (!careerAnalytics) return;
+    const headers = ['Metric / Segment', 'Field Name / Category', 'Aggregated Outcome'];
+    const rows = [
+      ['Placement Metrics', 'Overall Placement Rate', overallPlacementRate],
+      ['Placement Metrics', 'Students Placed', studentsPlaced],
+      ['Placement Metrics', 'Average Salary Package', avgPackage],
+      ['Placement Metrics', 'Highest Salary Package', highestPackage],
+      ['Placement Metrics', 'Placement Drives', drivesCount],
+      ['Career Overview', 'Total Outcomes Evaluated', `${overview.totalOutcomes}`],
+      ...departmentAnalytics.map(d => ['Department Placement Rate', d.department, `${d.placementRate}% (${d.placedStudents} Placed / ${d.totalStudents} Total)`]),
+      ...companyAnalytics.map(c => ['Company Placement Breakdown', c.company, `${c.studentsPlaced} Hired (Avg ₹${c.averagePackage} LPA)`]),
+      ...sectorList.map(s => ['Alumni Sector Distribution', s.sector, `${s.count} (${s.percentage}%)`]),
+      ...skillAnalytics.map(sk => ['Professional Specialization Skills', sk.skill, `${sk.studentCount} Students (${sk.placementRate}% Placed)`]),
+      ...aiInsights.map(insight => ['AI Career Insights', insight.type, insight.message])
+    ];
+
+    downloadCsv('AlumniConnect_Live_Career_Analytics_2026.csv', rows, headers);
+  };
 
   return (
     <AdminLayout>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      {/* Title Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--ac-text-primary)' }}>Institutional Reports</h1>
-          <p style={{ fontSize: 13.5, color: 'var(--ac-text-secondary)', marginTop: 4 }}>
-            Aggregated career and placement analytics for {new Date().getFullYear()}
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--ac-text-primary)', margin: 0 }}>Institutional Reports & Analytics</h1>
+          <p style={{ fontSize: 13.5, color: 'var(--ac-text-secondary)', marginTop: 4, margin: 0 }}>
+            Real-time AI Career Analytics & Machine Learning Outcome Predictions
           </p>
         </div>
         <Button
@@ -174,177 +220,421 @@ export const AdminReportsPage = () => {
           icon={<FiDownload />}
           style={{ backgroundColor: 'var(--ac-brand)', border: 'none', height: 40, fontWeight: 600 }}
           onClick={handleExportFullAnalytics}
+          disabled={!careerAnalytics}
         >
           Export Full Report (CSV)
         </Button>
       </div>
 
-      {/* ================================================== */}
-      {/* SECTION 1: PLACEMENT OVERVIEW                     */}
-      {/* ================================================== */}
-      <div style={{ marginBottom: 40 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--ac-text-primary)', borderBottom: '1px solid var(--ac-border)', paddingBottom: 8, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <FiBriefcase color="var(--ac-brand)" /> Placement Overview
-        </h2>
-
-        {/* Compact Summary Metrics Panel */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 20, padding: '16px 20px', background: 'var(--ac-bg-input)', borderRadius: 12, border: '1px solid var(--ac-border)', marginBottom: 24, textAlign: 'center' }}>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Overall Placement Rate</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#16a34a', marginTop: 4 }}>{placementStats.overallPlacementRate}</div>
-          </div>
-          <div style={{ borderLeft: '1px solid var(--ac-border)' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Students Placed</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--ac-text-primary)', marginTop: 4 }}>{placementStats.studentsPlaced}</div>
-          </div>
-          <div style={{ borderLeft: '1px solid var(--ac-border)' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Average Salary Package</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--ac-text-primary)', marginTop: 4 }}>{placementStats.avgPackage}</div>
-          </div>
-          <div style={{ borderLeft: '1px solid var(--ac-border)' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Highest Salary Package</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--ac-brand)', marginTop: 4 }}>{placementStats.highestPackage}</div>
-          </div>
-          <div style={{ borderLeft: '1px solid var(--ac-border)' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Placement Drives</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--ac-text-primary)', marginTop: 4 }}>{placementStats.drivesCount}</div>
-          </div>
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '80px 0' }}>
+          <Spin size="large" />
+          <p style={{ marginTop: 16, color: 'var(--ac-text-secondary)', fontWeight: 600 }}>
+            Fetching live AI career analytics from http://localhost:8000/ai/career/analytics...
+          </p>
         </div>
+      ) : error ? (
+        <div style={{ padding: '40px 0' }}>
+          <Alert
+            message="Analytics Service Error"
+            description={error}
+            type="error"
+            showIcon
+            style={{ borderRadius: 8 }}
+          />
+        </div>
+      ) : (
+        <>
+          {/* ================================================== */}
+          {/* SECTION 1: PLACEMENT OVERVIEW                     */}
+          {/* ================================================== */}
+          <div style={{ marginBottom: 40 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--ac-text-primary)', borderBottom: '1px solid var(--ac-border)', paddingBottom: 8, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FiBriefcase color="var(--ac-brand)" /> Placement Overview
+            </h2>
 
-        {/* Department-wise Placement Rates (Full-width responsive grid) */}
-        <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 12, border: '1px solid var(--ac-border)', padding: 24, marginBottom: 24 }}>
-          <h3 style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--ac-text-primary)', marginBottom: 16 }}>
-            Department-wise Placement Rates
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
-            {[
-              { name: 'Computer Science & Engineering', rate: 98.5 },
-              { name: 'Information Technology', rate: 96.2 },
-              { name: 'Electronics & Communication', rate: 92.4 },
-              { name: 'Electrical & Electronics', rate: 89.0 },
-              { name: 'Mechanical Engineering', rate: 84.5 },
-              { name: 'Civil Engineering', rate: 81.0 }
-            ].map((item, idx) => (
-              <div key={idx} style={{ background: 'var(--ac-bg-input)', padding: '12px 16px', borderRadius: 8, border: '1px solid var(--ac-border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontWeight: 600, color: 'var(--ac-text-primary)', marginBottom: 6 }}>
-                  <span>{item.name}</span>
-                  <span style={{ color: '#16a34a' }}>{item.rate}%</span>
+            {/* Compact Summary Metrics Panel */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 20, padding: '16px 20px', background: 'var(--ac-bg-input)', borderRadius: 12, border: '1px solid var(--ac-border)', marginBottom: 24, textAlign: 'center' }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Overall Placement Rate</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#16a34a', marginTop: 4 }}>{overallPlacementRate}</div>
+              </div>
+              <div style={{ borderLeft: '1px solid var(--ac-border)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Students Placed</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--ac-text-primary)', marginTop: 4 }}>{studentsPlaced}</div>
+              </div>
+              <div style={{ borderLeft: '1px solid var(--ac-border)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Average Salary Package</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--ac-text-primary)', marginTop: 4 }}>{avgPackage}</div>
+              </div>
+              <div style={{ borderLeft: '1px solid var(--ac-border)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Highest Salary Package</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--ac-brand)', marginTop: 4 }}>{highestPackage}</div>
+              </div>
+              <div style={{ borderLeft: '1px solid var(--ac-border)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Recruiting Companies</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--ac-text-primary)', marginTop: 4 }}>{drivesCount}</div>
+              </div>
+            </div>
+
+            {/* Department-wise Placement Rates Container */}
+            <div
+              ref={studentDemographicsRef}
+              style={{
+                backgroundColor: 'var(--ac-bg-card)',
+                borderRadius: 12,
+                border: highlightedSection === 'student-demographics' ? '2px solid #1b62d4' : '1px solid var(--ac-border)',
+                boxShadow: highlightedSection === 'student-demographics' ? '0 0 16px rgba(27, 98, 212, 0.35)' : 'none',
+                padding: 24,
+                marginBottom: 24,
+                transition: 'all 0.3s ease-in-out'
+              }}
+            >
+              <h3 style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--ac-text-primary)', marginBottom: 16 }}>
+                Department-wise Placement Rates & Student Demographics
+              </h3>
+              {departmentAnalytics.length === 0 ? (
+                <p style={{ color: 'var(--ac-text-secondary)', margin: 0 }}>No department placement data available.</p>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+                  {departmentAnalytics.map((deptItem, idx) => (
+                    <div key={idx} style={{ background: 'var(--ac-bg-input)', padding: '12px 16px', borderRadius: 8, border: '1px solid var(--ac-border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontWeight: 600, color: 'var(--ac-text-primary)', marginBottom: 6 }}>
+                        <span>{deptItem.department}</span>
+                        <span style={{ color: '#16a34a' }}>{deptItem.placementRate}% ({deptItem.placedStudents}/{deptItem.totalStudents})</span>
+                      </div>
+                      <div style={{ height: 8, background: 'var(--ac-bg-card)', borderRadius: 4, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${deptItem.placementRate}%`, background: 'var(--ac-brand)' }} />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div style={{ height: 8, background: 'var(--ac-bg-card)', borderRadius: 4, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${item.rate}%`, background: 'var(--ac-brand)' }} />
+              )}
+            </div>
+
+            {/* Company Breakdown Table */}
+            <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 12, border: '1px solid var(--ac-border)', padding: 24 }}>
+              <h3 style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--ac-text-primary)', marginBottom: 12 }}>
+                Recruiting Companies & Hiring Breakdown
+              </h3>
+              <Table
+                dataSource={placementCompaniesTable}
+                pagination={false}
+                locale={{ emptyText: 'No recruiting company records available.' }}
+                columns={[
+                  { title: 'Company Name', dataIndex: 'company', key: 'company', render: (t) => <strong style={{ color: 'var(--ac-text-primary)' }}>{t}</strong> },
+                  { title: 'Students Hired', dataIndex: 'hired', key: 'hired', render: (t) => <span style={{ color: 'var(--ac-text-primary)', fontWeight: 600 }}>{t}</span> },
+                  { title: 'Salary Package Range', dataIndex: 'package', key: 'package', render: (t) => <span style={{ color: 'var(--ac-brand)', fontWeight: 700 }}>{t}</span> },
+                  { title: 'Data Segment', dataIndex: 'year', key: 'year', render: (t) => <span style={{ color: 'var(--ac-text-secondary)' }}>{t}</span> }
+                ]}
+              />
+            </div>
+          </div>
+
+          {/* ================================================== */}
+          {/* SECTION 2: ML CAREER OUTCOME PREDICTION            */}
+          {/* ================================================== */}
+          <div ref={mlPredictionRef} style={{ marginBottom: 40, backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-brand)', padding: 24, boxShadow: '0 4px 20px rgba(27, 98, 212, 0.08)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 20 }}>
+              <div>
+                <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--ac-text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <FiCpu color="var(--ac-brand)" size={22} /> ML Career Outcome Prediction
+                </h2>
+                <p style={{ fontSize: 13, color: 'var(--ac-text-secondary)', marginTop: 4, margin: 0 }}>
+                  Evaluate individual student placement probability and predicted outcome using trained Random Forest Classifier.
+                </p>
+              </div>
+            </div>
+
+            {/* Student Selection Control */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--ac-text-primary)', marginBottom: 8 }}>
+                Select Student for ML Career Outcome Assessment:
+              </label>
+              <Select
+                style={{ width: '100%', maxWidth: 500 }}
+                placeholder="-- Select a student from database --"
+                value={selectedStudentId}
+                onChange={handleSelectStudent}
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                }
+                options={studentsList.map(s => ({
+                  value: s.studentId,
+                  label: `${s.name || 'Student #' + s.studentId} (${s.registerNo || 'ID: ' + s.studentId}) — ${s.department || 'General'}`
+                }))}
+              />
+            </div>
+
+            {/* Prediction Display Area */}
+            {predictLoading ? (
+              <div style={{ textAlign: 'center', padding: '30px 0' }}>
+                <Spin size="large" />
+                <p style={{ marginTop: 12, color: 'var(--ac-text-secondary)', fontWeight: 600 }}>
+                  Passing student features to Random Forest model (POST http://localhost:8000/ai/career/predict)...
+                </p>
+              </div>
+            ) : predictError ? (
+              <Alert message="ML Prediction Error" description={predictError} type="warning" showIcon style={{ borderRadius: 8 }} />
+            ) : predictionData ? (
+              <div style={{ backgroundColor: 'var(--ac-bg-input)', borderRadius: 12, border: '1px solid var(--ac-border)', padding: 20 }}>
+                {/* Selected Student Information Header */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, paddingBottom: 16, marginBottom: 16, borderBottom: '1px solid var(--ac-border)' }}>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase', display: 'block' }}>Student Name</span>
+                    <strong style={{ fontSize: 15, color: 'var(--ac-text-primary)' }}>{predictionData.student.name || 'Student #' + predictionData.student.studentId}</strong>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase', display: 'block' }}>Department</span>
+                    <span style={{ fontSize: 14, color: 'var(--ac-text-primary)', fontWeight: 600 }}>{predictionData.student.department || 'N/A'}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase', display: 'block' }}>Academic CGPA</span>
+                    <span style={{ fontSize: 14, color: 'var(--ac-brand)', fontWeight: 700 }}>{predictionData.student.cgpa !== null && predictionData.student.cgpa !== undefined ? predictionData.student.cgpa : 'N/A'}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase', display: 'block' }}>Career Goal</span>
+                    <span style={{ fontSize: 14, color: 'var(--ac-text-primary)', fontWeight: 600 }}>{predictionData.student.careerGoal || 'Software Developer'}</span>
+                  </div>
+                </div>
+
+                {/* Machine Learning Prediction Result Card */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 20 }}>
+                  <div style={{ backgroundColor: 'var(--ac-bg-card)', padding: 16, borderRadius: 10, border: '1px solid var(--ac-border)' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Predicted Outcome</div>
+                    <div style={{ marginTop: 8 }}>
+                      <Tag color={predictionData.result.predictedOutcome === 'PLACED' ? 'green' : 'red'} style={{ fontSize: 14, fontWeight: 800, padding: '4px 12px', borderRadius: 6 }}>
+                        {predictionData.result.predictedOutcome === 'PLACED' ? <FiCheckCircle style={{ marginRight: 6 }} /> : <FiXCircle style={{ marginRight: 6 }} />}
+                        {predictionData.result.predictedOutcome}
+                      </Tag>
+                    </div>
+                  </div>
+
+                  <div style={{ backgroundColor: 'var(--ac-bg-card)', padding: 16, borderRadius: 10, border: '1px solid var(--ac-border)' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Placement Probability</div>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: predictionData.result.placementProbability >= 50 ? '#16a34a' : '#dc2626', marginTop: 4 }}>
+                      {predictionData.result.placementProbability}%
+                    </div>
+                  </div>
+
+                  <div style={{ backgroundColor: 'var(--ac-bg-card)', padding: 16, borderRadius: 10, border: '1px solid var(--ac-border)' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>Model Confidence</div>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--ac-brand)', marginTop: 4 }}>
+                      {predictionData.result.confidence}%
+                    </div>
+                  </div>
+
+                  <div style={{ backgroundColor: 'var(--ac-bg-card)', padding: 16, borderRadius: 10, border: '1px solid var(--ac-border)' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ac-text-secondary)', textTransform: 'uppercase' }}>ML Model Architecture</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ac-text-primary)', marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <FiCpu color="var(--ac-brand)" /> {predictionData.result.model || 'RandomForestClassifier'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Model Performance Evaluation Metrics */}
+                {predictionData.result.modelMetrics && (
+                  <div style={{ backgroundColor: 'var(--ac-bg-card)', padding: 16, borderRadius: 10, border: '1px solid var(--ac-border)', marginBottom: 16 }}>
+                    <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--ac-text-primary)', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <FiBarChart2 color="var(--ac-brand)" /> Random Forest Model Performance Metrics (Test Set Evaluation)
+                    </h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, textAlign: 'center' }}>
+                      <div style={{ background: 'var(--ac-bg-input)', padding: 8, borderRadius: 6 }}>
+                        <div style={{ fontSize: 11, color: 'var(--ac-text-secondary)' }}>Accuracy</div>
+                        <strong style={{ fontSize: 15, color: '#16a34a' }}>{predictionData.result.modelMetrics.accuracy !== null ? `${predictionData.result.modelMetrics.accuracy}%` : 'N/A'}</strong>
+                      </div>
+                      <div style={{ background: 'var(--ac-bg-input)', padding: 8, borderRadius: 6 }}>
+                        <div style={{ fontSize: 11, color: 'var(--ac-text-secondary)' }}>Precision</div>
+                        <strong style={{ fontSize: 15, color: 'var(--ac-text-primary)' }}>{predictionData.result.modelMetrics.precision !== null ? `${predictionData.result.modelMetrics.precision}%` : 'N/A'}</strong>
+                      </div>
+                      <div style={{ background: 'var(--ac-bg-input)', padding: 8, borderRadius: 6 }}>
+                        <div style={{ fontSize: 11, color: 'var(--ac-text-secondary)' }}>Recall</div>
+                        <strong style={{ fontSize: 15, color: 'var(--ac-text-primary)' }}>{predictionData.result.modelMetrics.recall !== null ? `${predictionData.result.modelMetrics.recall}%` : 'N/A'}</strong>
+                      </div>
+                      <div style={{ background: 'var(--ac-bg-input)', padding: 8, borderRadius: 6 }}>
+                        <div style={{ fontSize: 11, color: 'var(--ac-text-secondary)' }}>F1-Score</div>
+                        <strong style={{ fontSize: 15, color: 'var(--ac-brand)' }}>{predictionData.result.modelMetrics.f1 !== null ? `${predictionData.result.modelMetrics.f1}%` : 'N/A'}</strong>
+                      </div>
+                      <div style={{ background: 'var(--ac-bg-input)', padding: 8, borderRadius: 6 }}>
+                        <div style={{ fontSize: 11, color: 'var(--ac-text-secondary)' }}>Training Samples</div>
+                        <strong style={{ fontSize: 15, color: 'var(--ac-text-primary)' }}>{predictionData.result.modelMetrics.trainingSampleCount || 0}</strong>
+                      </div>
+                      <div style={{ background: 'var(--ac-bg-input)', padding: 8, borderRadius: 6 }}>
+                        <div style={{ fontSize: 11, color: 'var(--ac-text-secondary)' }}>Test Samples</div>
+                        <strong style={{ fontSize: 15, color: 'var(--ac-text-primary)' }}>{predictionData.result.modelMetrics.testSampleCount || 0}</strong>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Feature Importance List */}
+                {Array.isArray(predictionData.result.featureImportance) && predictionData.result.featureImportance.length > 0 && (
+                  <div style={{ backgroundColor: 'var(--ac-bg-card)', padding: 16, borderRadius: 10, border: '1px solid var(--ac-border)', marginBottom: 16 }}>
+                    <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--ac-text-primary)', margin: '0 0 12px 0' }}>
+                      Random Forest Feature Importance Weights
+                    </h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                      {predictionData.result.featureImportance.map((f, fIdx) => (
+                        <div key={fIdx} style={{ fontSize: 12, color: 'var(--ac-text-primary)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <span style={{ fontWeight: 600 }}>{f.feature}</span>
+                            <span style={{ color: 'var(--ac-brand)', fontWeight: 700 }}>{(f.importance * 100).toFixed(1)}%</span>
+                          </div>
+                          <div style={{ height: 6, background: 'var(--ac-bg-input)', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${Math.min(100, f.importance * 100)}%`, background: 'var(--ac-brand)' }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Explanatory Disclaimer */}
+                <div style={{ fontSize: 12, color: 'var(--ac-text-secondary)', display: 'flex', alignItems: 'center', gap: 6, fontStyle: 'italic' }}>
+                  <FiInfo color="var(--ac-brand)" size={14} />
+                  <span>This is an ML-based prediction generated from the student's career profile and historical career outcome data. It does not represent official placement status.</span>
+                </div>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '24px', backgroundColor: 'var(--ac-bg-input)', borderRadius: 10, border: '1px dashed var(--ac-border)' }}>
+                <FiUser size={32} color="var(--ac-text-secondary)" style={{ marginBottom: 8 }} />
+                <p style={{ margin: 0, fontSize: 13.5, color: 'var(--ac-text-secondary)', fontWeight: 500 }}>
+                  Select a student from the dropdown above to view their ML career outcome prediction.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* ================================================== */}
+          {/* SECTION 3: CAREER ANALYTICS                       */}
+          {/* ================================================== */}
+          <div style={{ marginBottom: 40 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--ac-text-primary)', borderBottom: '1px solid var(--ac-border)', paddingBottom: 8, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FiCpu color="var(--ac-brand)" /> Career Analytics
+            </h2>
+
+            {/* Row 1: Industry & Sector and Specialization Skills side-by-side */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 24, marginBottom: 24, alignItems: 'start' }}>
+              {/* Alumni Distribution / Industry & Sector Container */}
+              <div
+                ref={alumniDistributionRef}
+                style={{
+                  backgroundColor: 'var(--ac-bg-card)',
+                  borderRadius: 12,
+                  border: highlightedSection === 'alumni-distribution' ? '2px solid #1b62d4' : '1px solid var(--ac-border)',
+                  boxShadow: highlightedSection === 'alumni-distribution' ? '0 0 16px rgba(27, 98, 212, 0.35)' : 'none',
+                  padding: 24,
+                  height: 'fit-content',
+                  transition: 'all 0.3s ease-in-out'
+                }}
+              >
+                <h3 style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--ac-text-primary)', marginBottom: 16 }}>
+                  Alumni Distribution & Sector Breakdown
+                </h3>
+                {sectorList.length === 0 ? (
+                  <p style={{ color: 'var(--ac-text-secondary)', margin: 0 }}>No career sector data available</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {sectorList.map((sec, idx) => (
+                      <div key={idx}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontWeight: 600, color: 'var(--ac-text-primary)', marginBottom: 4 }}>
+                          <span>{sec.sector}</span>
+                          <span style={{ color: 'var(--ac-brand)' }}>{sec.count} Alumni ({sec.percentage}%)</span>
+                        </div>
+                        <div style={{ height: 6, background: 'var(--ac-bg-input)', borderRadius: 3, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${sec.percentage}%`, background: 'var(--ac-brand)' }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Skill Analytics Container */}
+              <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 12, border: '1px solid var(--ac-border)', padding: 24, height: 'fit-content' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <h3 style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--ac-text-primary)', margin: 0 }}>
+                    Professional Specialization Skills
+                  </h3>
+                  {skillAnalytics.length > 5 && (
+                    <Button type="link" style={{ padding: 0, height: 'auto', fontWeight: 600 }} onClick={() => setIsSkillsModalOpen(true)}>
+                      View All Skills ({skillAnalytics.length}) →
+                    </Button>
+                  )}
+                </div>
+                {skillAnalytics.length === 0 ? (
+                  <p style={{ color: 'var(--ac-text-secondary)', margin: 0 }}>No skill placement data available</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {skillAnalytics.slice(0, 5).map((sk, idx) => (
+                      <div key={idx}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontWeight: 600, color: 'var(--ac-text-primary)', marginBottom: 4 }}>
+                          <span>{sk.skill}</span>
+                          <span style={{ color: '#16a34a' }}>{sk.placementRate}% ({sk.placedCount}/{sk.studentCount} Placed)</span>
+                        </div>
+                        <div style={{ height: 6, background: 'var(--ac-bg-input)', borderRadius: 3, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${sk.placementRate}%`, background: '#16a34a' }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* AI Insights & Trend Card */}
+            <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 12, border: '1px solid var(--ac-border)', padding: 24 }}>
+              <h3 style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--ac-text-primary)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <FiCpu color="var(--ac-brand)" /> AI Insights & Trend Analysis
+              </h3>
+              {aiInsights.length === 0 ? (
+                <p style={{ color: 'var(--ac-text-secondary)', margin: 0 }}>No AI insights generated yet.</p>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+                  {aiInsights.map((insight, idx) => (
+                    <div key={idx} style={{ background: 'var(--ac-bg-input)', padding: 14, borderRadius: 8, borderLeft: '4px solid var(--ac-brand)' }}>
+                      <p style={{ margin: 0, fontSize: 12.5, color: 'var(--ac-text-primary)', fontWeight: 600, lineHeight: 1.5 }}>
+                        {insight.message}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* View All Skills Dialog Modal */}
+      <Modal
+        title={`All Professional Specialization Skills (${skillAnalytics.length})`}
+        open={isSkillsModalOpen}
+        onCancel={() => setIsSkillsModalOpen(false)}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setIsSkillsModalOpen(false)}>
+            Close
+          </Button>
+        ]}
+        width={600}
+      >
+        <div style={{ maxHeight: 400, overflowY: 'auto', paddingRight: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {skillAnalytics.map((sk, idx) => (
+              <div key={idx}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontWeight: 600, color: 'var(--ac-text-primary)', marginBottom: 4 }}>
+                  <span>{sk.skill}</span>
+                  <span style={{ color: '#16a34a' }}>{sk.placementRate}% ({sk.placedCount}/{sk.studentCount} Placed)</span>
+                </div>
+                <div style={{ height: 6, background: 'var(--ac-bg-input)', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${sk.placementRate}%`, background: '#16a34a' }} />
                 </div>
               </div>
             ))}
           </div>
         </div>
-
-        {/* Placement Company Breakdown Details Table (Full-width) */}
-        <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 12, border: '1px solid var(--ac-border)', padding: 24 }}>
-          <h3 style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--ac-text-primary)', marginBottom: 12 }}>
-            Placement Drive Breakdown
-          </h3>
-          <Table
-            dataSource={placementCompanies}
-            pagination={false}
-            columns={[
-              { title: 'Company', dataIndex: 'company', key: 'company', render: (t) => <strong style={{ color: 'var(--ac-text-primary)' }}>{t}</strong> },
-              { title: 'Students Hired', dataIndex: 'hired', key: 'hired', render: (t) => <span style={{ color: 'var(--ac-text-primary)' }}>{t}</span> },
-              { title: 'Package Offered', dataIndex: 'package', key: 'package', render: (t) => <span style={{ color: 'var(--ac-brand)', fontWeight: 700 }}>{t}</span> },
-              { title: 'Placement Drive / Year', dataIndex: 'year', key: 'year', render: (t) => <span style={{ color: 'var(--ac-text-secondary)' }}>{t}</span> }
-            ]}
-          />
-        </div>
-      </div>
-
-      {/* ================================================== */}
-      {/* SECTION 2: CAREER ANALYTICS                       */}
-      {/* ================================================== */}
-      <div style={{ marginBottom: 40 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--ac-text-primary)', borderBottom: '1px solid var(--ac-border)', paddingBottom: 8, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <FiCpu color="var(--ac-brand)" /> Career Analytics
-        </h2>
-
-        {/* Row 1: Industry & Sector and Specialization Skills side-by-side */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 30, marginBottom: 30 }}>
-          {/* B. Industry / Sector Distribution */}
-          <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 12, border: '1px solid var(--ac-border)', padding: 24 }}>
-            <h3 style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--ac-text-primary)', marginBottom: 16 }}>
-              Industry & Sector Distribution
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {sectors.map((sec, idx) => (
-                <div key={idx}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontWeight: 600, color: 'var(--ac-text-primary)', marginBottom: 4 }}>
-                    <span>{sec.sector}</span>
-                    <span>{sec.count} ({sec.percentage}%)</span>
-                  </div>
-                  <div style={{ height: 8, background: 'var(--ac-bg-input)', borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${sec.percentage}%`, background: 'var(--ac-brand)' }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Skills Analysis */}
-          <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 12, border: '1px solid var(--ac-border)', padding: 24 }}>
-            <h3 style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--ac-text-primary)', marginBottom: 16 }}>
-              Top Professional Specialization Skills
-            </h3>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: 12, background: 'var(--ac-bg-input)', borderRadius: 8, border: '1px solid var(--ac-border)' }}>
-              {skills.map((s, idx) => (
-                <span key={idx} style={{ fontSize: 12, color: 'var(--ac-text-primary)', background: 'var(--ac-bg-card)', padding: '6px 12px', borderRadius: 4, border: '1px solid var(--ac-border)', fontWeight: 600 }}>
-                  {s.skill} ({s.count})
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Row 2: Department-wise Career Placement Outcomes Matrix Table (Full-width) */}
-        <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 12, border: '1px solid var(--ac-border)', padding: 24, marginBottom: 30 }}>
-          <h3 style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--ac-text-primary)', marginBottom: 12 }}>
-            Department-wise Career Placement Outcomes Matrix
-          </h3>
-          <Table
-            dataSource={departmentOutcomes}
-            rowKey="department"
-            pagination={false}
-            columns={[
-              { title: 'Department', dataIndex: 'department', key: 'department', render: (t) => <strong style={{ color: 'var(--ac-text-primary)' }}>{t}</strong> },
-              { title: 'Alumni Count', dataIndex: 'count', key: 'count', render: (t) => <span style={{ color: 'var(--ac-text-primary)' }}>{t}</span> },
-              { title: 'Dominant Career Sector', dataIndex: 'dominantSector', key: 'dominantSector', render: (t) => <Tag color="blue">{t}</Tag> },
-              { title: 'Dominant Career Role', dataIndex: 'dominantRole', key: 'dominantRole', render: (t) => <span style={{ color: 'var(--ac-text-primary)' }}>{t}</span> }
-            ]}
-          />
-        </div>
-
-        {/* AI / ML CAREER INSIGHTS */}
-        <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 12, border: '1px solid var(--ac-border)', padding: 24 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--ac-text-primary)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <FiCpu color="var(--ac-brand)" /> AI Career Insights
-          </h3>
-          <div style={{ padding: 18, background: 'var(--ac-bg-input)', border: '1px solid var(--ac-border)', borderRadius: 8 }}>
-            <ul style={{ paddingLeft: 20, margin: 0, fontSize: 13.5, color: 'var(--ac-text-primary)', lineHeight: 2.0, listStyleType: 'disc' }}>
-              <li>
-                <strong>Most represented industry:</strong> {primarySectorName}
-              </li>
-              <li>
-                <strong>Most common career role:</strong> {primaryRoleName}
-              </li>
-              <li>
-                <strong>Most common professional skill:</strong> {topSkillName}
-              </li>
-              {departmentOutcomes.length > 0 && (
-                <li>
-                  <strong>Department career pattern:</strong> Graduates from {departmentOutcomes[0]?.department} show primary outcomes in {departmentOutcomes[0]?.dominantSector} as {departmentOutcomes[0]?.dominantRole}.
-                </li>
-              )}
-            </ul>
-          </div>
-        </div>
-
-      </div>
+      </Modal>
     </AdminLayout>
   );
 };

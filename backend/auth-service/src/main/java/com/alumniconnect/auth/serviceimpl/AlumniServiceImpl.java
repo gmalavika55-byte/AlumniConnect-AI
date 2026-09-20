@@ -28,6 +28,9 @@ public class AlumniServiceImpl implements AlumniService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private com.alumniconnect.auth.repository.NotificationRepository notificationRepository;
+
     @Override
     public Alumni addAlumni(Alumni alumni) {
         if (studentRepository.findByEmail(alumni.getEmail()) != null ||
@@ -41,7 +44,23 @@ public class AlumniServiceImpl implements AlumniService {
         }
 
         alumni.setPassword(passwordEncoder.encode(alumni.getPassword()));
-        return alumniRepository.save(alumni);
+        Alumni saved = alumniRepository.save(alumni);
+
+        try {
+            com.alumniconnect.auth.entity.Notification notif = new com.alumniconnect.auth.entity.Notification();
+            notif.setUserType("ADMIN");
+            notif.setUserId(saved.getAlumniId() != null ? saved.getAlumniId().longValue() : 0L);
+            notif.setTitle("New Alumni Registration");
+            String alumniName = (saved.getName() != null && !saved.getName().trim().isEmpty()) ? saved.getName().trim() : ("Alumni #" + saved.getAlumniId());
+            notif.setMessage("A new alumni, " + alumniName + ", has registered on AlumniConnect.");
+            notif.setNotificationDate(java.time.LocalDateTime.now());
+            notif.setStatus("UNREAD");
+            notificationRepository.save(notif);
+        } catch (Exception e) {
+            System.err.println("Failed to trigger alumni registration notification: " + e.getMessage());
+        }
+
+        return saved;
     }
 
     @Override
@@ -57,10 +76,61 @@ public class AlumniServiceImpl implements AlumniService {
         return alumniRepository.save(alumni);
     }
 
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager entityManager;
+
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public void deleteAlumni(Integer alumniId) {
         Alumni alumni = alumniRepository.findById(alumniId)
                 .orElseThrow(() -> new ResourceNotFoundException("Alumni not found"));
+
+        // 1. Delete dependent event registrations for this alumni
+        try {
+            entityManager.createNativeQuery("DELETE FROM EVENT_REGISTRATION WHERE ALUMNI_ID = :alumniId")
+                    .setParameter("alumniId", alumniId)
+                    .executeUpdate();
+        } catch (Exception e) {
+            // Ignore if table does not exist
+        }
+
+        // 2. Delete dependent mentorship requests for this alumni
+        try {
+            entityManager.createNativeQuery("DELETE FROM MENTORSHIP_REQUEST WHERE ALUMNI_ID = :alumniId")
+                    .setParameter("alumniId", alumniId)
+                    .executeUpdate();
+        } catch (Exception e) {
+            // Ignore if table does not exist
+        }
+
+        // 3. Delete dependent donations for this alumni
+        try {
+            entityManager.createNativeQuery("DELETE FROM DONATION WHERE ALUMNI_ID = :alumniId")
+                    .setParameter("alumniId", alumniId)
+                    .executeUpdate();
+        } catch (Exception e) {
+            // Ignore if table does not exist
+        }
+
+        // 4. Delete dependent notifications for this alumni
+        try {
+            entityManager.createNativeQuery("DELETE FROM NOTIFICATION WHERE USER_ID = :alumniId AND UPPER(USER_TYPE) = 'ALUMNI'")
+                    .setParameter("alumniId", alumniId)
+                    .executeUpdate();
+        } catch (Exception e) {
+            // Ignore if table does not exist
+        }
+
+        // 5. Delete dependent OTP records for this alumni
+        try {
+            entityManager.createNativeQuery("DELETE FROM PASSWORD_RESET_OTP WHERE USER_ID = :alumniId AND UPPER(USER_TYPE) = 'ALUMNI'")
+                    .setParameter("alumniId", alumniId)
+                    .executeUpdate();
+        } catch (Exception e) {
+            // Ignore if table does not exist
+        }
+
+        // 6. Delete alumni entity
         alumniRepository.delete(alumni);
     }
 

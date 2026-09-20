@@ -13,5 +13,9 @@ public interface MentorshipService {
     MentorshipRequest acceptMentorshipRequest(Long requestId, Integer alumniId);
     MentorshipRequest rejectMentorshipRequest(Long requestId, Integer alumniId);
     MentorshipRequest completeMentorshipRequest(Long requestId, Integer alumniId);
+    String getMeetingLinkForJoin(Long requestId, Integer userId, String userType);
+    java.util.Map<String, String> getJoinSessionDetails(Long requestId, Integer userId, String userType);
+    com.alumniconnect.mentorship.entity.MentorshipMessage sendMessage(Long mentorshipId, Integer senderId, String senderType, String messageText);
+    List<com.alumniconnect.mentorship.entity.MentorshipMessage> getChatMessages(Long mentorshipId, Integer userId, String userType);
 }
 

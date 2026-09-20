@@ -11,6 +11,8 @@ export const RequestMentorshipModal = ({ visible, mentor, onClose, onRequestSucc
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { refreshData } = useAppContext();
 
+  const selectedTopic = Form.useWatch('topic', form);
+
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
@@ -23,11 +25,20 @@ export const RequestMentorshipModal = ({ visible, mentor, onClose, onRequestSucc
 
       setIsSubmitting(true);
 
+      const topicValue = values.topic;
+      const customTopicValue = (values.customTopic || '').trim();
+      const purposeValue = (values.purpose || '').trim();
+
+      // Resolved topic: If "Other", use customTopicValue; otherwise use predefined topic
+      const resolvedTopic = topicValue === 'Other' ? customTopicValue : topicValue;
+
+      const remarksValue = purposeValue ? `${resolvedTopic}: ${purposeValue}` : resolvedTopic;
+
       const payload = {
         studentId: currentStudentId,
         alumniId: mentor?.id,
         status: 'PENDING',
-        remarks: `${values.topic || ''}: ${values.purpose || ''}`.trim().replace(/^:/, '').trim(),
+        remarks: remarksValue,
         requestDate: values.date ? values.date.format('YYYY-MM-DD') : new Date().toISOString().split('T')[0]
       };
 
@@ -36,12 +47,12 @@ export const RequestMentorshipModal = ({ visible, mentor, onClose, onRequestSucc
       message.success(`Mentorship request submitted successfully to ${mentor?.name || 'Mentor'}!`);
       form.resetFields();
       setFileList([]);
-      refreshData();
+      await refreshData();
       onClose();
     } catch (err) {
       console.error('Error submitting mentorship request:', err);
       if (err.name === 'FieldsValidationError' || err.errorFields) {
-        // Validation failed, do not show error message or close modal
+        // Form validation error handled by Ant Design Form
         return;
       }
       const errData = err.response?.data;
@@ -49,6 +60,12 @@ export const RequestMentorshipModal = ({ visible, mentor, onClose, onRequestSucc
       message.error(errorMsg);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleTopicChange = (val) => {
+    if (val !== 'Other') {
+      form.setFieldValue('customTopic', '');
     }
   };
 
@@ -69,7 +86,7 @@ export const RequestMentorshipModal = ({ visible, mentor, onClose, onRequestSucc
       {mentor && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, backgroundColor: '#f8fafc', padding: 12, borderRadius: 8, marginBottom: 16 }}>
           <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: '#071330', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
-            {mentor.name.split(' ').map(n => n[0]).join('')}
+            {(mentor.name || 'M').split(' ').map(n => n[0]).join('')}
           </div>
           <div>
             <h4 style={{ margin: 0, fontSize: 14 }}>{mentor.name}</h4>
@@ -78,21 +95,62 @@ export const RequestMentorshipModal = ({ visible, mentor, onClose, onRequestSucc
         </div>
       )}
 
-      <Form form={form} layout="vertical" initialValues={{ mode: 'Virtual 1-on-1', timeSlot: '05:00 PM - 06:00 PM' }}>
-        <Form.Item name="topic" label="Mentorship Topic" rules={[{ required: true, message: 'Please select a topic' }]}>
-          <Select options={[
-            { value: 'System Design & Architecture', label: 'System Design & Architecture' },
-            { value: 'Resume Review & Interview Prep', label: 'Resume Review & Interview Prep' },
-            { value: 'Career Transition to ML / AI', label: 'Career Transition to ML / AI' },
-            { value: 'Higher Studies & Overseas Guidance', label: 'Higher Studies & Overseas Guidance' }
-          ]} />
+      <Form form={form} layout="vertical" initialValues={{ topic: 'System Design & Architecture', mode: 'Virtual 1-on-1 Video Call', timeSlot: '05:00 PM - 06:00 PM' }}>
+        <Form.Item name="topic" label="Topic / What do you need help with?" rules={[{ required: true, message: 'Please select a topic' }]}>
+          <Select
+            onChange={handleTopicChange}
+            options={[
+              { value: 'System Design & Architecture', label: 'System Design & Architecture' },
+              { value: 'Resume Review & Interview Prep', label: 'Resume Review & Interview Prep' },
+              { value: 'Career Transition to ML / AI', label: 'Career Transition to ML / AI' },
+              { value: 'Higher Studies & Overseas Guidance', label: 'Higher Studies & Overseas Guidance' },
+              { value: 'Career Guidance', label: 'Career Guidance' },
+              { value: 'Technical Skills', label: 'Technical Skills' },
+              { value: 'Industry Guidance', label: 'Industry Guidance' },
+              { value: 'Job Search', label: 'Job Search' },
+              { value: 'Entrepreneurship', label: 'Entrepreneurship' },
+              { value: 'Other', label: 'Other' }
+            ]}
+          />
+        </Form.Item>
+
+        {selectedTopic === 'Other' && (
+          <Form.Item
+            name="customTopic"
+            label="Specify your topic"
+            rules={[
+              {
+                validator: (_, value) => {
+                  const topic = form.getFieldValue('topic');
+                  if (topic === 'Other' && (!value || !value.trim())) {
+                    return Promise.reject(new Error('Please specify the topic you need help with.'));
+                  }
+                  return Promise.resolve();
+                }
+              }
+            ]}
+          >
+            <Input placeholder="Enter the topic you need help with" />
+          </Form.Item>
+        )}
+
+        <Form.Item
+          name="purpose"
+          label="Purpose / Detailed Description"
+        >
+          <Input.TextArea
+            rows={3}
+            maxLength={500}
+            showCount
+            placeholder="Describe what you would like guidance on or specific questions you want to ask..."
+          />
         </Form.Item>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <Form.Item name="date" label="Preferred Date" rules={[{ required: true }]}>
+          <Form.Item name="date" label="Preferred Date">
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="timeSlot" label="Preferred Time Slot" rules={[{ required: true }]}>
+          <Form.Item name="timeSlot" label="Preferred Time Slot">
             <Select options={[
               { value: '10:00 AM - 11:00 AM', label: '10:00 AM - 11:00 AM' },
               { value: '02:00 PM - 03:00 PM', label: '02:00 PM - 03:00 PM' },
@@ -108,10 +166,6 @@ export const RequestMentorshipModal = ({ visible, mentor, onClose, onRequestSucc
             { value: 'In-Person Campus Meeting', label: 'In-Person Campus Meeting' },
             { value: 'Asynchronous Q&A', label: 'Asynchronous Q&A' }
           ]} />
-        </Form.Item>
-
-        <Form.Item name="purpose" label="Purpose / Specific Goals for Session" rules={[{ required: true, message: 'Please write session objectives' }]}>
-          <Input.TextArea rows={3} placeholder="Describe what you want to achieve or specific questions you want to ask..." />
         </Form.Item>
 
         <Form.Item label="Attach Latest Resume (Optional)">

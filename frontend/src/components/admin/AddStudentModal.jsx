@@ -1,25 +1,40 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Modal, Form, Input, Select, Button, message } from 'antd';
 
 export const AddStudentModal = ({ visible, onClose, onAddStudent }) => {
   const [form] = Form.useForm();
+  const [submitting, setSubmitting] = useState(false);
 
   const handleFinish = async () => {
     try {
       const values = await form.validateFields();
+      setSubmitting(true);
+      
+      const payload = {
+        name: values.fullName,
+        registerNo: values.registerNumber,
+        email: values.email,
+        department: values.department,
+        batch: values.batchYear,
+        password: values.password || 'Student@123',
+        cgpa: values.cgpa ? parseFloat(values.cgpa) : 8.0,
+        mobile: values.mobile || ''
+      };
+
       if (onAddStudent) {
-        onAddStudent({
-          id: Date.now(),
-          ...values,
-          cgpa: '8.5',
-          status: 'Active'
-        });
+        await onAddStudent(payload);
       }
-      message.success(`Student "${values.fullName}" added successfully!`);
+      
       form.resetFields();
       onClose();
     } catch (err) {
-      console.log('Validation Error:', err);
+      if (err.errorFields) {
+        // Form validation error handled by Ant Design Form
+        return;
+      }
+      console.error('Error adding student:', err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -28,11 +43,12 @@ export const AddStudentModal = ({ visible, onClose, onAddStudent }) => {
       title="Add New Student Profile"
       open={visible}
       onCancel={onClose}
+      confirmLoading={submitting}
       footer={[
-        <Button key="cancel" onClick={onClose}>
+        <Button key="cancel" onClick={onClose} disabled={submitting}>
           Cancel
         </Button>,
-        <Button key="submit" type="primary" style={{ backgroundColor: '#1b62d4' }} onClick={handleFinish}>
+        <Button key="submit" type="primary" style={{ backgroundColor: '#1b62d4' }} loading={submitting} onClick={handleFinish}>
           Save Student
         </Button>
       ]}
@@ -80,14 +96,24 @@ export const AddStudentModal = ({ visible, onClose, onAddStudent }) => {
         <Form.Item
           name="batchYear"
           label="Year / Batch"
-          rules={[{ required: true }]}
+          rules={[{ required: true, message: 'Please enter year or batch (e.g. 2024-2028)' }]}
         >
-          <Select options={[
-            { value: '2027 (1st Year)', label: '2027 (1st Year)' },
-            { value: '2026 (2nd Year)', label: '2026 (2nd Year)' },
-            { value: '2025 (3rd Year)', label: '2025 (3rd Year)' },
-            { value: '2024 (4th Year)', label: '2024 (4th Year)' }
-          ]} />
+          <Input placeholder="e.g. 2024-2028 or 2026" />
+        </Form.Item>
+
+        <Form.Item
+          name="cgpa"
+          label="Initial CGPA (Optional)"
+        >
+          <Input placeholder="e.g. 8.5" />
+        </Form.Item>
+
+        <Form.Item
+          name="password"
+          label="Default Password (Optional)"
+          extra="Default password will be set to 'Student@123' if left empty"
+        >
+          <Input.Password placeholder="Student@123" />
         </Form.Item>
       </Form>
     </Modal>

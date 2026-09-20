@@ -1,20 +1,22 @@
 import axios from 'axios';
 
-// API Axios Instance Placeholder
+// API Axios Instance
 const api = axios.create({
   baseURL: 'http://localhost:8080',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  timeout: 30000,
 });
 
-// Request Interceptor to attach Auth Token
+// Request Interceptor to attach Auth Token and handle FormData Content-Type
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('alumni_auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    } else if (!config.headers['Content-Type']) {
+      config.headers['Content-Type'] = 'application/json';
     }
     return config;
   },

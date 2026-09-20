@@ -137,7 +137,7 @@ export const AlumniFundraisingPage = () => {
     setSelectedCamp(found || null);
   };
 
-  // Step 1: Create Razorpay Order & Launch Real Razorpay Checkout Modal
+  // Create Razorpay Order & Launch Real Razorpay Test Checkout
   const handleProceedToPayment = async () => {
     try {
       const values = await contributeForm.validateFields();
@@ -170,28 +170,42 @@ export const AlumniFundraisingPage = () => {
         alumniId: alumniId
       };
 
+      console.log("Creating Razorpay Order payload:", orderPayload);
       const orderRes = await api.post('/fundraising/payment/create-order', orderPayload);
       const orderData = orderRes.data;
+      console.log("Razorpay Order Created Response:", orderData);
 
-      // 2. Load Razorpay Checkout SDK script
-      const isLoaded = await loadRazorpayScript();
-      if (!isLoaded || !window.Razorpay) {
-        message.error("Unable to load Razorpay Checkout SDK. Please check your internet connection.");
+      if (!orderData || !orderData.orderId) {
+        message.error("Failed to create Razorpay Order. Invalid server response.");
         setSubmittingPayment(false);
         return;
       }
 
-      // 3. Configure Razorpay Test Mode Options
+      // 2. Load Razorpay Checkout SDK script
+      const isLoaded = await loadRazorpayScript();
+      if (!isLoaded || !window.Razorpay) {
+        message.error("Razorpay Checkout could not be loaded. Please check your network connection.");
+        setSubmittingPayment(false);
+        return;
+      }
+
+      // 3. Configure Razorpay Options
       const options = {
-        key: orderData.keyId || 'rzp_test_5173AlumniKCE',
+        key: orderData.keyId,
         amount: orderData.amountInPaise,
         currency: orderData.currency || 'INR',
         name: 'AlumniConnect Institutional Giving',
         description: targetCamp.title,
         order_id: orderData.orderId,
         handler: async function (response) {
-          // Razorpay payment completed! Send response to backend for signature verification
+          console.log("REAL RAZORPAY SUCCESS:", response);
+          console.log({
+            paymentId: response.razorpay_payment_id,
+            orderId: response.razorpay_order_id,
+            signature: response.razorpay_signature
+          });
           try {
+            setSubmittingPayment(true);
             const verifyPayload = {
               razorpayPaymentId: response.razorpay_payment_id,
               razorpayOrderId: response.razorpay_order_id,
@@ -215,13 +229,14 @@ export const AlumniFundraisingPage = () => {
           }
         },
         prefill: {
-          name: user?.name || 'Alumni Donor',
-          email: user?.email || 'alumni@kce.ac.in'
+          name: user?.name || '',
+          email: user?.email || ''
         },
         theme: { color: '#1b62d4' },
         modal: {
           ondismiss: function () {
-            message.info('Payment was cancelled.');
+            console.log("Razorpay checkout dismissed by user");
+            message.warning("Payment cancelled.");
             setSubmittingPayment(false);
           }
         }
@@ -231,15 +246,8 @@ export const AlumniFundraisingPage = () => {
       setIsContributeOpen(false);
       const rzp = new window.Razorpay(options);
       rzp.on('payment.failed', function (resp) {
-        console.error("Razorpay Payment Failed Full Diagnostic Log:", {
-          code: resp.error?.code,
-          description: resp.error?.description,
-          source: resp.error?.source,
-          step: resp.error?.step,
-          reason: resp.error?.reason,
-          metadata: resp.error?.metadata
-        });
-        message.error(resp.error?.description || "Payment failed. Please try again.");
+        console.error("REAL RAZORPAY PAYMENT FAILED", resp);
+        message.error(`Payment failed: ${resp.error?.description || "Transaction failed. Please try again."}`);
         setSubmittingPayment(false);
       });
       rzp.open();
@@ -381,7 +389,7 @@ export const AlumniFundraisingPage = () => {
         </div>
       </Spin>
 
-      {/* Razorpay Test Mode Amount Input Modal */}
+      {/* Razorpay Amount Selection Modal */}
       <Modal
         title="Make a Contribution"
         open={isContributeOpen}
