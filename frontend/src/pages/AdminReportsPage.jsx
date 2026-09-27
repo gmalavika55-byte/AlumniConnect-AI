@@ -6,6 +6,8 @@ import { AdminLayout } from '../components/admin/AdminLayout';
 import { downloadCsv } from '../utils/exportCsv';
 import api from '../services/api';
 
+const AI_BASE_URL = (import.meta.env.VITE_AI_SERVICE_URL || 'http://localhost:8000').replace(/\/+$/, '');
+
 export const AdminReportsPage = () => {
   const location = useLocation();
   const studentDemographicsRef = useRef(null);
@@ -69,21 +71,11 @@ export const AdminReportsPage = () => {
       const batchPayload = studentArray.map(s => buildPredictionPayload(s));
       console.log(`[ML Batch Request] Evaluating ${batchPayload.length} students via predict-batch:`, batchPayload);
 
-      const res = await fetch('http://localhost:8000/ai/career/predict-batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(batchPayload)
-      });
-
-      if (!res.ok) {
-        throw new Error(`Batch prediction endpoint returned status ${res.status}`);
-      }
-
-      const data = await res.json();
-      setOverallMlData(data);
+      const res = await api.post('/ai/career/predict-batch', batchPayload);
+      setOverallMlData(res.data);
     } catch (err) {
       console.error('Error fetching overall ML predictions batch:', err);
-      setOverallMlError(err.message || 'Unable to generate overall ML predicted placement trend.');
+      setOverallMlError(err.response?.data?.detail || err.message || 'Unable to generate overall ML predicted placement trend.');
     } finally {
       setOverallMlLoading(false);
       isEvaluatingRef.current = false;
@@ -94,11 +86,8 @@ export const AdminReportsPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('http://localhost:8000/ai/career/analytics');
-      if (!response.ok) {
-        throw new Error(`AI Analytics Service returned status ${response.status}`);
-      }
-      const data = await response.json();
+      const response = await api.get('/ai/career/analytics');
+      const data = response.data;
       if (data.status === 'degraded') {
         throw new Error(data.message || 'Career analytics data is currently degraded.');
       }
@@ -161,20 +150,10 @@ export const AdminReportsPage = () => {
       const payload = buildPredictionPayload(studentObj);
       console.log(`[ML Individual Request] Evaluating student ID ${studentObj.studentId || studentObj.id} (${studentObj.name}):`, payload);
 
-      const res = await fetch('http://localhost:8000/ai/career/predict', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) {
-        throw new Error(`Prediction API returned status ${res.status}`);
-      }
-
-      const data = await res.json();
+      const res = await api.post('/ai/career/predict', payload);
       setPredictionData({
         student: studentObj,
-        result: data
+        result: res.data
       });
     } catch (err) {
       console.error('Error fetching student ML prediction:', err);
@@ -186,15 +165,14 @@ export const AdminReportsPage = () => {
 
   // Target Section Smooth Scroll & Visual Highlight Effect
   useEffect(() => {
-    if (!loading && location.state?.scrollTo) {
-      const target = location.state.scrollTo;
-      if (target === 'student-demographics') {
+    if (!loading) {
+      if (location.pathname === '/admin/analytics') {
         const scrollTimer = setTimeout(() => {
-          studentDemographicsRef.current?.scrollIntoView({
+          mlPredictionRef.current?.scrollIntoView({
             behavior: 'smooth',
-            block: 'center'
+            block: 'start'
           });
-          setHighlightedSection('student-demographics');
+          setHighlightedSection('ml-prediction');
         }, 150);
 
         const clearHighlightTimer = setTimeout(() => {
@@ -205,26 +183,46 @@ export const AdminReportsPage = () => {
           clearTimeout(scrollTimer);
           clearTimeout(clearHighlightTimer);
         };
-      } else if (target === 'alumni-distribution') {
-        const scrollTimer = setTimeout(() => {
-          alumniDistributionRef.current?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center'
-          });
-          setHighlightedSection('alumni-distribution');
-        }, 150);
+      } else if (location.state?.scrollTo) {
+        const target = location.state.scrollTo;
+        if (target === 'student-demographics') {
+          const scrollTimer = setTimeout(() => {
+            studentDemographicsRef.current?.scrollIntoView({
+              behavior: 'smooth',
+              block: 'center'
+            });
+            setHighlightedSection('student-demographics');
+          }, 150);
 
-        const clearHighlightTimer = setTimeout(() => {
-          setHighlightedSection(null);
-        }, 2000);
+          const clearHighlightTimer = setTimeout(() => {
+            setHighlightedSection(null);
+          }, 2000);
 
-        return () => {
-          clearTimeout(scrollTimer);
-          clearTimeout(clearHighlightTimer);
-        };
+          return () => {
+            clearTimeout(scrollTimer);
+            clearTimeout(clearHighlightTimer);
+          };
+        } else if (target === 'alumni-distribution') {
+          const scrollTimer = setTimeout(() => {
+            alumniDistributionRef.current?.scrollIntoView({
+              behavior: 'smooth',
+              block: 'center'
+            });
+            setHighlightedSection('alumni-distribution');
+          }, 150);
+
+          const clearHighlightTimer = setTimeout(() => {
+            setHighlightedSection(null);
+          }, 2000);
+
+          return () => {
+            clearTimeout(scrollTimer);
+            clearTimeout(clearHighlightTimer);
+          };
+        }
       }
     }
-  }, [loading, location.state]);
+  }, [loading, location.pathname, location.state]);
 
   // Derived state from live AI analytics
   const overview = careerAnalytics?.overview || {};
@@ -310,7 +308,7 @@ export const AdminReportsPage = () => {
         <div style={{ textAlign: 'center', padding: '80px 0' }}>
           <Spin size="large" />
           <p style={{ marginTop: 16, color: 'var(--ac-text-secondary)', fontWeight: 600 }}>
-            Fetching live AI career analytics from http://localhost:8000/ai/career/analytics...
+            Fetching live AI career analytics from {AI_BASE_URL}/ai/career/analytics...
           </p>
         </div>
       ) : error ? (
@@ -525,7 +523,7 @@ export const AdminReportsPage = () => {
               <div style={{ textAlign: 'center', padding: '30px 0' }}>
                 <Spin size="large" />
                 <p style={{ marginTop: 12, color: 'var(--ac-text-secondary)', fontWeight: 600 }}>
-                  Passing student features to Random Forest model (POST http://localhost:8000/ai/career/predict)...
+                  Passing student features to Random Forest model ({AI_BASE_URL}/ai/career/predict)...
                 </p>
               </div>
             ) : predictError ? (

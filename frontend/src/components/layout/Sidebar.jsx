@@ -9,7 +9,10 @@ import {
   NotificationOutlined,
   SettingOutlined,
   SafetyCertificateOutlined,
-  BranchesOutlined
+  BranchesOutlined,
+  BarChartOutlined,
+  FileTextOutlined,
+  HeartOutlined
 } from '@ant-design/icons';
 import { authService } from '../../services/authService';
 
@@ -25,18 +28,32 @@ export const Sidebar = ({ collapsed }) => {
     switch (role) {
       case 'admin':
         return [
-          { key: '/admin/dashboard', icon: <DashboardOutlined />, label: 'Admin Overview' },
-          { key: '/student/dashboard', icon: <UserOutlined />, label: 'Student View' },
-          { key: '/alumni/dashboard', icon: <TeamOutlined />, label: 'Alumni View' },
+          { key: '/admin/dashboard', icon: <DashboardOutlined />, label: 'Dashboard' },
+          { key: '/admin/students', icon: <UserOutlined />, label: 'Student Management' },
+          { key: '/admin/alumni', icon: <TeamOutlined />, label: 'Alumni Management' },
+          { key: '/admin/mentorship', icon: <BranchesOutlined />, label: 'Mentorship Management' },
+          { key: '/admin/events', icon: <CalendarOutlined />, label: 'Event Management' },
+          { key: '/admin/fundraising', icon: <HeartOutlined />, label: 'Fundraising Management' },
+          { key: '/admin/reports', icon: <FileTextOutlined />, label: 'Reports & Analytics' },
+          { key: '/admin/settings', icon: <SettingOutlined />, label: 'Settings & Roles' },
         ];
       case 'alumni':
         return [
           { key: '/alumni/dashboard', icon: <DashboardOutlined />, label: 'Alumni Dashboard' },
+          { key: '/alumni/profile', icon: <UserOutlined />, label: 'My Profile' },
+          { key: '/alumni/mentorship', icon: <BranchesOutlined />, label: 'Mentorships' },
+          { key: '/alumni/events', icon: <CalendarOutlined />, label: 'Events' },
+          { key: '/alumni/fundraising', icon: <HeartOutlined />, label: 'Fundraising' },
+          { key: '/alumni/settings', icon: <SettingOutlined />, label: 'Settings' },
         ];
       case 'student':
       default:
         return [
           { key: '/student/dashboard', icon: <DashboardOutlined />, label: 'Student Dashboard' },
+          { key: '/student/profile', icon: <UserOutlined />, label: 'My Profile' },
+          { key: '/student/mentorship', icon: <BranchesOutlined />, label: 'Mentorship' },
+          { key: '/student/events', icon: <CalendarOutlined />, label: 'Events' },
+          { key: '/student/settings', icon: <SettingOutlined />, label: 'Settings' },
         ];
     }
   };

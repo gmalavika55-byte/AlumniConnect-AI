@@ -15,7 +15,8 @@ import {
   FiMoon,
   FiHeart,
   FiCheckCircle,
-  FiInfo
+  FiInfo,
+  FiBarChart2
 } from 'react-icons/fi';
 import { FaGraduationCap } from 'react-icons/fa';
 import { authService } from '../../services/authService';
@@ -161,7 +162,7 @@ export const AdminLayout = ({ children, onSearch }) => {
           <nav className={styles.sidebarNav}>
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = location.pathname === item.path || (item.path !== '/admin/dashboard' && location.pathname.startsWith(item.path));
+              const isActive = location.pathname === item.path || (item.path === '/admin/reports' && location.pathname === '/admin/analytics') || (item.path !== '/admin/dashboard' && item.path !== '/admin/reports' && location.pathname.startsWith(item.path));
               return (
                 <div
                   key={item.path}

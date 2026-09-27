@@ -76,6 +76,7 @@ export const AppRoutes = () => {
         <Route path="/admin/events" element={<AdminEventsPage />} />
         <Route path="/admin/fundraising" element={<AdminFundraisingPage />} />
         <Route path="/admin/reports" element={<AdminReportsPage />} />
+        <Route path="/admin/analytics" element={<AdminReportsPage />} />
         <Route path="/admin/settings" element={<AdminSettingsPage />} />
       </Route>
 

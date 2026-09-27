@@ -71,7 +71,7 @@ export const AdminDashboard = () => {
         api.get('/mentorship/getall'),
         api.get('/event/getall'),
         api.get('/fundraising/donations/all'),
-        api.get('/placement/getall')
+        api.get('/analytics/placement')
       ]);
 
       let studentList = [];

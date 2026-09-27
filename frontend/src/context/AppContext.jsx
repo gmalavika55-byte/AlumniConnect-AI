@@ -36,6 +36,8 @@ const translations = {
   mentorshipManagement: { english: 'Mentorship Management', tamil: 'வழிகாட்டுதல் மேலாண்மை' },
   eventManagement: { english: 'Event Management', tamil: 'நிகழ்வு மேலாண்மை' },
   fundraisingManagement: { english: 'Fundraising Management', tamil: 'நிதி திரட்டல் மேலாண்மை' },
+  reports: { english: 'Reports', tamil: 'அறிக்கைகள்' },
+  analytics: { english: 'Analytics', tamil: 'பகுப்பாய்வு' },
   reportsAnalytics: { english: 'Reports & Analytics', tamil: 'அறிக்கைகள் & பகுப்பாய்வு' },
   settingsRoles: { english: 'Settings & Roles', tamil: 'அமைப்புகள் & பாத்திரங்கள்' },
 };
