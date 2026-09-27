@@ -1,0 +1,230 @@
+services:
+
+  # ----------------------------------------------------------------------------
+  # 1. ORACLE DATABASE (XE 21c)
+  # ----------------------------------------------------------------------------
+  oracle-db:
+    image: gvenzl/oracle-xe:21-slim
+    container_name: alconnect-oracle-db
+    restart: unless-stopped
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD}
+      APP_USER: ${SPRING_DATASOURCE_USERNAME:-system}
+      APP_USER_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+    volumes:
+      - oracle_data:/opt/oracle/oradata
+    networks:
+      - alconnect-network
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'SELECT 1 FROM DUAL;' | sqlplus -s system/$${ORACLE_PASSWORD}@//localhost:1521/xe || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 45s
+
+  # ----------------------------------------------------------------------------
+  # 2. FASTAPI AI SERVICE (Port 8000 - Internal to Network)
+  # ----------------------------------------------------------------------------
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: alconnect-ai-service
+    restart: unless-stopped
+    environment:
+      AUTH_SERVICE_URL: http://auth-service:8101
+      ANALYTICS_SERVICE_URL: http://analytics-service:8105
+    networks:
+      - alconnect-network
+
+  # ----------------------------------------------------------------------------
+  # 3. AUTH & USER SERVICE (Port 8101 - Internal to Network)
+  # ----------------------------------------------------------------------------
+  auth-service:
+    build:
+      context: ./backend
+      dockerfile: auth-service/Dockerfile
+    container_name: alconnect-auth-service
+    restart: unless-stopped
+    depends_on:
+      oracle-db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:oracle:thin:@oracle-db:1521/xe}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-system}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      BREVO_SMTP_HOST: ${BREVO_SMTP_HOST:-smtp-relay.brevo.com}
+      BREVO_SMTP_PORT: ${BREVO_SMTP_PORT:-587}
+      BREVO_SMTP_USERNAME: ${BREVO_SMTP_USERNAME:-}
+      BREVO_SMTP_PASSWORD: ${BREVO_SMTP_PASSWORD:-}
+      BREVO_SMTP_FROM: ${BREVO_SMTP_FROM:-noreply@alumniconnect.com}
+    volumes:
+      - ./backend/auth-service/uploads:/app/uploads
+    networks:
+      - alconnect-network
+
+  # ----------------------------------------------------------------------------
+  # 4. MENTORSHIP SERVICE (Port 8102 - Internal to Network)
+  # ----------------------------------------------------------------------------
+  mentorship-service:
+    build:
+      context: ./backend
+      dockerfile: mentorship-service/Dockerfile
+    container_name: alconnect-mentorship-service
+    restart: unless-stopped
+    depends_on:
+      oracle-db:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      ai-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:oracle:thin:@oracle-db:1521/xe}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-system}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      AUTH_SERVICE_URL: http://auth-service:8101
+      AI_SERVICE_URL: http://ai-service:8000
+      JAAS_APP_ID: ${JAAS_APP_ID:-vpaas-magic-cookie-alumniconnect}
+      JAAS_KEY_ID: ${JAAS_KEY_ID:-k_alumniconnect}
+      JAAS_PRIVATE_KEY: ${JAAS_PRIVATE_KEY:-}
+    networks:
+      - alconnect-network
+
+  # ----------------------------------------------------------------------------
+  # 5. EVENT SERVICE (Port 8103 - Internal to Network)
+  # ----------------------------------------------------------------------------
+  event-service:
+    build:
+      context: ./backend
+      dockerfile: event-service/Dockerfile
+    container_name: alconnect-event-service
+    restart: unless-stopped
+    depends_on:
+      oracle-db:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:oracle:thin:@oracle-db:1521/xe}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-system}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      AUTH_SERVICE_URL: http://auth-service:8101
+    networks:
+      - alconnect-network
+
+  # ----------------------------------------------------------------------------
+  # 6. FUNDRAISING SERVICE (Port 8104 - Internal to Network)
+  # ----------------------------------------------------------------------------
+  fundraising-service:
+    build:
+      context: ./backend
+      dockerfile: fundraising-service/Dockerfile
+    container_name: alconnect-fundraising-service
+    restart: unless-stopped
+    depends_on:
+      oracle-db:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:oracle:thin:@oracle-db:1521/xe}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-system}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      AUTH_SERVICE_URL: http://auth-service:8101
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+    networks:
+      - alconnect-network
+
+  # ----------------------------------------------------------------------------
+  # 7. ANALYTICS SERVICE (Port 8105 - Internal to Network)
+  # ----------------------------------------------------------------------------
+  analytics-service:
+    build:
+      context: ./backend
+      dockerfile: analytics-service/Dockerfile
+    container_name: alconnect-analytics-service
+    restart: unless-stopped
+    depends_on:
+      oracle-db:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      event-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:oracle:thin:@oracle-db:1521/xe}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-system}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      AUTH_SERVICE_URL: http://auth-service:8101
+      EVENT_SERVICE_URL: http://event-service:8103
+    networks:
+      - alconnect-network
+
+  # ----------------------------------------------------------------------------
+  # 8. SPRING CLOUD API GATEWAY (Port 8080 - Exposed Externally)
+  # ----------------------------------------------------------------------------
+  api-gateway:
+    build:
+      context: ./backend
+      dockerfile: api-gateway/Dockerfile
+    container_name: alconnect-api-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      auth-service:
+        condition: service_started
+      mentorship-service:
+        condition: service_started
+      event-service:
+        condition: service_started
+      fundraising-service:
+        condition: service_started
+      analytics-service:
+        condition: service_started
+      ai-service:
+        condition: service_started
+    environment:
+      AUTH_SERVICE_URL: http://auth-service:8101
+      MENTORSHIP_SERVICE_URL: http://mentorship-service:8102
+      EVENT_SERVICE_URL: http://event-service:8103
+      FUNDRAISING_SERVICE_URL: http://fundraising-service:8104
+      ANALYTICS_SERVICE_URL: http://analytics-service:8105
+      AI_SERVICE_URL: http://ai-service:8000
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:80,http://localhost}
+    networks:
+      - alconnect-network
+
+  # ----------------------------------------------------------------------------
+  # 9. FRONTEND (React + Vite served via Nginx on Port 80 - Exposed Externally)
+  # ----------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+        VITE_AI_SERVICE_URL: ${VITE_AI_SERVICE_URL:-http://localhost:8080}
+    container_name: alconnect-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - alconnect-network
+
+# ==============================================================================
+# NETWORKS & PERSISTENT VOLUMES
+# ==============================================================================
+networks:
+  alconnect-network:
+    driver: bridge
+
+volumes:
+  oracle_data:
+    driver: local

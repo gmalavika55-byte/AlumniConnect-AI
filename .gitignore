@@ -1,3 +1,8 @@
+# Environment & Secrets
+.env
+.env*.local
+*.env
+
 # Logs
 logs
 *.log
@@ -7,10 +12,26 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Node / Frontend
 node_modules
 dist
 dist-ssr
 *.local
+
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv
+env/
+venv/
 
 # Editor directories and files
 .vscode/*
@@ -22,3 +43,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Database & Sensitive Migration Dumps
+database/migration/restore_original_data.sql
+
+# Local File Uploads (Resumes, Certificates)
+backend/auth-service/uploads/
+

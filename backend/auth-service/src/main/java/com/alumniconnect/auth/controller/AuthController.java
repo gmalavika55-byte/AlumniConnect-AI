@@ -83,24 +83,26 @@ public class AuthController {
             loginRequest.getPassword() == null || loginRequest.getPassword().trim().isEmpty()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Email and password are required.");
         }
+        String identifier = loginRequest.getEmail().trim();
+        String password = loginRequest.getPassword();
         try {
-            Student student = studentService.getStudentByEmail(loginRequest.getEmail());
+            Student student = studentService.getStudentByEmail(identifier);
             if (student != null) {
-                student = studentService.login(loginRequest.getEmail(), loginRequest.getPassword());
+                student = studentService.login(identifier, password);
                 String token = generateToken(student.getStudentId(), "STUDENT", student.getEmail());
                 return ResponseEntity.ok(createAuthResponse(token, "STUDENT", student));
             }
 
-            Alumni alumni = alumniService.getAlumniByEmail(loginRequest.getEmail());
+            Alumni alumni = alumniService.getAlumniByEmail(identifier);
             if (alumni != null) {
-                alumni = alumniService.login(loginRequest.getEmail(), loginRequest.getPassword());
+                alumni = alumniService.login(identifier, password);
                 String token = generateToken(alumni.getAlumniId(), "ALUMNI", alumni.getEmail());
                 return ResponseEntity.ok(createAuthResponse(token, "ALUMNI", alumni));
             }
 
-            Admin admin = adminService.getAdminByEmail(loginRequest.getEmail());
+            Admin admin = adminService.getAdminByEmail(identifier);
             if (admin != null) {
-                admin = adminService.login(loginRequest.getEmail(), loginRequest.getPassword());
+                admin = adminService.login(identifier, password);
                 String token = generateToken(admin.getAdminId(), "ADMIN", admin.getEmail());
                 return ResponseEntity.ok(createAuthResponse(token, "ADMIN", admin));
             }

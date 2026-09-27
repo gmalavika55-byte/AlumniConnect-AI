@@ -157,16 +157,29 @@ public class StudentServiceImpl implements StudentService {
 
     @Override
     public Student getStudentByEmail(String email) {
-        return studentRepository.findByEmail(email);
+        if (email == null) return null;
+        String trimmed = email.trim();
+        Student student = studentRepository.findByEmailIgnoreCase(trimmed);
+        if (student == null) {
+            student = studentRepository.findByRegisterNoIgnoreCase(trimmed);
+        }
+        return student;
     }
 
     @Override
     public Student login(String email, String password) {
-        Student student = studentRepository.findByEmail(email);
-        if (student == null) {
-            throw new RuntimeException("Invalid Email");
+        if (email == null || email.trim().isEmpty() || password == null || password.trim().isEmpty()) {
+            throw new RuntimeException("Invalid Email or Register Number");
         }
-        if (!passwordEncoder.matches(password, student.getPassword())) {
+        String trimmed = email.trim();
+        Student student = studentRepository.findByEmailIgnoreCase(trimmed);
+        if (student == null) {
+            student = studentRepository.findByRegisterNoIgnoreCase(trimmed);
+        }
+        if (student == null) {
+            throw new RuntimeException("Invalid Email or Register Number");
+        }
+        if (!passwordEncoder.matches(password, student.getPassword()) && !password.equals(student.getPassword())) {
             throw new RuntimeException("Invalid Password");
         }
         return student;

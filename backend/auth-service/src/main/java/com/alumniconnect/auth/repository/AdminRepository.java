@@ -8,4 +8,6 @@ import com.alumniconnect.auth.entity.Admin;
 public interface AdminRepository extends JpaRepository<Admin, Integer> {
     Admin findByEmail(String email);
     Admin findByEmployeeId(String employeeId);
+    Admin findByEmailIgnoreCase(String email);
+    Admin findByEmployeeIdIgnoreCase(String employeeId);
 }

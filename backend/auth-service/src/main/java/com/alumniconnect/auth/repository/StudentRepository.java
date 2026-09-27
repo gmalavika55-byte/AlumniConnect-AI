@@ -8,4 +8,6 @@ import com.alumniconnect.auth.entity.Student;
 public interface StudentRepository extends JpaRepository<Student, Integer> {
     Student findByEmail(String email);
     Student findByRegisterNo(String registerNo);
+    Student findByEmailIgnoreCase(String email);
+    Student findByRegisterNoIgnoreCase(String registerNo);
 }

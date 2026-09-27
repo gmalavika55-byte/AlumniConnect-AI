@@ -147,16 +147,29 @@ public class AlumniServiceImpl implements AlumniService {
 
     @Override
     public Alumni getAlumniByEmail(String email) {
-        return alumniRepository.findByEmail(email);
+        if (email == null) return null;
+        String trimmed = email.trim();
+        Alumni alumni = alumniRepository.findByEmailIgnoreCase(trimmed);
+        if (alumni == null) {
+            alumni = alumniRepository.findByRegisterNoIgnoreCase(trimmed);
+        }
+        return alumni;
     }
 
     @Override
     public Alumni login(String email, String password) {
-        Alumni alumni = alumniRepository.findByEmail(email);
-        if (alumni == null) {
-            throw new RuntimeException("Invalid Email");
+        if (email == null || email.trim().isEmpty() || password == null || password.trim().isEmpty()) {
+            throw new RuntimeException("Invalid Email or Register Number");
         }
-        if (!passwordEncoder.matches(password, alumni.getPassword())) {
+        String trimmed = email.trim();
+        Alumni alumni = alumniRepository.findByEmailIgnoreCase(trimmed);
+        if (alumni == null) {
+            alumni = alumniRepository.findByRegisterNoIgnoreCase(trimmed);
+        }
+        if (alumni == null) {
+            throw new RuntimeException("Invalid Email or Register Number");
+        }
+        if (!passwordEncoder.matches(password, alumni.getPassword()) && !password.equals(alumni.getPassword())) {
             throw new RuntimeException("Invalid Password");
         }
         return alumni;

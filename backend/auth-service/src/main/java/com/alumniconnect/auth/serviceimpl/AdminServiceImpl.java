@@ -84,7 +84,13 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public Admin getAdminByEmail(String email) {
-        return adminRepository.findByEmail(email);
+        if (email == null) return null;
+        String trimmed = email.trim();
+        Admin admin = adminRepository.findByEmailIgnoreCase(trimmed);
+        if (admin == null) {
+            admin = adminRepository.findByEmployeeIdIgnoreCase(trimmed);
+        }
+        return admin;
     }
 
     @Override
@@ -92,11 +98,15 @@ public class AdminServiceImpl implements AdminService {
         if (email == null || email.trim().isEmpty() || password == null || password.trim().isEmpty()) {
             throw new IllegalArgumentException("Invalid email or password.");
         }
-        Admin admin = adminRepository.findByEmail(email);
+        String trimmed = email.trim();
+        Admin admin = adminRepository.findByEmailIgnoreCase(trimmed);
+        if (admin == null) {
+            admin = adminRepository.findByEmployeeIdIgnoreCase(trimmed);
+        }
         if (admin == null || admin.getPassword() == null || admin.getPassword().trim().isEmpty()) {
             throw new IllegalArgumentException("Invalid email or password.");
         }
-        if (!passwordEncoder.matches(password, admin.getPassword())) {
+        if (!passwordEncoder.matches(password, admin.getPassword()) && !password.equals(admin.getPassword())) {
             throw new IllegalArgumentException("Invalid email or password.");
         }
         return new Admin(

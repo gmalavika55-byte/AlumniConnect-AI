@@ -1,0 +1,13 @@
+target
+**/*.log
+**/.mvn
+.mvn
+mvnw
+mvnw.cmd
+.git
+.gitignore
+.vscode
+.idea
+*.iml
+*.cmd
+verify_settings_security.ps1

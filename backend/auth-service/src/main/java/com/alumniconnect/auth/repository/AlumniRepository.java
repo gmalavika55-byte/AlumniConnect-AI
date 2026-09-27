@@ -9,4 +9,6 @@ public interface AlumniRepository extends JpaRepository<Alumni, Integer> {
     Alumni findByEmail(String email);
     Alumni findByAlumniId(Integer alumniId);
     Alumni findByRegisterNo(String registerNo);
+    Alumni findByEmailIgnoreCase(String email);
+    Alumni findByRegisterNoIgnoreCase(String registerNo);
 }
