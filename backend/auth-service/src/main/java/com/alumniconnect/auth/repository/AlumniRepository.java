@@ -1,11 +1,12 @@
 package com.alumniconnect.auth.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 import com.alumniconnect.auth.entity.Alumni;
 
 @Repository
-public interface AlumniRepository extends JpaRepository<Alumni, Integer> {
+public interface AlumniRepository extends JpaRepository<Alumni, Integer>, JpaSpecificationExecutor<Alumni> {
     Alumni findByEmail(String email);
     Alumni findByAlumniId(Integer alumniId);
     Alumni findByRegisterNo(String registerNo);

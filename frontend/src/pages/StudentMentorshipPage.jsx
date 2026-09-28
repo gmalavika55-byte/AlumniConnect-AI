@@ -33,6 +33,14 @@ export const StudentMentorshipPage = () => {
   const [loadingAi, setLoadingAi] = useState(false);
   const [hasSearchedAi, setHasSearchedAi] = useState(false);
 
+  // Server-Side Paginated Mentors State
+  const [pagedMentors, setPagedMentors] = useState([]);
+  const [mentorPage, setMentorPage] = useState(0);
+  const mentorPageSize = 12;
+  const [mentorTotal, setMentorTotal] = useState(0);
+  const [mentorTotalPages, setMentorTotalPages] = useState(0);
+  const [mentorLoading, setMentorLoading] = useState(false);
+
   const {
     searchQuery,
     mentors,
@@ -41,6 +49,73 @@ export const StudentMentorshipPage = () => {
     meetingsHistory,
     refreshData
   } = useAppContext();
+
+  // ── Current Logged-in Student ──
+  const currentUser = authService.getCurrentUser();
+  const currentStudentId = currentUser ? (currentUser.studentId || currentUser.id || null) : null;
+
+  // ── Fetch Server-Side Paginated Mentors ──
+  const fetchPagedMentors = async (page = 0, search = searchQuery) => {
+    setMentorLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.append('page', page);
+      params.append('size', mentorPageSize);
+      if (search && search.trim()) {
+        params.append('search', search.trim());
+      }
+      params.append('availableForMentorship', 'Yes');
+
+      const res = await api.get(`/alumni/paged?${params.toString()}`);
+      const data = res.data || {};
+      const content = Array.isArray(data.content) ? data.content : [];
+
+      const mapped = content.map(al => ({
+        id: al.alumniId,
+        name: al.name,
+        role: al.designation || 'Alumni Mentor',
+        company: al.currentCompany || 'Enterprise',
+        experience: al.experience || 0,
+        department: al.department || '',
+        location: al.location || '',
+        bio: `${al.designation || 'Alumni'} at ${al.currentCompany || 'Enterprise'} (${al.department || 'Alumni'})`,
+        skills: (al.skills ? al.skills.split(',').map(s => s.trim()).filter(Boolean) : []),
+        rating: '4.9',
+        availableForMentorship: al.availableForMentorship || 'Yes',
+        email: al.email,
+        linkedin: al.linkedin
+      }));
+
+      setPagedMentors(mapped);
+      setMentorPage(typeof data.currentPage === 'number' ? data.currentPage : page);
+      setMentorTotal(typeof data.totalElements === 'number' ? data.totalElements : mapped.length);
+      setMentorTotalPages(typeof data.totalPages === 'number' ? data.totalPages : Math.ceil((data.totalElements || mapped.length) / mentorPageSize));
+    } catch (err) {
+      console.error('Error fetching paged mentors:', err);
+      // Graceful fallback from global mentors if server paged endpoint encounters error
+      const filtered = (mentors || []).filter(m => {
+        const avail = (m.availableForMentorship || '').toLowerCase();
+        return avail === 'yes' || avail === 'true' || !m.availableForMentorship;
+      });
+      setPagedMentors(filtered.slice(0, mentorPageSize));
+      setMentorTotal(filtered.length);
+      setMentorTotalPages(Math.ceil(filtered.length / mentorPageSize));
+    } finally {
+      setMentorLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'Available Mentors') {
+      fetchPagedMentors(0, searchQuery);
+    }
+  }, [activeTab, searchQuery]);
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 0 || newPage >= mentorTotalPages || mentorLoading) return;
+    setMentorPage(newPage);
+    fetchPagedMentors(newPage, searchQuery);
+  };
 
   useEffect(() => {
     if (location.state) {
@@ -83,10 +158,6 @@ export const StudentMentorshipPage = () => {
     }
   }, [location.state, activeMentorships, requests]);
 
-  // ── Current Logged-in Student ──
-  const currentUser = authService.getCurrentUser();
-  const currentStudentId = currentUser ? (currentUser.studentId || currentUser.id || null) : null;
-
   const handleRequestClick = (mentor) => {
     if (!currentStudentId) {
       message.error('You must be logged in as a student to request mentorship.');
@@ -107,93 +178,95 @@ export const StudentMentorshipPage = () => {
       try {
         const res = await api.get(`/mentorship/ai/recommendations/${currentStudentId}`);
         if (res.data && Array.isArray(res.data.recommendations) && res.data.recommendations.length > 0) {
-          recs = res.data.recommendations;
+          recs = res.data.recommendations.slice(0, 5);
         }
       } catch (apiErr) {
         console.warn('Backend AI service call failed, proceeding to fallback matching:', apiErr);
       }
 
-      // Local fallback matching if backend returns empty or fails
-      if (recs.length === 0 && mentors && mentors.length > 0) {
-        const studentSkills = (currentUser?.skills || '')
-          .toLowerCase()
-          .split(',')
-          .map(s => s.trim())
-          .filter(Boolean);
-        const studentDept = (currentUser?.department || '').toLowerCase().trim();
-        const studentGoal = (currentUser?.careerGoal || '').toLowerCase().trim();
+      // Local fallback matching if backend returns empty or fails (Top 5 max)
+      if (recs.length === 0) {
+        const candidateSource = (mentors && mentors.length > 0) ? mentors : pagedMentors;
+        if (candidateSource && candidateSource.length > 0) {
+          const studentSkills = (currentUser?.skills || '')
+            .toLowerCase()
+            .split(',')
+            .map(s => s.trim())
+            .filter(Boolean);
+          const studentDept = (currentUser?.department || '').toLowerCase().trim();
+          const studentGoal = (currentUser?.careerGoal || '').toLowerCase().trim();
 
-        // Use available mentors (filtering mentors available for mentorship)
-        const candidateMentors = (mentors || []).filter(m => {
-          const avail = (m.availableForMentorship || '').toLowerCase();
-          return avail === 'yes' || avail === 'true' || !m.availableForMentorship;
-        });
+          const candidateMentors = candidateSource.filter(m => {
+            const avail = (m.availableForMentorship || '').toLowerCase();
+            return avail === 'yes' || avail === 'true' || !m.availableForMentorship;
+          });
 
-        const scored = candidateMentors.map(m => {
-          let score = 70;
-          const reasons = [];
+          const scored = candidateMentors.map(m => {
+            let score = 70;
+            const reasons = [];
 
-          // 1. Shared skills (+10 each, max +20)
-          const mentorSkills = (m.skills || []).map(s => (s || '').toLowerCase().trim()).filter(Boolean);
-          const matchedSkills = [];
-          for (const sSkill of studentSkills) {
-            for (const mSkill of mentorSkills) {
-              if (sSkill.includes(mSkill) || mSkill.includes(sSkill)) {
-                if (!matchedSkills.includes(mSkill)) {
-                  matchedSkills.push(mSkill);
+            // 1. Shared skills (+10 each, max +20)
+            const mentorSkills = (m.skills || []).map(s => (s || '').toLowerCase().trim()).filter(Boolean);
+            const matchedSkills = [];
+            for (const sSkill of studentSkills) {
+              for (const mSkill of mentorSkills) {
+                if (sSkill.includes(mSkill) || mSkill.includes(sSkill)) {
+                  if (!matchedSkills.includes(mSkill)) {
+                    matchedSkills.push(mSkill);
+                  }
                 }
               }
             }
-          }
 
-          if (matchedSkills.length > 0) {
-            const skillBonus = Math.min(matchedSkills.length * 10, 20);
-            score += skillBonus;
-            const displaySkills = matchedSkills
-              .map(s => s.charAt(0).toUpperCase() + s.slice(1))
-              .join(', ');
-            reasons.push(`Shared expertise in ${displaySkills}`);
-          }
+            if (matchedSkills.length > 0) {
+              const skillBonus = Math.min(matchedSkills.length * 10, 20);
+              score += skillBonus;
+              const displaySkills = matchedSkills
+                .map(s => s.charAt(0).toUpperCase() + s.slice(1))
+                .join(', ');
+              reasons.push(`Shared expertise in ${displaySkills}`);
+            }
 
-          // 2. Department match (+5)
-          const mDept = (m.department || '').toLowerCase().trim();
-          if (mDept && studentDept && (mDept.includes(studentDept) || studentDept.includes(mDept))) {
-            score += 5;
-            reasons.push(`Alumni from ${m.department} department`);
-          }
+            // 2. Department match (+5)
+            const mDept = (m.department || '').toLowerCase().trim();
+            if (mDept && studentDept && (mDept.includes(studentDept) || studentDept.includes(mDept))) {
+              score += 5;
+              reasons.push(`Alumni from ${m.department} department`);
+            }
 
-          // 3. Career goal / role alignment (+5)
-          const mRole = (m.role || '').toLowerCase().trim();
-          if (studentGoal && mRole && (mRole.includes(studentGoal) || studentGoal.includes(mRole))) {
-            score += 5;
-            reasons.push('Aligned with your career goal');
-          } else if (m.company && m.company !== 'Independent' && m.company !== 'N/A') {
-            reasons.push(`Industry professional at ${m.company}`);
-          }
+            // 3. Career goal / role alignment (+5)
+            const mRole = (m.role || '').toLowerCase().trim();
+            if (studentGoal && mRole && (mRole.includes(studentGoal) || studentGoal.includes(mRole))) {
+              score += 5;
+              reasons.push('Aligned with your career goal');
+            } else if (m.company && m.company !== 'Independent' && m.company !== 'N/A') {
+              reasons.push(`Industry professional at ${m.company}`);
+            }
 
-          if (reasons.length === 0) {
-            reasons.push('Verified alumni mentor open for guidance');
-          }
+            if (reasons.length === 0) {
+              reasons.push('Verified alumni mentor open for guidance');
+            }
 
-          const finalScore = Math.min(score, 98);
+            const finalScore = Math.min(score, 98);
 
-          return {
-            alumniId: m.id,
-            name: m.name,
-            designation: m.role || 'Alumni Mentor',
-            company: m.company || 'Enterprise',
-            department: m.department || 'Engineering',
-            experience: m.experience || 2,
-            matchScore: finalScore,
-            reasons: reasons
-          };
-        });
+            return {
+              alumniId: m.id,
+              name: m.name,
+              designation: m.role || 'Alumni Mentor',
+              company: m.company || 'Enterprise',
+              department: m.department || 'Engineering',
+              experience: m.experience || 2,
+              matchScore: finalScore,
+              reasons: reasons
+            };
+          });
 
-        scored.sort((a, b) => b.matchScore - a.matchScore);
-        recs = scored.slice(0, 5);
+          scored.sort((a, b) => b.matchScore - a.matchScore);
+          recs = scored.slice(0, 5);
+        }
       }
 
-      setAiRecommendations(recs);
+      setAiRecommendations(recs.slice(0, 5));
       setHasSearchedAi(true);
       if (recs.length > 0) {
         message.success(`Found ${recs.length} AI-recommended mentors for your career goals!`);
@@ -209,7 +282,10 @@ export const StudentMentorshipPage = () => {
   };
 
   const handleRequestSuccess = async (reqData) => {
-    const mentor = mentors.find(m => String(m.id) === String(reqData.mentorId)) || { id: reqData.mentorId, name: selectedMentor?.name };
+    const mentor = (mentors || []).find(m => String(m.id) === String(reqData.mentorId))
+      || (pagedMentors || []).find(m => String(m.id) === String(reqData.mentorId))
+      || { id: reqData.mentorId, name: selectedMentor?.name };
+
     if (!mentor) {
       message.error('Mentor not found.');
       return;
@@ -230,6 +306,7 @@ export const StudentMentorshipPage = () => {
       await api.post('/mentorship/add', payload);
       message.success(`Mentorship request submitted successfully to ${mentor.name || selectedMentor?.name || 'Alumni Mentor'}!`);
       await refreshData();
+      fetchPagedMentors(mentorPage, searchQuery);
     } catch (err) {
       console.error('Error creating mentorship request:', err);
       const errData = err.response?.data;
@@ -271,53 +348,46 @@ export const StudentMentorshipPage = () => {
   };
 
   const handleRequestAgain = (req) => {
-    const mentor = mentors.find(m => String(m.id) === String(req.mentorId)) || {
-      id: req.mentorId,
-      name: req.mentorName,
-      role: req.role,
-      company: req.company
-    };
+    const mentor = (mentors || []).find(m => String(m.id) === String(req.mentorId))
+      || (pagedMentors || []).find(m => String(m.id) === String(req.mentorId))
+      || {
+        id: req.mentorId,
+        name: req.mentorName,
+        role: req.role,
+        company: req.company
+      };
     handleRequestClick(mentor);
   };
 
-  // ── 1. Available Mentors Filter ──
-  const availableMentorsList = (mentors || []).filter(m => {
-    const mentorReqs = (requests || []).filter(r => String(r.mentorId) === String(m.id));
-    const hasPendingOrAccepted = mentorReqs.some(r => {
-      const st = (r.status || '').toUpperCase();
-      return st === 'PENDING' || st === 'ACCEPTED' || st === 'ACTIVE';
-    });
-    return !hasPendingOrAccepted;
-  }).filter(m => {
-    if (!searchQuery || searchQuery.trim() === '') return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      (m.name || '').toLowerCase().includes(q) ||
-      (m.role || '').toLowerCase().includes(q) ||
-      (m.company || '').toLowerCase().includes(q) ||
-      (m.bio || '').toLowerCase().includes(q) ||
-      (m.skills || []).some(s => (s || '').toLowerCase().includes(q))
-    );
-  });
+  // ── 2. Mentorship Requests Filter (CANCELLED strictly excluded) ──
+  const nonCancelledRequests = (requests || []).filter(
+    r => (r.status || '').toUpperCase() !== 'CANCELLED'
+  );
 
-  // ── 2. Mentorship Requests Filter ──
-  const filteredRequests = (requests || []).filter(r => {
-    const st = (r.status || '').toUpperCase();
-    if (requestFilter === 'PENDING') return st === 'PENDING';
-    if (requestFilter === 'ACCEPTED') return st === 'ACCEPTED';
-    if (requestFilter === 'DECLINED') return st === 'DECLINED' || st === 'REJECTED';
-    if (requestFilter === 'CANCELLED') return st === 'CANCELLED';
-    return true; // ALL
-  }).filter(r => {
-    if (!searchQuery || searchQuery.trim() === '') return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      (r.mentorName || '').toLowerCase().includes(q) ||
-      (r.role || '').toLowerCase().includes(q) ||
-      (r.company || '').toLowerCase().includes(q) ||
-      (r.topic || '').toLowerCase().includes(q)
-    );
-  });
+  const filteredRequests = nonCancelledRequests
+    .filter(r => {
+      const st = (r.status || '').toUpperCase();
+      if (requestFilter === 'PENDING') return st === 'PENDING';
+      if (requestFilter === 'ACCEPTED') return st === 'ACCEPTED';
+      if (requestFilter === 'HISTORY') return st === 'COMPLETED' || st === 'DECLINED' || st === 'REJECTED';
+      return true; // ALL non-cancelled
+    })
+    .filter(r => {
+      if (!searchQuery || searchQuery.trim() === '') return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        (r.mentorName || '').toLowerCase().includes(q) ||
+        (r.role || '').toLowerCase().includes(q) ||
+        (r.company || '').toLowerCase().includes(q) ||
+        (r.topic || '').toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      const statusPriority = { PENDING: 1, ACCEPTED: 2, COMPLETED: 3, DECLINED: 4, REJECTED: 4 };
+      const pA = statusPriority[(a.status || '').toUpperCase()] || 5;
+      const pB = statusPriority[(b.status || '').toUpperCase()] || 5;
+      return pA - pB;
+    });
 
   // ── 3. Active Mentorships Filter (Only ACCEPTED status) ──
   const filteredActive = (activeMentorships || [])
@@ -349,7 +419,7 @@ export const StudentMentorshipPage = () => {
     const s = (status || '').toUpperCase();
     if (s === 'ACCEPTED') return 'green';
     if (s === 'REJECTED' || s === 'DECLINED') return 'red';
-    if (s === 'CANCELLED') return 'default';
+    if (s === 'COMPLETED') return 'blue';
     return 'gold'; // PENDING
   };
 
@@ -392,7 +462,7 @@ export const StudentMentorshipPage = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 16 }}>
               <div style={{ flex: '1 1 300px' }}>
                 <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--ac-text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <FiCpu color="var(--ac-brand)" size={22} /> AI Recommended Mentors
+                  <FiCpu color="var(--ac-brand)" size={22} /> AI Recommended Mentors (Top Matches)
                 </h2>
                 <p style={{ fontSize: 13.5, color: 'var(--ac-text-secondary)', margin: '4px 0 0 0' }}>
                   Machine-learning recommendations matching your career goals, technical skills, department, and course.
@@ -443,7 +513,7 @@ export const StudentMentorshipPage = () => {
                     padding: 18,
                     display: 'flex',
                     flexDirection: 'column',
-                    justify: 'space-between'
+                    justifyContent: 'space-between'
                   }}>
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
@@ -479,13 +549,15 @@ export const StudentMentorshipPage = () => {
                         className={styles.secondaryBtn}
                         style={{ flex: 1, height: 36, fontSize: 12.5 }}
                         onClick={() => {
-                          const mentorObj = mentors.find(m => String(m.id) === String(rec.alumniId)) || {
-                            id: rec.alumniId,
-                            name: rec.name,
-                            role: rec.designation,
-                            company: rec.company,
-                            department: rec.department
-                          };
+                          const mentorObj = (mentors || []).find(m => String(m.id) === String(rec.alumniId))
+                            || (pagedMentors || []).find(m => String(m.id) === String(rec.alumniId))
+                            || {
+                              id: rec.alumniId,
+                              name: rec.name,
+                              role: rec.designation,
+                              company: rec.company,
+                              department: rec.department
+                            };
                           navigate(`/student/mentor/${rec.alumniId}`, { state: { mentor: mentorObj } });
                         }}
                       >
@@ -495,13 +567,15 @@ export const StudentMentorshipPage = () => {
                         className={styles.primaryBtn}
                         style={{ flex: 1, height: 36, fontSize: 12.5 }}
                         onClick={() => {
-                          const mentorObj = mentors.find(m => String(m.id) === String(rec.alumniId)) || {
-                            id: rec.alumniId,
-                            name: rec.name,
-                            role: rec.designation,
-                            company: rec.company,
-                            department: rec.department
-                          };
+                          const mentorObj = (mentors || []).find(m => String(m.id) === String(rec.alumniId))
+                            || (pagedMentors || []).find(m => String(m.id) === String(rec.alumniId))
+                            || {
+                              id: rec.alumniId,
+                              name: rec.name,
+                              role: rec.designation,
+                              company: rec.company,
+                              department: rec.department
+                            };
                           handleRequestClick(mentorObj);
                         }}
                       >
@@ -518,60 +592,124 @@ export const StudentMentorshipPage = () => {
             ) : null}
           </div>
 
-          {/* All Available Mentors Grid */}
-          <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ac-text-primary)', marginBottom: 16 }}>
-            All Available Mentors
-          </h3>
-
-          {availableMentorsList.length > 0 ? (
-            <div className={styles.mentorGrid}>
-              {availableMentorsList.map(mentor => (
-                <div key={mentor.id} className={styles.mentorCard}>
-                  <div className={styles.mentorHeader}>
-                    <div className={styles.avatarCircle}>
-                      {(mentor.name || 'M').split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <h3 className={styles.mentorName}>{mentor.name}</h3>
-                      </div>
-                      <p className={styles.mentorRole}>{mentor.role} at <strong>{mentor.company}</strong></p>
-                      <div style={{ fontSize: 12, color: '#eab308', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                        <FiStar /> {mentor.rating} / 5.0
-                      </div>
-                    </div>
-                  </div>
-
-                  <p className={styles.mentorBio}>{mentor.bio}</p>
-
-                  <div className={styles.skillsRow}>
-                    {(mentor.skills || []).map((s, idx) => (
-                      <span key={idx} className={styles.skillTag}>{s}</span>
-                    ))}
-                  </div>
-
-                  <div className={styles.cardFooter}>
-                    <button
-                      className={styles.secondaryBtn}
-                      onClick={() => navigate(`/student/mentor/${mentor.id}`, { state: { mentor } })}
-                    >
-                      View Profile
-                    </button>
-                    <button
-                      className={styles.primaryBtn}
-                      onClick={() => handleRequestClick(mentor)}
-                    >
-                      Request Session
-                    </button>
-                  </div>
-                </div>
-              ))}
+          {/* All Available Mentors Header & Pagination Controls */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ac-text-primary)', margin: 0 }}>
+                All Available Mentors
+              </h3>
+              {mentorTotal > 0 && (
+                <span style={{ fontSize: 13, color: 'var(--ac-text-secondary)' }}>
+                  Showing {mentorPage * mentorPageSize + 1}–{Math.min((mentorPage + 1) * mentorPageSize, mentorTotal)} of {mentorTotal} mentors
+                </span>
+              )}
             </div>
+
+            {mentorTotalPages > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button
+                  className={styles.secondaryBtn}
+                  disabled={mentorPage === 0 || mentorLoading}
+                  onClick={() => handlePageChange(mentorPage - 1)}
+                  style={{ padding: '6px 14px', fontSize: 13, opacity: (mentorPage === 0 || mentorLoading) ? 0.5 : 1, cursor: (mentorPage === 0 || mentorLoading) ? 'not-allowed' : 'pointer' }}
+                >
+                  Previous
+                </button>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ac-text-primary)' }}>
+                  Page {mentorPage + 1} of {mentorTotalPages}
+                </span>
+                <button
+                  className={styles.secondaryBtn}
+                  disabled={mentorPage >= mentorTotalPages - 1 || mentorLoading}
+                  onClick={() => handlePageChange(mentorPage + 1)}
+                  style={{ padding: '6px 14px', fontSize: 13, opacity: (mentorPage >= mentorTotalPages - 1 || mentorLoading) ? 0.5 : 1, cursor: (mentorPage >= mentorTotalPages - 1 || mentorLoading) ? 'not-allowed' : 'pointer' }}
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
+
+          {mentorLoading ? (
+            <div style={{ textAlign: 'center', padding: '50px 0' }}>
+              <Spin size="large" tip="Loading mentors page..." />
+            </div>
+          ) : pagedMentors.length > 0 ? (
+            <>
+              <div className={styles.mentorGrid}>
+                {pagedMentors.map(mentor => (
+                  <div key={mentor.id} className={styles.mentorCard}>
+                    <div className={styles.mentorHeader}>
+                      <div className={styles.avatarCircle}>
+                        {(mentor.name || 'M').split(' ').map(n => n[0]).join('')}
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <h3 className={styles.mentorName}>{mentor.name}</h3>
+                        </div>
+                        <p className={styles.mentorRole}>{mentor.role} at <strong>{mentor.company}</strong></p>
+                        <div style={{ fontSize: 12, color: '#eab308', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                          <FiStar /> {mentor.rating} / 5.0
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className={styles.mentorBio}>{mentor.bio}</p>
+
+                    <div className={styles.skillsRow}>
+                      {(mentor.skills || []).map((s, idx) => (
+                        <span key={idx} className={styles.skillTag}>{s}</span>
+                      ))}
+                    </div>
+
+                    <div className={styles.cardFooter}>
+                      <button
+                        className={styles.secondaryBtn}
+                        onClick={() => navigate(`/student/mentor/${mentor.id}`, { state: { mentor } })}
+                      >
+                        View Profile
+                      </button>
+                      <button
+                        className={styles.primaryBtn}
+                        onClick={() => handleRequestClick(mentor)}
+                      >
+                        Request Session
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Bottom Pagination Controls */}
+              {mentorTotalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 28, padding: '16px 0' }}>
+                  <button
+                    className={styles.secondaryBtn}
+                    disabled={mentorPage === 0 || mentorLoading}
+                    onClick={() => handlePageChange(mentorPage - 1)}
+                    style={{ padding: '8px 18px', fontSize: 13, opacity: (mentorPage === 0 || mentorLoading) ? 0.5 : 1, cursor: (mentorPage === 0 || mentorLoading) ? 'not-allowed' : 'pointer' }}
+                  >
+                    ← Previous
+                  </button>
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ac-text-primary)' }}>
+                    Page {mentorPage + 1} of {mentorTotalPages}
+                  </span>
+                  <button
+                    className={styles.secondaryBtn}
+                    disabled={mentorPage >= mentorTotalPages - 1 || mentorLoading}
+                    onClick={() => handlePageChange(mentorPage + 1)}
+                    style={{ padding: '8px 18px', fontSize: 13, opacity: (mentorPage >= mentorTotalPages - 1 || mentorLoading) ? 0.5 : 1, cursor: (mentorPage >= mentorTotalPages - 1 || mentorLoading) ? 'not-allowed' : 'pointer' }}
+                  >
+                    Next →
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <div className={styles.emptyState}>
               <FiUsers size={48} className={styles.emptyIcon} />
               <h3>No mentors available</h3>
-              <p>{searchQuery ? `No mentors match "${searchQuery}". Try a different keyword!` : 'You have active or pending requests with all currently listed mentors.'}</p>
+              <p>{searchQuery ? `No mentors match "${searchQuery}". Try a different keyword!` : 'No mentors are currently available for mentorship.'}</p>
             </div>
           )}
         </>
@@ -586,8 +724,7 @@ export const StudentMentorshipPage = () => {
               { key: 'ALL', label: 'All Requests' },
               { key: 'PENDING', label: 'Pending' },
               { key: 'ACCEPTED', label: 'Accepted' },
-              { key: 'DECLINED', label: 'Declined' },
-              { key: 'CANCELLED', label: 'Cancelled' }
+              { key: 'HISTORY', label: 'History (Completed / Declined)' }
             ].map(f => (
               <button
                 key={f.key}
@@ -666,7 +803,7 @@ export const StudentMentorshipPage = () => {
                         </div>
                       )}
 
-                      {(statusStr === 'DECLINED' || statusStr === 'REJECTED' || statusStr === 'CANCELLED') && (
+                      {(statusStr === 'DECLINED' || statusStr === 'REJECTED') && (
                         <button
                           className={styles.secondaryBtn}
                           style={{ flex: 'none', padding: '8px 16px', height: 'auto', fontSize: '12px', borderColor: '#1b62d4', color: '#1b62d4' }}
@@ -683,8 +820,20 @@ export const StudentMentorshipPage = () => {
           ) : (
             <div className={styles.emptyState}>
               <FiCalendar size={48} className={styles.emptyIcon} />
-              <h3>No mentorship requests found</h3>
-              <p>{requestFilter !== 'ALL' ? `No requests match filter "${requestFilter}".` : 'You have not sent any mentorship requests yet. Go to "Available Mentors" to get started.'}</p>
+              <h3>
+                {requestFilter === 'PENDING'
+                  ? 'No pending mentorship requests'
+                  : requestFilter === 'ACCEPTED'
+                  ? 'No accepted mentorship requests'
+                  : requestFilter === 'HISTORY'
+                  ? 'No completed or declined requests'
+                  : 'No mentorship requests found'}
+              </h3>
+              <p>
+                {requestFilter === 'ALL'
+                  ? 'You have not sent any mentorship requests yet. Go to "Available Mentors" to get started.'
+                  : `No requests match the "${requestFilter}" filter.`}
+              </p>
             </div>
           )}
         </div>
@@ -743,8 +892,8 @@ export const StudentMentorshipPage = () => {
           ) : (
             <div className={styles.emptyState}>
               <FiCalendar size={48} className={styles.emptyIcon} />
-              <h3>No active mentorships found</h3>
-              <p>Connect with a mentor by sending a request and waiting for their acceptance.</p>
+              <h3>No active mentorships yet</h3>
+              <p>Once a mentor accepts your request, it will appear here.</p>
             </div>
           )}
         </div>
@@ -760,7 +909,7 @@ export const StudentMentorshipPage = () => {
                   <h3 style={{ margin: '0 0 4px 0', fontSize: 16, color: 'var(--ac-text-primary)', fontWeight: 700 }}>
                     {history.mentorName}
                   </h3>
-                  <p style={{ margin: '0 0 4px 0', fontSize: 13, color: 'var(--ac-text-secondary)' }}>
+                  <p style={{ margin: '0 0 6px 0', fontSize: 13, color: 'var(--ac-text-secondary)' }}>
                     <strong>Session Topic:</strong> {history.topic || 'General Guidance'} • {history.date || 'N/A'}
                   </p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#22c55e', fontWeight: 600, marginTop: 6 }}>
@@ -780,8 +929,8 @@ export const StudentMentorshipPage = () => {
           ) : (
             <div className={styles.emptyState}>
               <FiCalendar size={48} className={styles.emptyIcon} />
-              <h3>No session history found</h3>
-              <p>Completed mentorship sessions will appear here.</p>
+              <h3>No completed mentorship sessions yet</h3>
+              <p>Completed mentorship sessions and meeting history will appear here.</p>
             </div>
           )}
         </div>

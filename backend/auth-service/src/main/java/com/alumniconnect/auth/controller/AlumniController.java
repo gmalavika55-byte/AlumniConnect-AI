@@ -203,6 +203,20 @@ public class AlumniController {
         return alumniService.getAllAlumni();
     }
 
+    @GetMapping("/paged")
+    public ResponseEntity<com.alumniconnect.auth.entity.PageResponse<com.alumniconnect.auth.entity.AlumniPagedDTO>> getAlumniPaged(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) String company,
+            @RequestParam(required = false) String skill,
+            @RequestParam(required = false) String availableForMentorship) {
+        com.alumniconnect.auth.entity.PageResponse<com.alumniconnect.auth.entity.AlumniPagedDTO> pagedResult = alumniService.getAlumniPaged(
+                page, size, search, department, company, skill, availableForMentorship);
+        return ResponseEntity.ok(pagedResult);
+    }
+
     @PostMapping("/login")
     public Alumni login(@RequestBody LoginRequest loginRequest) {
         return alumniService.login(

@@ -174,4 +174,82 @@ public class AlumniServiceImpl implements AlumniService {
         }
         return alumni;
     }
+
+    @Override
+    public com.alumniconnect.auth.entity.PageResponse<com.alumniconnect.auth.entity.AlumniPagedDTO> getAlumniPaged(
+            int page,
+            int size,
+            String search,
+            String department,
+            String company,
+            String skill,
+            String availableForMentorship) {
+
+        if (page < 0) page = 0;
+        if (size <= 0) size = 12;
+        if (size > 50) size = 50;
+
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+
+        org.springframework.data.jpa.domain.Specification<Alumni> spec = (root, query, cb) -> {
+            java.util.List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
+
+            if (availableForMentorship != null && !availableForMentorship.trim().isEmpty()) {
+                String avail = availableForMentorship.trim().toLowerCase();
+                if ("yes".equals(avail) || "true".equals(avail)) {
+                    predicates.add(cb.or(
+                        cb.equal(cb.lower(root.get("availableForMentorship")), "yes"),
+                        cb.equal(cb.lower(root.get("availableForMentorship")), "true")
+                    ));
+                } else if ("no".equals(avail) || "false".equals(avail)) {
+                    predicates.add(cb.or(
+                        cb.equal(cb.lower(root.get("availableForMentorship")), "no"),
+                        cb.equal(cb.lower(root.get("availableForMentorship")), "false")
+                    ));
+                }
+            }
+
+            if (department != null && !department.trim().isEmpty()) {
+                predicates.add(cb.like(cb.lower(root.get("department")), "%" + department.trim().toLowerCase() + "%"));
+            }
+
+            if (company != null && !company.trim().isEmpty()) {
+                predicates.add(cb.like(cb.lower(root.get("currentCompany")), "%" + company.trim().toLowerCase() + "%"));
+            }
+
+            if (skill != null && !skill.trim().isEmpty()) {
+                predicates.add(cb.like(cb.lower(root.get("skills")), "%" + skill.trim().toLowerCase() + "%"));
+            }
+
+            if (search != null && !search.trim().isEmpty()) {
+                String searchPattern = "%" + search.trim().toLowerCase() + "%";
+                jakarta.persistence.criteria.Predicate nameMatch = cb.like(cb.lower(root.get("name")), searchPattern);
+                jakarta.persistence.criteria.Predicate skillsMatch = cb.like(cb.lower(root.get("skills")), searchPattern);
+                jakarta.persistence.criteria.Predicate deptMatch = cb.like(cb.lower(root.get("department")), searchPattern);
+                jakarta.persistence.criteria.Predicate companyMatch = cb.like(cb.lower(root.get("currentCompany")), searchPattern);
+                jakarta.persistence.criteria.Predicate desigMatch = cb.like(cb.lower(root.get("designation")), searchPattern);
+                predicates.add(cb.or(nameMatch, skillsMatch, deptMatch, companyMatch, desigMatch));
+            }
+
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+
+        org.springframework.data.domain.Page<Alumni> resultPage = alumniRepository.findAll(spec, pageable);
+
+        // Map to secure AlumniPagedDTO (no password/security fields)
+        java.util.List<com.alumniconnect.auth.entity.AlumniPagedDTO> dtoList = resultPage.getContent()
+                .stream()
+                .map(com.alumniconnect.auth.entity.AlumniPagedDTO::new)
+                .toList();
+
+        return new com.alumniconnect.auth.entity.PageResponse<>(
+            dtoList,
+            resultPage.getNumber(),
+            resultPage.getSize(),
+            resultPage.getTotalElements(),
+            resultPage.getTotalPages(),
+            resultPage.hasNext(),
+            resultPage.hasPrevious()
+        );
+    }
 }

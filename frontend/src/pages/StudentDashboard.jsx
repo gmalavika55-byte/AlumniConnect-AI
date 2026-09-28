@@ -149,6 +149,22 @@ export const StudentDashboard = () => {
     return false;
   };
 
+  const isStudentEligible = (event) => {
+    if (!event) return true;
+    const aud = (event.audience || '').trim().toUpperCase();
+    if (!aud) return true;
+    return (
+      aud === 'STUDENT' ||
+      aud === 'STUDENTS' ||
+      aud === 'BOTH' ||
+      aud === 'ALL' ||
+      aud === 'EVERYONE' ||
+      aud === 'ALL AUDIENCES' ||
+      aud === 'GENERAL' ||
+      aud === 'PUBLIC'
+    );
+  };
+
   const isEventRegistered = (event) => {
     if (!event) return false;
     if (registrationsLoaded) {
@@ -164,6 +180,9 @@ export const StudentDashboard = () => {
       // Exclude completed or cancelled events
       const status = e.status ? e.status.toUpperCase() : '';
       if (status === 'COMPLETED' || status === 'PAST' || status === 'CANCELLED') return false;
+
+      // Filter by student eligibility
+      if (!isStudentEligible(e)) return false;
 
       // Filter by search query if present
       if (searchQuery.trim() === '') return true;
