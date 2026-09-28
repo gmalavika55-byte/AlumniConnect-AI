@@ -80,10 +80,10 @@ export const AlumniEventsPage = () => {
   };
 
   const isCreatedByCurrentAlumni = (e) => {
-    if (!e || !e.organizer || !userName) return false;
+    if (!e || e.createdByType !== 'ALUMNI' || !e.organizer || !userName) return false;
     const org = e.organizer.trim().toLowerCase();
     const current = userName.trim().toLowerCase();
-    return org === current || org.includes(current) || current.includes(org);
+    return org === current;
   };
 
   const isAlumniEligible = (e) => {
@@ -104,6 +104,7 @@ export const AlumniEventsPage = () => {
       endTime: newEvent.endTime || '06:00 PM',
       venue: newEvent.location || 'Virtual',
       organizer: newEvent.organizer || user.name || 'Alumni Mentor',
+      createdByType: 'ALUMNI',
       status: 'UPCOMING',
       maxParticipants: newEvent.capacity ? parseInt(newEvent.capacity, 10) : 100
     };
@@ -132,6 +133,7 @@ export const AlumniEventsPage = () => {
       endTime: updatedData.endTime || '06:00 PM',
       venue: updatedData.location || 'Virtual',
       organizer: updatedData.organizer || userName,
+      createdByType: updatedData.createdByType || 'ALUMNI',
       status: 'UPCOMING',
       maxParticipants: updatedData.capacity ? parseInt(updatedData.capacity, 10) : 100
     };
@@ -380,9 +382,17 @@ export const AlumniEventsPage = () => {
                         <Tag color="cyan" style={{ fontWeight: 600 }}>Organized by You</Tag>
                       )}
                     </div>
-                    <Tag color={eventEnded ? 'default' : 'success'} style={{ fontWeight: 600 }}>
-                      {eventEnded ? 'COMPLETED' : (eventItem.status || 'UPCOMING').toUpperCase()}
-                    </Tag>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      {eventItem.createdByType === 'ADMIN' && (
+                        <Tag color="geekblue" style={{ fontWeight: 700 }}>Admin</Tag>
+                      )}
+                      {eventItem.createdByType === 'ALUMNI' && (
+                        <Tag color="gold" style={{ fontWeight: 700 }}>Alumni</Tag>
+                      )}
+                      <Tag color={eventEnded ? 'default' : 'success'} style={{ fontWeight: 600 }}>
+                        {eventEnded ? 'COMPLETED' : (eventItem.status || 'UPCOMING').toUpperCase()}
+                      </Tag>
+                    </div>
                   </div>
 
                   <h3 style={{ fontSize: 18, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 10px 0', lineHeight: 1.3 }}>
@@ -403,7 +413,7 @@ export const AlumniEventsPage = () => {
                       <FiUsers color="var(--ac-brand)" /> <strong style={{ color: '#16a34a' }}>Registered: {eventItem.registeredCount || 0} / {eventItem.maxParticipants || '∞'}</strong>
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--ac-text-muted)', marginTop: 4 }}>
-                      Organizer: <strong>{isCreator ? 'You (Alumni Creator)' : eventItem.speaker}</strong>
+                      Organizer: <strong>{isCreator ? 'You (Alumni Creator)' : (eventItem.organizer || eventItem.speaker || 'KCE Admin')}</strong>
                     </div>
                   </div>
                 </div>

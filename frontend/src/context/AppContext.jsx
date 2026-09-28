@@ -217,6 +217,7 @@ export const AppProvider = ({ children }) => {
             description: e.description || '',
             eventDate: e.eventDate,
             organizer: e.organizer,
+            createdByType: e.createdByType,
             status: e.status || 'UPCOMING',
             audience: e.audience || 'BOTH',
             maxParticipants: e.maxParticipants,

@@ -27,6 +27,11 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public Event addEvent(Event event) {
+        if (event.getCreatedByType() == null || event.getCreatedByType().trim().isEmpty()) {
+            event.setCreatedByType("ADMIN");
+        } else {
+            event.setCreatedByType(event.getCreatedByType().trim().toUpperCase());
+        }
         Event saved = eventRepository.save(event);
         try {
             java.util.Map<String, Object> notifPayload = new java.util.HashMap<>();
@@ -60,6 +65,12 @@ public class EventServiceImpl implements EventService {
 
         if (!isAdmin && (existing.getOrganizer() == null || !existing.getOrganizer().trim().equalsIgnoreCase(requesterName.trim()))) {
             throw new IllegalArgumentException("Access denied. Only the event organizer or Admin can update this event.");
+        }
+
+        if (event.getCreatedByType() == null || event.getCreatedByType().trim().isEmpty()) {
+            event.setCreatedByType(existing.getCreatedByType() != null ? existing.getCreatedByType() : "ADMIN");
+        } else {
+            event.setCreatedByType(event.getCreatedByType().trim().toUpperCase());
         }
 
         // Ensure eventId remains unchanged

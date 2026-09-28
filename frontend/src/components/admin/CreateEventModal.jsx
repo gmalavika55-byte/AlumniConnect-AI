@@ -33,6 +33,7 @@ export const CreateEventModal = ({ visible, onClose, onAddEvent, onUpdateEvent, 
       if (isEdit && onUpdateEvent) {
         onUpdateEvent({
           id: editingEvent.id,
+          createdByType: editingEvent.createdByType,
           ...values,
           date: formattedDate
         });

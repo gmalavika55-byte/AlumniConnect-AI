@@ -53,8 +53,19 @@ public class Event {
     @Column(name = "AUDIENCE")
     private String audience = "BOTH";
 
+    @Column(name = "CREATED_BY_TYPE")
+    private String createdByType = "ADMIN";
+
     @Transient
     private Long registeredCount;
+
+    public String getCreatedByType() {
+        return createdByType;
+    }
+
+    public void setCreatedByType(String createdByType) {
+        this.createdByType = createdByType;
+    }
 
     public String getAudience() {
         return audience;

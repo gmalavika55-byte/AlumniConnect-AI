@@ -80,6 +80,7 @@ export const AdminEventsPage = () => {
           endTime: e.endTime,
           maxParticipants: e.maxParticipants,
           audience: normAudience,
+          createdByType: e.createdByType,
           rawEvent: e
         };
       });
@@ -137,6 +138,7 @@ export const AdminEventsPage = () => {
       endTime: newEvent.time ? (newEvent.time.split('-')[1]?.trim() || '12:00 PM') : '12:00 PM',
       venue: newEvent.location || 'Virtual',
       organizer: newEvent.organizer || 'KCE Admin',
+      createdByType: 'ADMIN',
       maxParticipants: parseInt(newEvent.capacity || 100, 10),
       status: 'UPCOMING'
     };
@@ -167,6 +169,7 @@ export const AdminEventsPage = () => {
         endTime: updatedData.time ? (updatedData.time.split('-')[1]?.trim() || '12:00 PM') : '12:00 PM',
         venue: updatedData.location || 'Virtual',
         organizer: updatedData.organizer || 'KCE Admin',
+        createdByType: updatedData.createdByType || editingEvent?.createdByType || 'ADMIN',
         maxParticipants: parseInt(updatedData.capacity || 100, 10),
         status: 'UPCOMING'
       };
@@ -215,14 +218,11 @@ export const AdminEventsPage = () => {
 
     const matchesStatus = activeStatusTab === 'All' ? true : e.status === activeStatusTab;
 
-    const orgLower = (e.organizer || '').toLowerCase();
-    const isCreatedByAdmin = orgLower.includes('admin') || orgLower.includes('jenkins') || orgLower.includes('kce');
-    
     let matchesCreator = true;
     if (creatorFilter === 'admin') {
-      matchesCreator = isCreatedByAdmin;
+      matchesCreator = e.createdByType === 'ADMIN';
     } else if (creatorFilter === 'alumni') {
-      matchesCreator = !isCreatedByAdmin;
+      matchesCreator = e.createdByType === 'ALUMNI';
     }
 
     let matchesAudience = true;
@@ -346,8 +346,6 @@ export const AdminEventsPage = () => {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 24 }}>
           {filteredEvents.map(eventItem => {
-            const orgLower = (eventItem.organizer || '').toLowerCase();
-            const isAdminCreated = orgLower.includes('admin') || orgLower.includes('jenkins') || orgLower.includes('kce');
             const isFull = eventItem.registeredCount >= eventItem.capacity;
 
             return (
@@ -381,9 +379,12 @@ export const AdminEventsPage = () => {
                     </div>
 
                     <Space>
-                      <Tag color={isAdminCreated ? 'geekblue' : 'gold'} style={{ fontWeight: 700 }}>
-                        {isAdminCreated ? 'Admin' : 'Alumni'}
-                      </Tag>
+                      {eventItem.createdByType === 'ADMIN' && (
+                        <Tag color="geekblue" style={{ fontWeight: 700 }}>Admin</Tag>
+                      )}
+                      {eventItem.createdByType === 'ALUMNI' && (
+                        <Tag color="gold" style={{ fontWeight: 700 }}>Alumni</Tag>
+                      )}
                       <Tag color={eventItem.status === 'Upcoming' ? 'success' : eventItem.status === 'Ongoing' ? 'processing' : 'default'} style={{ fontWeight: 600 }}>
                         {eventItem.status.toUpperCase()}
                       </Tag>
