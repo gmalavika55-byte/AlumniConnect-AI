@@ -8,6 +8,8 @@ login: async ({ email, password, remember }) => {
   const response = await api.post("/auth/login", {
     email,
     password
+  }, {
+    timeout: 60000
   });
 
   console.log(response.data);
@@ -69,6 +71,8 @@ login: async ({ email, password, remember }) => {
     const loginResponse = await api.post("/auth/login", {
       email: registerPayload.email,
       password: registerPayload.password
+    }, {
+      timeout: 60000
     });
     
     const data = loginResponse.data;

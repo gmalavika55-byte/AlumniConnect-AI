@@ -36,7 +36,17 @@ export const LoginPage = () => {
         }
       }
     } catch (error) {
-      message.error('Login failed. Please check your credentials.');
+      if (error?.response?.status === 401) {
+        message.error("Invalid email or password. Please try again.");
+      } else if (error?.response?.status === 502 || error?.response?.status === 503 || error?.response?.status === 504) {
+        message.error("Server is waking up. Please wait a moment and try again.");
+      } else if (error?.code === 'ECONNABORTED' || error?.code === 'ETIMEDOUT' || error?.message?.toLowerCase().includes('timeout')) {
+        message.error("Server is taking longer than expected. Please wait a moment and try again.");
+      } else if (!error?.response && (error?.code === 'ERR_NETWORK' || error?.message === 'Network Error' || (typeof navigator !== 'undefined' && !navigator.onLine))) {
+        message.error("Unable to connect to the server. Please check your internet connection.");
+      } else {
+        message.error("Unable to login right now. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -150,6 +160,7 @@ export const LoginPage = () => {
               type="primary"
               htmlType="submit"
               loading={loading}
+              disabled={loading}
               className={styles.loginBtn}
             >
               Login
