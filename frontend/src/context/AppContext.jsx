@@ -112,7 +112,7 @@ export const AppProvider = ({ children }) => {
     try {
       const user = JSON.parse(userStr);
       const userRole = user.role ? user.role.toLowerCase() : '';
-      const userId = user.studentId || user.alumniId || user.adminId;
+      const userId = user.studentId || user.alumniId || user.adminId || user.id || user.userId;
 
       // 1. Fetch Alumni for Directory and Mentors lists
       let mappedMentors = [];
@@ -149,11 +149,11 @@ export const AppProvider = ({ children }) => {
 
         // Fetch user specific registrations
         let registeredEventIds = [];
-        if (userRole === 'student' || userRole === 'alumni') {
+        if ((userRole === 'student' || userRole === 'alumni') && userId) {
           const type = userRole === 'student' ? 'student' : 'alumni';
           try {
             const regRes = await api.get(`/event/registrations/user/${type}/${userId}`);
-            registeredEventIds = (regRes.data || []).map(r => r.eventId);
+            registeredEventIds = (regRes.data || []).map(r => r.eventId || (r.event ? r.event.eventId : null)).filter(Boolean);
           } catch (e) {
             console.error("Error loading user event registrations", e);
           }

@@ -123,9 +123,17 @@ export const StudentEventsPage = () => {
 
   // ── Mutually Exclusive Tab Assignment Logic ──
   const isStudentEligible = (e) => {
-    if (!e.audience) return true;
-    const aud = e.audience.toUpperCase();
-    return aud.includes('STUDENT') || aud === 'BOTH' || aud === 'EVERYONE';
+    if (!e || !e.audience) return true;
+    const aud = e.audience.toUpperCase().trim();
+    return (
+      aud.includes('STUDENT') ||
+      aud === 'BOTH' ||
+      aud === 'EVERYONE' ||
+      aud === 'ALL' ||
+      aud === 'ALL AUDIENCES' ||
+      aud === 'GENERAL' ||
+      aud === 'PUBLIC'
+    );
   };
 
   const getTabForEvent = (e) => {

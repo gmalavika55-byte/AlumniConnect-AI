@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { message, Spin, Modal } from 'antd';
 import {
@@ -20,7 +20,30 @@ import styles from './StudentDashboard.module.css';
 export const StudentDashboard = () => {
   const navigate = useNavigate();
   const student = authService.getCurrentUser();
+  const studentId = student?.studentId || student?.id || student?.userId;
   const { searchQuery, mentors, events, requests, loading, refreshData } = useAppContext();
+
+  const [registeredEventIds, setRegisteredEventIds] = useState(new Set());
+  const [registrationsLoaded, setRegistrationsLoaded] = useState(false);
+
+  useEffect(() => {
+    if (studentId) {
+      api.get(`/event/registrations/user/student/${studentId}`)
+        .then(res => {
+          const regs = res.data || [];
+          const ids = new Set(
+            regs
+              .map(r => r.eventId || (r.event ? r.event.eventId : null))
+              .filter(Boolean)
+          );
+          setRegisteredEventIds(ids);
+          setRegistrationsLoaded(true);
+        })
+        .catch(err => {
+          console.error('Error fetching student registrations for dashboard:', err);
+        });
+    }
+  }, [studentId, events]);
 
   if (loading) {
     return (
@@ -126,19 +149,44 @@ export const StudentDashboard = () => {
     return false;
   };
 
-  const filteredEvents = events.filter(e => {
-    if (searchQuery.trim() === '') return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      e.title?.toLowerCase().includes(q) ||
-      e.category?.toLowerCase().includes(q) ||
-      e.venue?.toLowerCase().includes(q)
-    );
-  });
+  const isEventRegistered = (event) => {
+    if (!event) return false;
+    if (registrationsLoaded) {
+      return registeredEventIds.has(event.id);
+    }
+    return !!event.registered;
+  };
+
+  const upcomingEvents = events
+    .filter(e => {
+      // Exclude past events
+      if (isEventPast(e)) return false;
+      // Exclude completed or cancelled events
+      const status = e.status ? e.status.toUpperCase() : '';
+      if (status === 'COMPLETED' || status === 'PAST' || status === 'CANCELLED') return false;
+
+      // Filter by search query if present
+      if (searchQuery.trim() === '') return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        e.title?.toLowerCase().includes(q) ||
+        e.category?.toLowerCase().includes(q) ||
+        e.venue?.toLowerCase().includes(q) ||
+        e.speaker?.toLowerCase().includes(q) ||
+        e.organizer?.toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      const dateA = a.eventDate ? new Date(a.eventDate).getTime() : 0;
+      const dateB = b.eventDate ? new Date(b.eventDate).getTime() : 0;
+      return dateA - dateB;
+    });
 
   // ── Stats derived from real data ──
   const availableMentorsCount = mentors.filter(m => m.availableForMentorship && m.availableForMentorship.toLowerCase() === 'yes').length;
-  const registeredEventsCount = events.filter(e => e.registered).length;
+  const registeredEventsCount = registrationsLoaded
+    ? registeredEventIds.size
+    : events.filter(e => e.registered).length;
   const pendingCount = requests.filter(r => r.status?.toUpperCase() === 'PENDING').length;
   const acceptedCount = requests.filter(r => r.status?.toUpperCase() === 'ACCEPTED').length;
   const activeRequestsCount = requests.filter(r => {
@@ -146,13 +194,14 @@ export const StudentDashboard = () => {
     return s === 'PENDING' || s === 'ACCEPTED';
   }).length;
 
+  // Top 3 AI Recommended Mentors for Dashboard
+  const topRecommendedMentors = filteredMentors
+    .filter(m => m.availableForMentorship && m.availableForMentorship.toLowerCase() === 'yes')
+    .slice(0, 3);
+
   // Upcoming registered event date text
   const upcomingRegistered = events
-    .filter(e => e.registered && e.eventDate)
-    .filter(e => {
-      const d = new Date(e.eventDate);
-      return !isNaN(d.getTime()) && d >= new Date();
-    })
+    .filter(e => isEventRegistered(e) && e.eventDate && !isEventPast(e))
     .sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate));
 
   let nextEventText = 'No upcoming registered events';
@@ -264,74 +313,72 @@ export const StudentDashboard = () => {
               </a>
             </div>
 
-            {filteredMentors.filter(m => m.availableForMentorship && m.availableForMentorship.toLowerCase() === 'yes').length > 0 ? (
-              filteredMentors
-                .filter(m => m.availableForMentorship && m.availableForMentorship.toLowerCase() === 'yes')
-                .map((mentor, index) => {
-                  const request = requests.find(r => {
-                    const s = r.status?.toUpperCase();
-                    return String(r.mentorId) === String(mentor.id) && (s === 'PENDING' || s === 'ACCEPTED');
-                  });
-                  const status = request?.status?.toUpperCase();
-                  const isPending = status === 'PENDING';
-                  const isAccepted = status === 'ACCEPTED';
-                  const isRejected = status === 'REJECTED' || status === 'DECLINED';
+            {topRecommendedMentors.length > 0 ? (
+              topRecommendedMentors.map((mentor, index) => {
+                const request = requests.find(r => {
+                  const s = r.status?.toUpperCase();
+                  return String(r.mentorId) === String(mentor.id) && (s === 'PENDING' || s === 'ACCEPTED');
+                });
+                const status = request?.status?.toUpperCase();
+                const isPending = status === 'PENDING';
+                const isAccepted = status === 'ACCEPTED';
+                const isRejected = status === 'REJECTED' || status === 'DECLINED';
 
-                  return (
-                    <div key={mentor.id || index} className={styles.mentorItem}>
-                      <div className={styles.mentorItemLeft}>
-                        <div className={styles.mentorAvatar}>{mentor.avatar}</div>
-                        <div>
-                          <div className={styles.mentorNameRow}>
-                            <h4 className={styles.mentorName}>{mentor.name}</h4>
-                          </div>
-                          <div className={styles.mentorRoleCompany}>
-                            {mentor.role} • <strong>{mentor.company}</strong>
-                          </div>
-                          <div className={styles.mentorTagsRow}>
-                            {(mentor.skills || []).map((s, idx) => (
-                              <span key={idx} className={styles.skillTag}>{s}</span>
-                            ))}
-                          </div>
-                          <div className={styles.mentorMetaRow}>
-                            <span>Batch {mentor.batch}</span>
-                          </div>
+                return (
+                  <div key={mentor.id || index} className={styles.mentorItem}>
+                    <div className={styles.mentorItemLeft}>
+                      <div className={styles.mentorAvatar}>{mentor.avatar}</div>
+                      <div>
+                        <div className={styles.mentorNameRow}>
+                          <h4 className={styles.mentorName}>{mentor.name}</h4>
+                        </div>
+                        <div className={styles.mentorRoleCompany}>
+                          {mentor.role} • <strong>{mentor.company}</strong>
+                        </div>
+                        <div className={styles.mentorTagsRow}>
+                          {(mentor.skills || []).map((s, idx) => (
+                            <span key={idx} className={styles.skillTag}>{s}</span>
+                          ))}
+                        </div>
+                        <div className={styles.mentorMetaRow}>
+                          <span>Batch {mentor.batch}</span>
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        {isPending ? (
-                          <>
-                            <button className={`${styles.requestBtn} ${styles.disabledBtn}`} disabled>
-                              Pending
-                            </button>
-                            <button
-                              className={styles.requestBtn}
-                              style={{ backgroundColor: '#ef4444', borderColor: '#ef4444', color: '#fff' }}
-                              onClick={() => handleRevokeMentorship(request.id, mentor.name)}
-                            >
-                              Revoke
-                            </button>
-                          </>
-                        ) : isAccepted ? (
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      {isPending ? (
+                        <>
                           <button className={`${styles.requestBtn} ${styles.disabledBtn}`} disabled>
-                            Connected
+                            Pending
                           </button>
-                        ) : isRejected ? (
-                          <button className={`${styles.requestBtn} ${styles.disabledBtn}`} disabled>
-                            Rejected
-                          </button>
-                        ) : (
                           <button
                             className={styles.requestBtn}
-                            onClick={() => handleRequestMentorship(mentor.id, mentor.name)}
+                            style={{ backgroundColor: '#ef4444', borderColor: '#ef4444', color: '#fff' }}
+                            onClick={() => handleRevokeMentorship(request.id, mentor.name)}
                           >
-                            Request
+                            Revoke
                           </button>
-                        )}
-                      </div>
+                        </>
+                      ) : isAccepted ? (
+                        <button className={`${styles.requestBtn} ${styles.disabledBtn}`} disabled>
+                          Connected
+                        </button>
+                      ) : isRejected ? (
+                        <button className={`${styles.requestBtn} ${styles.disabledBtn}`} disabled>
+                          Rejected
+                        </button>
+                      ) : (
+                        <button
+                          className={styles.requestBtn}
+                          onClick={() => handleRequestMentorship(mentor.id, mentor.name)}
+                        >
+                          Request
+                        </button>
+                      )}
                     </div>
-                  );
-                })
+                  </div>
+                );
+              })
             ) : (
               <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--ac-text-secondary)' }}>
                 No matching recommended mentors found.
@@ -357,55 +404,45 @@ export const StudentDashboard = () => {
               </a>
             </div>
 
-            {filteredEvents.length > 0 ? (
-              filteredEvents.map(event => (
-                <div key={event.id} className={styles.eventItem}>
-                  <div className={styles.eventLeft}>
-                    <div className={styles.dateBadgeBox}>
-                      <span className={styles.dateNumber}>{event.dayNum}</span>
-                      <span className={styles.dateMonth}>{event.monthStr}</span>
-                    </div>
-                    <div>
-                      <div className={styles.eventTitleRow}>
-                        <h4 className={styles.eventTitle}>{event.title}</h4>
-                        <span className={styles.categoryTag}>{event.category}</span>
-                        {event.registered && (
-                          <span className={styles.greenTag}>Registered</span>
-                        )}
+            {upcomingEvents.length > 0 ? (
+              upcomingEvents.map(event => {
+                const registered = isEventRegistered(event);
+                return (
+                  <div key={event.id} className={styles.eventItem}>
+                    <div className={styles.eventLeft}>
+                      <div className={styles.dateBadgeBox}>
+                        <span className={styles.dateNumber}>{event.dayNum}</span>
+                        <span className={styles.dateMonth}>{event.monthStr}</span>
                       </div>
-                      <div className={styles.eventMeta}>
-                        <span><FiClock style={{ marginRight: 4 }} /> {event.time}</span>
-                        <span><FiMapPin style={{ marginRight: 4 }} /> {event.venue}</span>
+                      <div>
+                        <div className={styles.eventTitleRow}>
+                          <h4 className={styles.eventTitle}>{event.title}</h4>
+                          <span className={styles.categoryTag}>{event.category}</span>
+                          {registered && (
+                            <span className={styles.greenTag}>Registered</span>
+                          )}
+                        </div>
+                        <div className={styles.eventMeta}>
+                          <span><FiClock style={{ marginRight: 4 }} /> {event.time}</span>
+                          <span><FiMapPin style={{ marginRight: 4 }} /> {event.venue}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  {(() => {
-                    const ended = isEventPast(event);
-                    if (event.registered) {
-                      return (
-                        <button className={`${styles.requestBtn} ${styles.disabledBtn}`} disabled>
-                          Registered
-                        </button>
-                      );
-                    }
-                    if (ended) {
-                      return (
-                        <button className={`${styles.requestBtn} ${styles.disabledBtn}`} style={{ backgroundColor: '#f1f5f9', color: '#64748b' }} disabled>
-                          Event Ended
-                        </button>
-                      );
-                    }
-                    return (
+                    {registered ? (
+                      <button className={`${styles.requestBtn} ${styles.disabledBtn}`} disabled>
+                        Registered
+                      </button>
+                    ) : (
                       <button
                         className={styles.requestBtn}
                         onClick={() => handleRegisterEvent(event.id, event.title)}
                       >
                         Register
                       </button>
-                    );
-                  })()}
-                </div>
-              ))
+                    )}
+                  </div>
+                );
+              })
             ) : (
               <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--ac-text-secondary)' }}>
                 No matching upcoming events found.
