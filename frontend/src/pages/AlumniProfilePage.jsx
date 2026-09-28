@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { message, Modal, Form, Input, Button, Tag } from 'antd';
+import { message, Modal, Form, Input, Button, Tag, Radio } from 'antd';
 import {
   FiEdit2, FiPlus, FiBookOpen, FiUser, FiBriefcase,
-  FiLink, FiAward, FiFileText, FiExternalLink, FiTrash2, FiUpload
+  FiLink, FiAward, FiFileText, FiExternalLink, FiTrash2, FiUpload,
+  FiUsers, FiCheckCircle
 } from 'react-icons/fi';
 import { AlumniLayout } from '../components/alumni/AlumniLayout';
 import { authService } from '../services/authService';
@@ -42,6 +43,7 @@ export const AlumniProfilePage = () => {
     phone: '',
     bio: '',
     linkedin: '',
+    availableForMentorship: 'No',
     resumeName: '',
     resumeUrl: ''
   });
@@ -88,6 +90,7 @@ export const AlumniProfilePage = () => {
           phone: data.mobile || '',
           bio: data.bio || '',
           linkedin: data.linkedin || '',
+          availableForMentorship: data.availableForMentorship || 'No',
           resumeName: data.resumeName || '',
           resumeUrl: data.resumeUrl || ''
         });
@@ -115,6 +118,7 @@ export const AlumniProfilePage = () => {
         phone: alumni.mobile || '',
         bio: alumni.bio || '',
         linkedin: alumni.linkedin || '',
+        availableForMentorship: alumni.availableForMentorship || 'No',
         resumeName: alumni.resumeName || '',
         resumeUrl: alumni.resumeUrl || ''
       });
@@ -428,6 +432,7 @@ export const AlumniProfilePage = () => {
         department: values.dept,
         location: values.location || alumniUser.location || '',
         linkedin: values.linkedin || alumniUser.linkedin || '',
+        availableForMentorship: values.availableForMentorship || 'No',
         resumeName: values.resumeName || '',
         resumeUrl: values.resumeUrl || '',
         skills: skills.join(',')
@@ -453,6 +458,7 @@ export const AlumniProfilePage = () => {
         dept: savedUser.department || values.dept,
         location: savedUser.location || values.location || '',
         linkedin: savedUser.linkedin || values.linkedin || '',
+        availableForMentorship: savedUser.availableForMentorship || values.availableForMentorship || 'No',
         resumeName: savedUser.resumeName || values.resumeName || '',
         resumeUrl: savedUser.resumeUrl || values.resumeUrl || '',
         bio: values.bio || ''
@@ -558,6 +564,7 @@ export const AlumniProfilePage = () => {
                   dept: profile.dept,
                   location: profile.location,
                   linkedin: profile.linkedin,
+                  availableForMentorship: profile.availableForMentorship || 'No',
                   resumeName: profile.resumeName,
                   resumeUrl: profile.resumeUrl,
                   bio: profile.bio
@@ -631,6 +638,73 @@ export const AlumniProfilePage = () => {
                 <p style={{ margin: '4px 0 0 0', fontSize: 13.5, color: 'var(--ac-text-secondary)', lineHeight: 1.6 }}>{profile.bio}</p>
               </div>
             )}
+          </div>
+
+          {/* Mentorship Availability Status Card */}
+          <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', padding: 24, marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ac-text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <FiUsers color="#1b62d4" /> Mentorship Availability
+              </h3>
+              <Tag color={(profile.availableForMentorship || '').toLowerCase() === 'yes' ? 'green' : 'default'} style={{ fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 6 }}>
+                {(profile.availableForMentorship || '').toLowerCase() === 'yes' ? 'AVAILABLE' : 'NOT AVAILABLE'}
+              </Tag>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '16px 20px',
+              borderRadius: 12,
+              backgroundColor: (profile.availableForMentorship || '').toLowerCase() === 'yes' ? 'rgba(34, 197, 94, 0.08)' : 'rgba(100, 116, 139, 0.08)',
+              border: `1px solid ${(profile.availableForMentorship || '').toLowerCase() === 'yes' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(100, 116, 139, 0.2)'}`,
+              gap: 16,
+              flexWrap: 'wrap'
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{
+                    display: 'inline-block',
+                    width: 10,
+                    height: 10,
+                    borderRadius: '50%',
+                    backgroundColor: (profile.availableForMentorship || '').toLowerCase() === 'yes' ? '#22c55e' : '#94a3b8'
+                  }} />
+                  <strong style={{ fontSize: 15, color: (profile.availableForMentorship || '').toLowerCase() === 'yes' ? '#16a34a' : 'var(--ac-text-secondary)' }}>
+                    {(profile.availableForMentorship || '').toLowerCase() === 'yes' ? 'Available for Mentorship' : 'Not Available for Mentorship'}
+                  </strong>
+                </div>
+                <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--ac-text-secondary)' }}>
+                  {(profile.availableForMentorship || '').toLowerCase() === 'yes'
+                    ? 'Students can discover you in Available Mentors and send 1-on-1 mentorship requests.'
+                    : 'You are currently hidden from student mentorship directory and AI matching.'}
+                </p>
+              </div>
+
+              <Button
+                size="small"
+                icon={<FiEdit2 size={12} />}
+                style={{ fontWeight: 600 }}
+                onClick={() => {
+                  editForm.setFieldsValue({
+                    name: profile.name,
+                    role: profile.role,
+                    company: profile.company,
+                    dept: profile.dept,
+                    location: profile.location,
+                    linkedin: profile.linkedin,
+                    availableForMentorship: profile.availableForMentorship || 'No',
+                    resumeName: profile.resumeName,
+                    resumeUrl: profile.resumeUrl,
+                    bio: profile.bio
+                  });
+                  setIsEditOpen(true);
+                }}
+              >
+                Change
+              </Button>
+            </div>
           </div>
 
           {/* Skills Section */}
@@ -947,6 +1021,30 @@ export const AlumniProfilePage = () => {
           <Form.Item name="linkedin" label="LinkedIn URL">
             <Input placeholder="e.g. linkedin.com/in/username" />
           </Form.Item>
+
+          {/* Mentorship Availability Field */}
+          <div style={{ margin: '20px 0 16px 0', padding: '16px', backgroundColor: 'var(--ac-bg-input)', borderRadius: 12, border: '1px solid var(--ac-border)' }}>
+            <h4 style={{ margin: '0 0 12px 0', color: 'var(--ac-text-primary)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 700 }}>
+              <FiUsers color="#1b62d4" /> Mentorship Availability
+            </h4>
+            <Form.Item
+              name="availableForMentorship"
+              label="Are you available to mentor students?"
+              rules={[{ required: true, message: 'Please select your mentorship availability' }]}
+              style={{ marginBottom: 0 }}
+            >
+              <Radio.Group style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <Radio value="Yes">
+                  <span style={{ fontWeight: 600, color: 'var(--ac-text-primary)' }}>Yes, I'm available for mentorship</span>
+                  <div style={{ fontSize: 12, color: 'var(--ac-text-secondary)', marginLeft: 24 }}>Students can discover your profile and request 1-on-1 mentorship sessions.</div>
+                </Radio>
+                <Radio value="No">
+                  <span style={{ fontWeight: 600, color: 'var(--ac-text-primary)' }}>No, I'm not currently available</span>
+                  <div style={{ fontSize: 12, color: 'var(--ac-text-secondary)', marginLeft: 24 }}>Your profile will be hidden from the student mentorship directory.</div>
+                </Radio>
+              </Radio.Group>
+            </Form.Item>
+          </div>
 
           <h4 style={{ margin: '16px 0 8px 0', color: 'var(--ac-text-primary)' }}>Primary Resume Details</h4>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>

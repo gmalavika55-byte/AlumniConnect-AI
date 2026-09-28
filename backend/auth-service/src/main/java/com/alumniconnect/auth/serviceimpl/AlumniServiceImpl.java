@@ -43,6 +43,10 @@ public class AlumniServiceImpl implements AlumniService {
             throw new IllegalArgumentException("Register number already exists.");
         }
 
+        if (alumni.getAvailableForMentorship() == null || alumni.getAvailableForMentorship().trim().isEmpty()) {
+            alumni.setAvailableForMentorship("No");
+        }
+
         alumni.setPassword(passwordEncoder.encode(alumni.getPassword()));
         Alumni saved = alumniRepository.save(alumni);
 
@@ -67,6 +71,10 @@ public class AlumniServiceImpl implements AlumniService {
     public Alumni updateAlumni(Alumni alumni) {
         Alumni existing = alumniRepository.findById(alumni.getAlumniId())
                 .orElseThrow(() -> new ResourceNotFoundException("Alumni not found"));
+
+        if (alumni.getAvailableForMentorship() == null && existing.getAvailableForMentorship() != null) {
+            alumni.setAvailableForMentorship(existing.getAvailableForMentorship());
+        }
         
         if (alumni.getPassword() != null && !alumni.getPassword().isEmpty() && !alumni.getPassword().equals(existing.getPassword())) {
             alumni.setPassword(passwordEncoder.encode(alumni.getPassword()));

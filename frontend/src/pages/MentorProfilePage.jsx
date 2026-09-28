@@ -308,13 +308,39 @@ export const MentorProfilePage = () => {
           )}
 
           {/* Action Card */}
-          <div className={styles.actionCard}>
-            <h4 className={styles.actionCardTitle}>Ready to connect?</h4>
-            <p className={styles.actionCardDesc}>Book a 1-on-1 session and accelerate your career with expert mentorship.</p>
-            <button className={styles.primaryBtn} style={{ width: '100%', justifyContent: 'center' }} onClick={() => setIsRequestOpen(true)}>
-              <FiCalendar size={15} /> Request Session
-            </button>
-          </div>
+          {(() => {
+            const isAvailable = (mentor?.availableForMentorship || '').toLowerCase() === 'yes';
+            return (
+              <div className={styles.actionCard}>
+                <h4 className={styles.actionCardTitle}>{isAvailable ? 'Ready to connect?' : 'Mentorship Status'}</h4>
+                <p className={styles.actionCardDesc}>
+                  {isAvailable
+                    ? 'Book a 1-on-1 session and accelerate your career with expert mentorship.'
+                    : 'This alumni mentor is not currently taking new mentorship requests.'}
+                </p>
+                <button
+                  className={styles.primaryBtn}
+                  style={{
+                    width: '100%',
+                    justifyContent: 'center',
+                    opacity: isAvailable ? 1 : 0.6,
+                    cursor: isAvailable ? 'pointer' : 'not-allowed',
+                    backgroundColor: isAvailable ? 'var(--ac-brand)' : '#64748b'
+                  }}
+                  disabled={!isAvailable}
+                  onClick={() => {
+                    if (!isAvailable) {
+                      message.warning('This mentor is not currently accepting mentorship requests.');
+                      return;
+                    }
+                    setIsRequestOpen(true);
+                  }}
+                >
+                  <FiCalendar size={15} /> {isAvailable ? 'Request Session' : 'Currently Not Available'}
+                </button>
+              </div>
+            );
+          })()}
         </div>
       </div>
 

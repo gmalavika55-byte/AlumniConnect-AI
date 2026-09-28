@@ -95,7 +95,7 @@ export const StudentMentorshipPage = () => {
       // Graceful fallback from global mentors if server paged endpoint encounters error
       const filtered = (mentors || []).filter(m => {
         const avail = (m.availableForMentorship || '').toLowerCase();
-        return avail === 'yes' || avail === 'true' || !m.availableForMentorship;
+        return avail === 'yes' || avail === 'true';
       });
       setPagedMentors(filtered.slice(0, mentorPageSize));
       setMentorTotal(filtered.length);
@@ -163,6 +163,11 @@ export const StudentMentorshipPage = () => {
       message.error('You must be logged in as a student to request mentorship.');
       return;
     }
+    const avail = (mentor?.availableForMentorship || '').toLowerCase();
+    if (avail !== 'yes' && avail !== 'true') {
+      message.warning(`${mentor?.name || 'This mentor'} is not currently available for mentorship.`);
+      return;
+    }
     setSelectedMentor(mentor);
     setIsRequestModalOpen(true);
   };
@@ -198,7 +203,7 @@ export const StudentMentorshipPage = () => {
 
           const candidateMentors = candidateSource.filter(m => {
             const avail = (m.availableForMentorship || '').toLowerCase();
-            return avail === 'yes' || avail === 'true' || !m.availableForMentorship;
+            return avail === 'yes' || avail === 'true';
           });
 
           const scored = candidateMentors.map(m => {
