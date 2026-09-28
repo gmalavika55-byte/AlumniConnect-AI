@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Tag, Button, message, Modal } from 'antd';
+import { Tag, Button, message, Modal, Spin } from 'antd';
 import { FiUsers, FiCheck, FiX, FiEye, FiClock, FiCalendar, FiVideo, FiMessageSquare } from 'react-icons/fi';
 import { AlumniLayout } from '../components/alumni/AlumniLayout';
 import { MentorshipChatModal } from '../components/common/MentorshipChatModal';
@@ -11,7 +11,7 @@ import api from '../services/api';
 export const AlumniMentorshipPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { alumniRequests: requests, refreshData } = useAppContext();
+  const { alumniRequests: requests, refreshData, loading } = useAppContext();
 
   const [activeTab, setActiveTab] = useState('PENDING');
   const [chatSession, setChatSession] = useState(null);
@@ -19,6 +19,11 @@ export const AlumniMentorshipPage = () => {
 
   const currentUser = authService.getCurrentUser();
   const currentAlumniId = currentUser ? (currentUser.alumniId || currentUser.id || null) : null;
+
+  // Re-sync mentorship requests on mount
+  useEffect(() => {
+    refreshData();
+  }, [refreshData]);
 
   useEffect(() => {
     if (location.state) {
@@ -225,7 +230,12 @@ export const AlumniMentorshipPage = () => {
       </div>
 
       {/* Render Requests Lists / Cards */}
-      {filteredRequests.length === 0 ? (
+      {loading && requests.length === 0 ? (
+        <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', padding: 48, textAlign: 'center' }}>
+          <Spin size="large" />
+          <p style={{ marginTop: 16, fontSize: 13.5, color: 'var(--ac-text-secondary)' }}>Loading mentorship requests...</p>
+        </div>
+      ) : filteredRequests.length === 0 ? (
         <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', padding: 48, textAlign: 'center', color: 'var(--ac-text-secondary)' }}>
           <FiUsers size={48} color="var(--ac-text-muted)" style={{ marginBottom: 16 }} />
           <h3 style={{ fontSize: 16, color: 'var(--ac-text-primary)', margin: '0 0 4px 0' }}>No records found</h3>

@@ -29,9 +29,14 @@ export const AlumniEventsPage = () => {
   const [registrationsList, setRegistrationsList] = useState([]);
   const [loadingRegistrations, setLoadingRegistrations] = useState(false);
 
-  const { searchQuery, events, refreshData } = useAppContext();
+  const { searchQuery, events, refreshData, loading } = useAppContext();
   const user = authService.getCurrentUser();
   const userName = user?.name || '';
+
+  // Re-sync events when page mounts
+  useEffect(() => {
+    refreshData();
+  }, [refreshData]);
 
   // ── Helper functions for date/time validation (Reused from Student Events) ──
   const parseTimeString = (timeStr) => {
@@ -331,7 +336,12 @@ export const AlumniEventsPage = () => {
       </div>
 
       {/* Events Grid */}
-      {filteredEvents.length === 0 ? (
+      {loading && events.length === 0 ? (
+        <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', padding: 48, textAlign: 'center' }}>
+          <Spin size="large" />
+          <p style={{ marginTop: 16, fontSize: 13.5, color: 'var(--ac-text-secondary)' }}>Loading latest events...</p>
+        </div>
+      ) : filteredEvents.length === 0 ? (
         <div style={{ backgroundColor: 'var(--ac-bg-card)', borderRadius: 16, border: '1px solid var(--ac-border)', padding: 48, textAlign: 'center', color: 'var(--ac-text-secondary)' }}>
           <FiCalendar size={48} color="var(--ac-text-muted)" style={{ marginBottom: 16 }} />
           <h3 style={{ fontSize: 16, color: 'var(--ac-text-primary)', margin: '0 0 4px 0' }}>No events found</h3>

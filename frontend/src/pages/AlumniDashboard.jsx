@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FiUser,
@@ -17,8 +17,13 @@ import styles from './AlumniDashboard.module.css';
 
 export const AlumniDashboard = () => {
   const navigate = useNavigate();
-  const { alumniRequests = [], alumniDonations = 0 } = useAppContext();
+  const { alumniRequests = [], alumniDonations = 0, events = [], refreshData, loading } = useAppContext();
   const user = authService.getCurrentUser();
+
+  // Re-sync data on dashboard mount
+  useEffect(() => {
+    refreshData();
+  }, [refreshData]);
 
   // Dynamically calculate states based on shared global context
   const activeCount = alumniRequests.filter(r => r?.status?.toUpperCase() === 'ACCEPTED').length;
@@ -255,25 +260,31 @@ export const AlumniDashboard = () => {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ padding: 14, backgroundColor: 'var(--ac-bg-input)', border: '1px solid var(--ac-border)', borderRadius: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <strong style={{ fontSize: 15, color: 'var(--ac-text-primary)' }}>Global Alumni Meetup 2026</strong>
-                <span style={{ fontSize: 11, fontWeight: 700, backgroundColor: 'var(--ac-brand-bg)', color: 'var(--ac-brand)', padding: '2px 8px', borderRadius: 10 }}>Keynote Speaker</span>
+            {events && events.length > 0 ? (
+              events.slice(0, 3).map(ev => (
+                <div key={ev.id} style={{ padding: 14, backgroundColor: 'var(--ac-bg-input)', border: '1px solid var(--ac-border)', borderRadius: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <strong style={{ fontSize: 15, color: 'var(--ac-text-primary)' }}>{ev.title}</strong>
+                    <span style={{ fontSize: 11, fontWeight: 700, backgroundColor: ev.registered ? '#dcfce7' : 'var(--ac-brand-bg)', color: ev.registered ? '#16a34a' : 'var(--ac-brand)', padding: '2px 8px', borderRadius: 10 }}>
+                      {ev.registered ? 'Registered' : (ev.category || 'Event')}
+                    </span>
+                  </div>
+                  <p style={{ margin: '0 0 8px 0', fontSize: 13, color: 'var(--ac-text-secondary)' }}>
+                    <FiClock style={{ marginRight: 4 }} /> {ev.dayNum} {ev.monthStr} • {ev.time} | {ev.venue}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <div style={{ padding: 14, backgroundColor: 'var(--ac-bg-input)', border: '1px solid var(--ac-border)', borderRadius: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <strong style={{ fontSize: 15, color: 'var(--ac-text-primary)' }}>Global Alumni Meetup 2026</strong>
+                  <span style={{ fontSize: 11, fontWeight: 700, backgroundColor: 'var(--ac-brand-bg)', color: 'var(--ac-brand)', padding: '2px 8px', borderRadius: 10 }}>Keynote Speaker</span>
+                </div>
+                <p style={{ margin: '0 0 8px 0', fontSize: 13, color: 'var(--ac-text-secondary)' }}>
+                  <FiClock style={{ marginRight: 4 }} /> Sept 15, 2026 • 06:00 PM IST | Auditorium & Zoom
+                </p>
               </div>
-              <p style={{ margin: '0 0 8px 0', fontSize: 13, color: 'var(--ac-text-secondary)' }}>
-                <FiClock style={{ marginRight: 4 }} /> Sept 15, 2026 • 06:00 PM IST | Auditorium & Zoom
-              </p>
-            </div>
-
-            <div style={{ padding: 14, backgroundColor: 'var(--ac-bg-input)', border: '1px solid var(--ac-border)', borderRadius: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <strong style={{ fontSize: 15, color: 'var(--ac-text-primary)' }}>AI & System Design Workshop</strong>
-                <span style={{ fontSize: 11, fontWeight: 700, backgroundColor: '#dcfce7', color: '#16a34a', padding: '2px 8px', borderRadius: 10 }}>Registered</span>
-              </div>
-              <p style={{ margin: '0 0 8px 0', fontSize: 13, color: 'var(--ac-text-secondary)' }}>
-                <FiClock style={{ marginRight: 4 }} /> Aug 28, 2026 • 04:00 PM IST | Online Webinar
-              </p>
-            </div>
+            )}
           </div>
         </div>
       </div>

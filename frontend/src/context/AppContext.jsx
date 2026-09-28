@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import api from '../services/api';
 
 // ────────────────────────────────────────────
@@ -100,7 +100,28 @@ export const AppProvider = ({ children }) => {
   const [alumniDonations, setAlumniDonations] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const fetchBackendData = async () => {
+  const isTransientError = (error) => {
+    if (!error) return false;
+    const status = error.response?.status;
+    if (status === 502 || status === 503 || status === 504) return true;
+    if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') return true;
+    if (!error.response && (error.code === 'ERR_NETWORK' || error.message?.toLowerCase().includes('network') || error.message?.toLowerCase().includes('timeout'))) return true;
+    return false;
+  };
+
+  const retryCountRef = useRef(0);
+  const retryTimerRef = useRef(null);
+
+  // Clear retry timer on unmount
+  useEffect(() => {
+    return () => {
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+      }
+    };
+  }, []);
+
+  const fetchBackendData = useCallback(async (isRetry = false) => {
     const token = localStorage.getItem('alumni_auth_token');
     const userStr = localStorage.getItem('alumni_user_data');
     if (!token || !userStr) {
@@ -108,18 +129,32 @@ export const AppProvider = ({ children }) => {
       return;
     }
 
-    setLoading(true);
-    try {
-      const user = JSON.parse(userStr);
-      const userRole = user.role ? user.role.toLowerCase() : '';
-      const userId = user.studentId || user.alumniId || user.adminId || user.id || user.userId;
+    if (!isRetry) {
+      retryCountRef.current = 0;
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+      }
+    }
 
-      // 1. Fetch Alumni for Directory and Mentors lists
-      let mappedMentors = [];
+    let user;
+    try {
+      user = JSON.parse(userStr);
+    } catch {
+      setLoading(false);
+      return;
+    }
+
+    const userRole = user.role ? user.role.toLowerCase() : '';
+    const userId = user.studentId || user.alumniId || user.adminId || user.id || user.userId;
+
+    let hasTransientFailure = false;
+
+    // 1. Fetch Alumni Sub-task
+    const fetchAlumniTask = async () => {
       try {
         const alumniRes = await api.get('/alumni/getall');
         const allAlumni = alumniRes.data || [];
-        mappedMentors = allAlumni.map(a => ({
+        const mappedMentors = allAlumni.map(a => ({
           id: a.alumniId,
           name: a.name,
           avatar: a.name ? a.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'A',
@@ -138,16 +173,20 @@ export const AppProvider = ({ children }) => {
           linkedin: a.linkedin
         }));
         setMentors(mappedMentors);
-      } catch (alumniErr) {
-        console.error('Error fetching alumni (non-fatal):', alumniErr);
+        return { success: true, mentors: mappedMentors };
+      } catch (err) {
+        if (isTransientError(err)) hasTransientFailure = true;
+        console.warn('Alumni fetch failed (non-fatal):', err.message);
+        return { success: false, isTransient: isTransientError(err) };
       }
+    };
 
-      // 2. Fetch Events
+    // 2. Fetch Events Sub-task
+    const fetchEventsTask = async () => {
       try {
         const eventsRes = await api.get('/event/getall');
         const allEvents = eventsRes.data || [];
 
-        // Fetch user specific registrations
         let registeredEventIds = [];
         if ((userRole === 'student' || userRole === 'alumni') && userId) {
           const type = userRole === 'student' ? 'student' : 'alumni';
@@ -155,7 +194,8 @@ export const AppProvider = ({ children }) => {
             const regRes = await api.get(`/event/registrations/user/${type}/${userId}`);
             registeredEventIds = (regRes.data || []).map(r => r.eventId || (r.event ? r.event.eventId : null)).filter(Boolean);
           } catch (e) {
-            console.error("Error loading user event registrations", e);
+            if (isTransientError(e)) hasTransientFailure = true;
+            console.warn("Error loading user event registrations (non-fatal)", e.message);
           }
         }
 
@@ -183,6 +223,7 @@ export const AppProvider = ({ children }) => {
             registeredCount: e.registeredCount
           };
         });
+
         const uniqueEvents = [];
         const seenIds = new Set();
         for (const ev of mappedEvents) {
@@ -192,24 +233,29 @@ export const AppProvider = ({ children }) => {
           }
         }
         setEvents(uniqueEvents);
-      } catch (e) {
-        console.error("Error fetching events (non-fatal):", e);
+        return { success: true };
+      } catch (err) {
+        if (isTransientError(err)) hasTransientFailure = true;
+        console.warn("Event fetch failed (non-fatal):", err.message);
+        return { success: false, isTransient: isTransientError(err) };
       }
+    };
 
-      // 3. Fetch Mentorship Requests
+    // 3. Fetch Mentorships Sub-task
+    const fetchMentorshipTask = async (currentMentors) => {
       try {
         const mentorshipsRes = await api.get('/mentorship/getall');
         const allMentorships = mentorshipsRes.data || [];
 
-        // Filter based on active role
         const userRequests = allMentorships.filter(m => {
           if (userRole === 'student') return String(m.studentId) === String(userId);
           if (userRole === 'alumni') return String(m.alumniId) === String(userId);
           return true;
         });
 
+        const mentorList = currentMentors || mentors;
         const formattedRequests = userRequests.map(r => {
-          const m = mappedMentors.find(mt => String(mt.id) === String(r.alumniId)) || {};
+          const m = mentorList.find(mt => String(mt.id) === String(r.alumniId)) || {};
           return {
             id: r.requestId,
             mentorId: r.alumniId,
@@ -217,7 +263,6 @@ export const AppProvider = ({ children }) => {
             role: r.alumni?.designation || m.role || 'Professional',
             company: r.alumni?.currentCompany || m.company || 'Enterprise',
             date: r.requestDate ? new Date(r.requestDate).toLocaleDateString() : 'N/A',
-            // Normalize to UPPERCASE — handles DECLINED, Pending, etc.
             status: r.status ? r.status.toUpperCase() : 'PENDING',
             studentId: r.studentId,
             studentName: r.student?.name || 'Student Name',
@@ -227,14 +272,11 @@ export const AppProvider = ({ children }) => {
             meetingLink: r.meetingLink
           };
         });
-        setRequests(formattedRequests);
 
-        // Active mentorships = ACCEPTED requests
+        setRequests(formattedRequests);
         setActiveMentorships(formattedRequests.filter(r => r.status === 'ACCEPTED'));
-        // History = ONLY COMPLETED requests
         setMeetingsHistory(formattedRequests.filter(r => (r.status || '').toUpperCase() === 'COMPLETED'));
 
-        // Alumni mentorship requests view
         if (userRole === 'alumni') {
           const formattedAlumniRequests = allMentorships
             .filter(m => String(m.alumniId) === String(userId))
@@ -256,24 +298,32 @@ export const AppProvider = ({ children }) => {
             }));
           setAlumniRequests(formattedAlumniRequests);
         }
-      } catch (mentorshipErr) {
-        console.error('Error fetching mentorships (non-fatal):', mentorshipErr);
-        // Keep existing state — don't crash the rest of the data load
+        return { success: true };
+      } catch (err) {
+        if (isTransientError(err)) hasTransientFailure = true;
+        console.warn('Mentorship fetch failed (non-fatal):', err.message);
+        return { success: false, isTransient: isTransientError(err) };
       }
+    };
 
-      // Fetch donations for alumni
-      if (userRole === 'alumni') {
-        try {
-          const donationsRes = await api.get(`/fundraising/donations/alumni/${userId}`);
-          const list = donationsRes.data || [];
-          const total = list.reduce((sum, d) => sum + (d.amount || 0), 0);
-          setAlumniDonations(total);
-        } catch (e) {
-          console.error("Error fetching alumni donations", e);
-        }
+    // 4. Fetch Donations Sub-task
+    const fetchDonationsTask = async () => {
+      if (userRole !== 'alumni') return { success: true };
+      try {
+        const donationsRes = await api.get(`/fundraising/donations/alumni/${userId}`);
+        const list = donationsRes.data || [];
+        const total = list.reduce((sum, d) => sum + (d.amount || 0), 0);
+        setAlumniDonations(total);
+        return { success: true };
+      } catch (err) {
+        if (isTransientError(err)) hasTransientFailure = true;
+        console.warn("Donations fetch failed (non-fatal):", err.message);
+        return { success: false, isTransient: isTransientError(err) };
       }
+    };
 
-      // 4. Fetch notifications client-side scoped by userId and userType
+    // 5. Fetch Notifications Sub-task
+    const fetchNotificationsTask = async () => {
       try {
         let studentPref = null;
         if (userRole === 'student') {
@@ -283,7 +333,7 @@ export const AppProvider = ({ children }) => {
               studentPref = JSON.parse(studentRes.data.notificationPref);
             }
           } catch (err) {
-            console.error("Error loading student profile for notification preferences:", err);
+            console.warn("Student pref fetch failed (non-fatal):", err.message);
           }
         }
 
@@ -308,41 +358,22 @@ export const AppProvider = ({ children }) => {
         }).map(mapNotification)
           .sort((a, b) => b.id - a.id);
 
-        // Apply notification preferences if they exist
         const filteredMyNotifications = myNotifications.filter(n => {
           if (userRole !== 'student' || !studentPref) return true;
-          
-          // Check if ALL notifications are disabled
           const allDisabled = studentPref.mentorship === false && studentPref.events === false && studentPref.career === false;
           if (allDisabled) return false;
 
           const titleLower = (n.title || '').toLowerCase();
           const descLower = (n.desc || '').toLowerCase();
-          
-          // If mentorship notifications are disabled
-          if (studentPref.mentorship === false) {
-            if (titleLower.includes('mentorship') || titleLower.includes('session') || titleLower.includes('mentor') ||
-                descLower.includes('mentorship') || descLower.includes('session') || descLower.includes('mentor')) {
-              return false;
-            }
+          if (studentPref.mentorship === false && (titleLower.includes('mentorship') || titleLower.includes('session') || titleLower.includes('mentor') || descLower.includes('mentorship') || descLower.includes('session') || descLower.includes('mentor'))) {
+            return false;
           }
-          
-          // If event notifications are disabled
-          if (studentPref.events === false) {
-            if (titleLower.includes('event') || titleLower.includes('webinar') || titleLower.includes('hackathon') ||
-                descLower.includes('event') || descLower.includes('webinar') || descLower.includes('hackathon')) {
-              return false;
-            }
+          if (studentPref.events === false && (titleLower.includes('event') || titleLower.includes('webinar') || titleLower.includes('hackathon') || descLower.includes('event') || descLower.includes('webinar') || descLower.includes('hackathon'))) {
+            return false;
           }
-
-          // If career notifications are disabled
-          if (studentPref.career === false) {
-            if (titleLower.includes('career') || titleLower.includes('job') || titleLower.includes('internship') ||
-                descLower.includes('career') || descLower.includes('job') || descLower.includes('internship')) {
-              return false;
-            }
+          if (studentPref.career === false && (titleLower.includes('career') || titleLower.includes('job') || titleLower.includes('internship') || descLower.includes('career') || descLower.includes('job') || descLower.includes('internship'))) {
+            return false;
           }
-
           return true;
         });
 
@@ -350,22 +381,39 @@ export const AppProvider = ({ children }) => {
           setAlumniNotifications(myNotifications);
         } else if (userRole === 'student') {
           setStudentNotifications(filteredMyNotifications);
-          // Reset alumniNotifications to empty when logged in as student
-          // so alumni bell never shows stale student data
           setAlumniNotifications([]);
         } else {
           setAlumniNotifications(myNotifications);
         }
-      } catch (e) {
-        console.error("Error fetching notifications", e);
+        return { success: true };
+      } catch (err) {
+        if (isTransientError(err)) hasTransientFailure = true;
+        console.warn("Notifications fetch failed (non-fatal):", err.message);
+        return { success: false, isTransient: isTransientError(err) };
       }
+    };
 
-    } catch (err) {
-      console.error('Error fetching backend data in AppContext:', err);
-    } finally {
-      setLoading(false);
+    // Execute in parallel via Promise.allSettled
+    await Promise.allSettled([
+      fetchAlumniTask().then(r => fetchMentorshipTask(r.mentors)),
+      fetchEventsTask(),
+      fetchDonationsTask(),
+      fetchNotificationsTask()
+    ]);
+
+    setLoading(false);
+
+    // Bounded automatic retry if any service failed due to cold start
+    if (hasTransientFailure && retryCountRef.current < 3) {
+      retryCountRef.current += 1;
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = setTimeout(() => {
+        fetchBackendData(true);
+      }, 4000);
+    } else if (!hasTransientFailure) {
+      retryCountRef.current = 0;
     }
-  };
+  }, []);
 
   const markNotificationAsRead = async (notifId) => {
     try {

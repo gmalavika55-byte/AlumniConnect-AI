@@ -26,7 +26,7 @@ export const AlumniFundraisingPage = () => {
   const [contributeForm] = Form.useForm();
 
   // Summary state from AppContext
-  const { alumniDonations: totalDonations, setAlumniDonations: setTotalDonations } = useAppContext();
+  const { alumniDonations: totalDonations, setAlumniDonations: setTotalDonations, refreshData } = useAppContext();
   const [supportedCount, setSupportedCount] = useState(0);
   const [campaigns, setCampaigns] = useState([]);
   const [history, setHistory] = useState([]);
@@ -35,7 +35,7 @@ export const AlumniFundraisingPage = () => {
   const [submittingPayment, setSubmittingPayment] = useState(false);
 
   const user = authService.getCurrentUser();
-  const alumniId = user?.alumniId;
+  const alumniId = user?.alumniId || user?.id;
 
   // Active Campaign Filter Helper
   const isActiveCampaign = (c) => {
@@ -57,58 +57,67 @@ export const AlumniFundraisingPage = () => {
   };
 
   const fetchFundraisingData = async () => {
-    if (!alumniId) return;
     setLoading(true);
     try {
-      // 1. Fetch campaigns
-      const campRes = await api.get('/fundraising/getall');
-      const camps = campRes.data || [];
-      const mappedCamps = camps
-        .map(c => ({
-          id: c.fundId,
-          title: c.title,
-          target: Number(c.targetAmount || 0),
-          raised: Number(c.collectedAmount || 0),
-          category: 'Institutional',
-          description: c.description,
-          status: c.status,
-          endDate: c.endDate
-        }))
-        .filter(isActiveCampaign);
+      const promises = [api.get('/fundraising/getall')];
+      if (alumniId) {
+        promises.push(api.get(`/fundraising/donations/alumni/${alumniId}`));
+      }
 
-      setCampaigns(mappedCamps);
+      const results = await Promise.allSettled(promises);
+      const campRes = results[0];
+      const histRes = alumniId ? results[1] : null;
 
-      // 2. Fetch logged-in alumni's donations
-      const histRes = await api.get(`/fundraising/donations/alumni/${alumniId}`);
-      const list = histRes.data || [];
-      const mappedHistory = list.map(d => ({
-        id: d.donationId,
-        campaign: d.fundraising?.title || 'Giving Contribution',
-        amount: Number(d.amount || 0),
-        date: d.donationDate ? new Date(d.donationDate).toLocaleDateString() : 'N/A',
-        status: d.paymentStatus || 'SUCCESS',
-        fundId: d.fundraising?.fundId
-      }));
+      // 1. Process campaigns
+      if (campRes && campRes.status === 'fulfilled' && campRes.value?.data) {
+        const camps = campRes.value.data || [];
+        const mappedCamps = camps
+          .map(c => ({
+            id: c.fundId,
+            title: c.title,
+            target: Number(c.targetAmount || 0),
+            raised: Number(c.collectedAmount || 0),
+            category: 'Institutional',
+            description: c.description,
+            status: c.status,
+            endDate: c.endDate
+          }))
+          .filter(isActiveCampaign);
 
-      setHistory(mappedHistory);
+        setCampaigns(mappedCamps);
+      }
 
-      // Filter successful donations for stats
-      const successfulDonations = mappedHistory.filter(
-        d => d.status.toUpperCase() === 'SUCCESS' || d.status.toLowerCase() === 'completed'
-      );
+      // 2. Process logged-in alumni's donations
+      if (histRes && histRes.status === 'fulfilled' && histRes.value?.data) {
+        const list = histRes.value.data || [];
+        const mappedHistory = list.map(d => ({
+          id: d.donationId,
+          campaign: d.fundraising?.title || 'Giving Contribution',
+          amount: Number(d.amount || 0),
+          date: d.donationDate ? new Date(d.donationDate).toLocaleDateString() : 'N/A',
+          status: d.paymentStatus || 'SUCCESS',
+          fundId: d.fundraising?.fundId
+        }));
 
-      // Calculate unique campaigns supported
-      const uniqueCampaigns = new Set(
-        successfulDonations.filter(d => d.fundId).map(d => d.fundId)
-      ).size;
-      setSupportedCount(uniqueCampaigns);
+        setHistory(mappedHistory);
 
-      // Calculate total donations amount
-      const total = successfulDonations.reduce((sum, d) => sum + d.amount, 0);
-      setTotalDonations(total);
+        // Filter successful donations for stats
+        const successfulDonations = mappedHistory.filter(
+          d => (d.status || '').toUpperCase() === 'SUCCESS' || (d.status || '').toLowerCase() === 'completed'
+        );
+
+        // Calculate unique campaigns supported
+        const uniqueCampaigns = new Set(
+          successfulDonations.filter(d => d.fundId).map(d => d.fundId)
+        ).size;
+        setSupportedCount(uniqueCampaigns);
+
+        // Calculate total donations amount
+        const total = successfulDonations.reduce((sum, d) => sum + d.amount, 0);
+        setTotalDonations(total);
+      }
     } catch (err) {
-      console.error("Error loading fundraising details:", err);
-      message.error("Failed to load fundraising details.");
+      console.warn("Error loading fundraising details (non-fatal):", err);
     } finally {
       setLoading(false);
     }
@@ -116,6 +125,7 @@ export const AlumniFundraisingPage = () => {
 
   useEffect(() => {
     fetchFundraisingData();
+    if (refreshData) refreshData();
   }, [alumniId]);
 
   const handleOpenContribute = (campToDonate = null) => {
