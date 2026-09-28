@@ -76,6 +76,9 @@ export const AlumniProfilePage = () => {
         };
         localStorage.setItem('alumni_user_data', JSON.stringify(freshUser));
 
+        const rawAvail = data.availableForMentorship ? String(data.availableForMentorship).trim().toLowerCase() : 'no';
+        const isYes = rawAvail === 'yes' || rawAvail === 'true';
+
         setProfile({
           alumniId: data.alumniId,
           registerNo: data.registerNo || '',
@@ -90,7 +93,7 @@ export const AlumniProfilePage = () => {
           phone: data.mobile || '',
           bio: data.bio || '',
           linkedin: data.linkedin || '',
-          availableForMentorship: data.availableForMentorship || 'No',
+          availableForMentorship: isYes ? 'Yes' : 'No',
           resumeName: data.resumeName || '',
           resumeUrl: data.resumeUrl || ''
         });
@@ -104,6 +107,9 @@ export const AlumniProfilePage = () => {
       }
     } catch (err) {
       console.warn('Backend profile fetch error, falling back to local user:', err);
+      const rawAvail = alumni.availableForMentorship ? String(alumni.availableForMentorship).trim().toLowerCase() : 'no';
+      const isYes = rawAvail === 'yes' || rawAvail === 'true';
+
       setProfile({
         alumniId: alumni.alumniId,
         registerNo: alumni.registerNo || '',
@@ -118,7 +124,7 @@ export const AlumniProfilePage = () => {
         phone: alumni.mobile || '',
         bio: alumni.bio || '',
         linkedin: alumni.linkedin || '',
-        availableForMentorship: alumni.availableForMentorship || 'No',
+        availableForMentorship: isYes ? 'Yes' : 'No',
         resumeName: alumni.resumeName || '',
         resumeUrl: alumni.resumeUrl || ''
       });
@@ -136,6 +142,23 @@ export const AlumniProfilePage = () => {
   useEffect(() => {
     fetchBackendProfile();
   }, []);
+
+  const openEditModal = () => {
+    const isAvail = (profile.availableForMentorship || '').toLowerCase() === 'yes';
+    editForm.setFieldsValue({
+      name: profile.name,
+      role: profile.role,
+      company: profile.company,
+      dept: profile.dept,
+      location: profile.location,
+      linkedin: profile.linkedin,
+      availableForMentorship: isAvail ? 'Yes' : 'No',
+      resumeName: profile.resumeName,
+      resumeUrl: profile.resumeUrl,
+      bio: profile.bio
+    });
+    setIsEditOpen(true);
+  };
 
   // Skill Management Handlers
   const handleAddSkillSubmit = async () => {
@@ -421,6 +444,8 @@ export const AlumniProfilePage = () => {
         return;
       }
 
+      const selectedAvailability = values.availableForMentorship === 'Yes' ? 'Yes' : 'No';
+
       const updatedAlumni = {
         ...alumniUser,
         alumniId: alumniUser.alumniId,
@@ -432,7 +457,7 @@ export const AlumniProfilePage = () => {
         department: values.dept,
         location: values.location || alumniUser.location || '',
         linkedin: values.linkedin || alumniUser.linkedin || '',
-        availableForMentorship: values.availableForMentorship || 'No',
+        availableForMentorship: selectedAvailability,
         resumeName: values.resumeName || '',
         resumeUrl: values.resumeUrl || '',
         skills: skills.join(',')
@@ -445,6 +470,7 @@ export const AlumniProfilePage = () => {
       const newUserData = {
         ...alumniUser,
         ...savedUser,
+        availableForMentorship: savedUser.availableForMentorship || selectedAvailability,
         role: alumniUser.role
       };
       localStorage.setItem('alumni_user_data', JSON.stringify(newUserData));
@@ -458,7 +484,7 @@ export const AlumniProfilePage = () => {
         dept: savedUser.department || values.dept,
         location: savedUser.location || values.location || '',
         linkedin: savedUser.linkedin || values.linkedin || '',
-        availableForMentorship: savedUser.availableForMentorship || values.availableForMentorship || 'No',
+        availableForMentorship: savedUser.availableForMentorship || selectedAvailability,
         resumeName: savedUser.resumeName || values.resumeName || '',
         resumeUrl: savedUser.resumeUrl || values.resumeUrl || '',
         bio: values.bio || ''
@@ -556,21 +582,7 @@ export const AlumniProfilePage = () => {
             <Button
               icon={<FiEdit2 />}
               style={{ height: 42, borderRadius: 8, fontWeight: 600 }}
-              onClick={() => {
-                editForm.setFieldsValue({
-                  name: profile.name,
-                  role: profile.role,
-                  company: profile.company,
-                  dept: profile.dept,
-                  location: profile.location,
-                  linkedin: profile.linkedin,
-                  availableForMentorship: profile.availableForMentorship || 'No',
-                  resumeName: profile.resumeName,
-                  resumeUrl: profile.resumeUrl,
-                  bio: profile.bio
-                });
-                setIsEditOpen(true);
-              }}
+              onClick={openEditModal}
             >
               Edit Profile
             </Button>
@@ -686,21 +698,7 @@ export const AlumniProfilePage = () => {
                 size="small"
                 icon={<FiEdit2 size={12} />}
                 style={{ fontWeight: 600 }}
-                onClick={() => {
-                  editForm.setFieldsValue({
-                    name: profile.name,
-                    role: profile.role,
-                    company: profile.company,
-                    dept: profile.dept,
-                    location: profile.location,
-                    linkedin: profile.linkedin,
-                    availableForMentorship: profile.availableForMentorship || 'No',
-                    resumeName: profile.resumeName,
-                    resumeUrl: profile.resumeUrl,
-                    bio: profile.bio
-                  });
-                  setIsEditOpen(true);
-                }}
+                onClick={openEditModal}
               >
                 Change
               </Button>
@@ -1001,8 +999,12 @@ export const AlumniProfilePage = () => {
         onCancel={() => setIsEditOpen(false)}
         onOk={handleSaveProfile}
         okText="Save Profile Changes"
+        width={640}
+        style={{ top: 20 }}
+        styles={{ body: { maxHeight: 'calc(80vh - 80px)', overflowY: 'auto', paddingRight: 8 } }}
+        bodyStyle={{ maxHeight: 'calc(80vh - 80px)', overflowY: 'auto', paddingRight: 8 }}
       >
-        <Form form={editForm} layout="vertical">
+        <Form form={editForm} layout="vertical" initialValues={{ availableForMentorship: 'No' }}>
           <Form.Item name="name" label="Full Name" rules={[{ required: true, message: 'Please enter your name' }]}>
             <Input />
           </Form.Item>
@@ -1023,24 +1025,45 @@ export const AlumniProfilePage = () => {
           </Form.Item>
 
           {/* Mentorship Availability Field */}
-          <div style={{ margin: '20px 0 16px 0', padding: '16px', backgroundColor: 'var(--ac-bg-input)', borderRadius: 12, border: '1px solid var(--ac-border)' }}>
-            <h4 style={{ margin: '0 0 12px 0', color: 'var(--ac-text-primary)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 700 }}>
-              <FiUsers color="#1b62d4" /> Mentorship Availability
+          <div style={{
+            margin: '20px 0',
+            padding: '16px 18px',
+            backgroundColor: 'var(--ac-bg-input)',
+            borderRadius: 12,
+            border: '1px solid var(--ac-border)',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
+          }}>
+            <h4 style={{ margin: '0 0 6px 0', color: 'var(--ac-text-primary)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 700 }}>
+              <FiUsers color="#1b62d4" size={16} /> Mentorship Availability
             </h4>
+            <p style={{ margin: '0 0 12px 0', fontSize: 13, color: 'var(--ac-text-secondary)' }}>
+              Are you available to mentor students?
+            </p>
             <Form.Item
               name="availableForMentorship"
-              label="Are you available to mentor students?"
               rules={[{ required: true, message: 'Please select your mentorship availability' }]}
               style={{ marginBottom: 0 }}
             >
-              <Radio.Group style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <Radio value="Yes">
-                  <span style={{ fontWeight: 600, color: 'var(--ac-text-primary)' }}>Yes, I'm available for mentorship</span>
-                  <div style={{ fontSize: 12, color: 'var(--ac-text-secondary)', marginLeft: 24 }}>Students can discover your profile and request 1-on-1 mentorship sessions.</div>
+              <Radio.Group style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
+                <Radio value="Yes" style={{ display: 'flex', alignItems: 'flex-start' }}>
+                  <div>
+                    <span style={{ fontWeight: 700, color: 'var(--ac-text-primary)', fontSize: 13.5 }}>
+                      Yes, I'm available for mentorship
+                    </span>
+                    <div style={{ fontSize: 12, color: 'var(--ac-text-secondary)', marginTop: 2 }}>
+                      Students can discover your profile in Available Mentors and request 1-on-1 mentorship sessions.
+                    </div>
+                  </div>
                 </Radio>
-                <Radio value="No">
-                  <span style={{ fontWeight: 600, color: 'var(--ac-text-primary)' }}>No, I'm not currently available</span>
-                  <div style={{ fontSize: 12, color: 'var(--ac-text-secondary)', marginLeft: 24 }}>Your profile will be hidden from the student mentorship directory.</div>
+                <Radio value="No" style={{ display: 'flex', alignItems: 'flex-start' }}>
+                  <div>
+                    <span style={{ fontWeight: 700, color: 'var(--ac-text-primary)', fontSize: 13.5 }}>
+                      No, I'm not currently available
+                    </span>
+                    <div style={{ fontSize: 12, color: 'var(--ac-text-secondary)', marginTop: 2 }}>
+                      Your profile will be hidden from student mentorship matching and search lists.
+                    </div>
+                  </div>
                 </Radio>
               </Radio.Group>
             </Form.Item>
