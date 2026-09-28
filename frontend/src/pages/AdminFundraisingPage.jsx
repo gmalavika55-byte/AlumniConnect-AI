@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Table, Tag, Input, Button, Modal, Form, Select, Space, Progress, message, DatePicker, Spin } from 'antd';
 import { FiPlus, FiSearch, FiDollarSign, FiCalendar, FiHeart, FiTrendingUp, FiEdit2, FiTrash2, FiUsers } from 'react-icons/fi';
 import dayjs from 'dayjs';
@@ -9,6 +9,15 @@ import api from '../services/api';
 const isSuccessfulDonation = (status) => {
   const s = String(status || '').toUpperCase();
   return s === 'SUCCESS' || s === 'SUCCESSFUL' || s === 'COMPLETED';
+};
+
+const isTransientError = (error) => {
+  if (!error) return false;
+  const status = error.response?.status;
+  if (status === 502 || status === 503 || status === 504) return true;
+  if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') return true;
+  if (!error.response && (error.code === 'ERR_NETWORK' || error.message?.toLowerCase().includes('network') || error.message?.toLowerCase().includes('timeout'))) return true;
+  return false;
 };
 
 export const AdminFundraisingPage = () => {
@@ -32,101 +41,175 @@ export const AdminFundraisingPage = () => {
   const [donations, setDonations] = useState([]);
   const [loadingData, setLoadingData] = useState(false);
 
-  const fetchFundraisingData = async () => {
-    setLoadingData(true);
-    try {
-      // 1. Load All Campaigns
-      const campRes = await api.get('/fundraising/getall');
-      const rawCamps = campRes.data || [];
+  const retryCountRef = useRef(0);
+  const retryTimerRef = useRef(null);
+  const campaignsRef = useRef([]);
+  const donationsRef = useRef([]);
+  const alumniMapRef = useRef({});
 
-      // 2. Load Alumni List for resolving names
-      let alumniMap = {};
-      try {
-        const alumniRes = await api.get('/alumni/getall');
-        const alumniList = alumniRes.data || [];
-        alumniList.forEach(a => { alumniMap[a.alumniId] = a; });
-      } catch (e) {
-        console.warn("Could not load alumni list for donor name resolution:", e);
+  useEffect(() => {
+    return () => {
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+      }
+    };
+  }, []);
+
+  const fetchFundraisingData = async (isRetry = false) => {
+    if (!isRetry) {
+      setLoadingData(true);
+      retryCountRef.current = 0;
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+      }
+    }
+
+    let hasTransientFailure = false;
+
+    try {
+      const results = await Promise.allSettled([
+        api.get('/fundraising/getall'),
+        api.get('/fundraising/donations/all'),
+        api.get('/alumni/getall')
+      ]);
+
+      const [campResult, donResult, alumniResult] = results;
+
+      let hasNewCamps = false;
+      let hasNewDons = false;
+
+      // 1. Process Campaigns
+      if (campResult.status === 'fulfilled' && campResult.value?.data) {
+        campaignsRef.current = campResult.value.data;
+        hasNewCamps = true;
+      } else if (campResult.status === 'rejected') {
+        if (isTransientError(campResult.reason)) hasTransientFailure = true;
+        console.warn("Could not load campaigns (transient/non-fatal):", campResult.reason?.message);
       }
 
-      // 3. Load All Donations
-      const donRes = await api.get('/fundraising/donations/all');
-      const rawDons = donRes.data || [];
+      // 2. Process Donations
+      if (donResult.status === 'fulfilled' && donResult.value?.data) {
+        donationsRef.current = donResult.value.data;
+        hasNewDons = true;
+      } else if (donResult.status === 'rejected') {
+        if (isTransientError(donResult.reason)) hasTransientFailure = true;
+        console.warn("Could not load donations (transient/non-fatal):", donResult.reason?.message);
+      }
 
-      // Calculate total completed donation amounts per campaign fundId
-      const raisedByCampaign = {};
-      rawDons.forEach(d => {
-        const fId = d.fundraising?.fundId || d.fundId;
-        if (isSuccessfulDonation(d.paymentStatus) && fId) {
-          raisedByCampaign[fId] = (raisedByCampaign[fId] || 0) + Number(d.amount || 0);
+      // 3. Process Alumni Lookup
+      if (alumniResult.status === 'fulfilled' && alumniResult.value?.data) {
+        const alumniList = alumniResult.value.data || [];
+        const map = {};
+        alumniList.forEach(a => { map[a.alumniId] = a; });
+        alumniMapRef.current = map;
+      } else if (alumniResult.status === 'rejected') {
+        console.warn("Could not load alumni list for donor name resolution:", alumniResult.reason?.message);
+      }
+
+      const rawCamps = campaignsRef.current || [];
+      const rawDons = donationsRef.current || [];
+      const alumniMap = alumniMapRef.current || {};
+
+      if (rawCamps.length > 0 || hasNewCamps || rawDons.length > 0 || hasNewDons) {
+        // Calculate total completed donation amounts per campaign fundId
+        const raisedByCampaign = {};
+        rawDons.forEach(d => {
+          const fId = d.fundraising?.fundId || d.fundId;
+          if (isSuccessfulDonation(d.paymentStatus) && fId) {
+            raisedByCampaign[fId] = (raisedByCampaign[fId] || 0) + Number(d.amount || 0);
+          }
+        });
+
+        // Map campaigns dynamically using real donation totals
+        const mappedCamps = rawCamps.map(c => {
+          const target = Number(c.targetAmount || 0);
+          const donationSum = raisedByCampaign[c.fundId];
+          const raised = (donationSum !== undefined && donationSum > 0) ? donationSum : Number(c.collectedAmount || 0);
+          const remaining = Math.max(target - raised, 0);
+          const progressPct = target > 0 ? Math.min(Math.max(Math.round((raised / target) * 100), 0), 100) : 0;
+          const normStatus = String(c.status || 'ACTIVE').toUpperCase();
+
+          return {
+            id: c.fundId,
+            title: c.title || 'Untitled Campaign',
+            description: c.description || '',
+            goal: target,
+            raised: raised,
+            remaining: remaining,
+            progress: progressPct,
+            startDate: c.startDate ? new Date(c.startDate).toISOString().split('T')[0] : '',
+            endDate: c.endDate ? new Date(c.endDate).toISOString().split('T')[0] : '',
+            formattedEndDate: c.endDate ? new Date(c.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A',
+            status: normStatus,
+            rawCampaign: c
+          };
+        });
+        setCampaigns(mappedCamps);
+
+        // Create lookup map for campaigns
+        const campMap = {};
+        mappedCamps.forEach(c => { campMap[c.id] = c; });
+
+        // Map donations with resolved titles
+        const mappedDons = rawDons.map(d => {
+          const fundId = d.fundraising?.fundId || d.fundId;
+          const matchedCamp = campMap[fundId] || d.fundraising;
+          const matchedAlumni = alumniMap[d.alumniId] || d.alumni;
+
+          const donorName = matchedAlumni?.name || d.alumni?.name || (d.alumniId ? `Alumni #${d.alumniId}` : 'Anonymous Donor');
+          const campaignTitle = matchedCamp?.title || d.fundraising?.title || (fundId ? `Campaign #${fundId}` : 'General Giving Fund');
+          const normPayStatus = String(d.paymentStatus || 'SUCCESS').toUpperCase();
+
+          const dateObj = d.donationDate ? new Date(d.donationDate) : new Date();
+          const formattedDate = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+          return {
+            id: d.donationId,
+            txnId: d.transactionId || `TXN-${d.donationId}`,
+            donorName: donorName,
+            donorType: 'Alumni',
+            alumniId: d.alumniId,
+            campaignTitle: campaignTitle,
+            fundId: fundId,
+            amount: Number(d.amount || 0),
+            dateObj: dateObj,
+            dateStr: formattedDate,
+            paymentStatus: normPayStatus,
+            rawDonation: d
+          };
+        });
+        setDonations(mappedDons);
+      }
+
+      if (hasTransientFailure && retryCountRef.current < 3) {
+        retryCountRef.current += 1;
+        if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = setTimeout(() => {
+          fetchFundraisingData(true);
+        }, 4000);
+      } else if (hasTransientFailure && retryCountRef.current >= 3) {
+        if (campaignsRef.current.length === 0 && donationsRef.current.length === 0) {
+          message.error("Failed to load fundraising records from server.");
         }
-      });
-
-      // Map campaigns dynamically using real donation totals
-      const mappedCamps = rawCamps.map(c => {
-        const target = Number(c.targetAmount || 0);
-        const donationSum = raisedByCampaign[c.fundId];
-        const raised = (donationSum !== undefined && donationSum > 0) ? donationSum : Number(c.collectedAmount || 0);
-        const remaining = Math.max(target - raised, 0);
-        const progressPct = target > 0 ? Math.min(Math.max(Math.round((raised / target) * 100), 0), 100) : 0;
-        const normStatus = String(c.status || 'ACTIVE').toUpperCase();
-
-        return {
-          id: c.fundId,
-          title: c.title || 'Untitled Campaign',
-          description: c.description || '',
-          goal: target,
-          raised: raised,
-          remaining: remaining,
-          progress: progressPct,
-          startDate: c.startDate ? new Date(c.startDate).toISOString().split('T')[0] : '',
-          endDate: c.endDate ? new Date(c.endDate).toISOString().split('T')[0] : '',
-          formattedEndDate: c.endDate ? new Date(c.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A',
-          status: normStatus,
-          rawCampaign: c
-        };
-      });
-      setCampaigns(mappedCamps);
-
-      // Create lookup map for campaigns
-      const campMap = {};
-      mappedCamps.forEach(c => { campMap[c.id] = c; });
-
-      // Map donations with resolved titles
-      const mappedDons = rawDons.map(d => {
-        const fundId = d.fundraising?.fundId || d.fundId;
-        const matchedCamp = campMap[fundId] || d.fundraising;
-        const matchedAlumni = alumniMap[d.alumniId] || d.alumni;
-
-        const donorName = matchedAlumni?.name || d.alumni?.name || (d.alumniId ? `Alumni #${d.alumniId}` : 'Anonymous Donor');
-        const campaignTitle = matchedCamp?.title || d.fundraising?.title || (fundId ? `Campaign #${fundId}` : 'General Giving Fund');
-        const normPayStatus = String(d.paymentStatus || 'SUCCESS').toUpperCase();
-
-        const dateObj = d.donationDate ? new Date(d.donationDate) : new Date();
-        const formattedDate = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
-        return {
-          id: d.donationId,
-          txnId: d.transactionId || `TXN-${d.donationId}`,
-          donorName: donorName,
-          donorType: 'Alumni',
-          alumniId: d.alumniId,
-          campaignTitle: campaignTitle,
-          fundId: fundId,
-          amount: Number(d.amount || 0),
-          dateObj: dateObj,
-          dateStr: formattedDate,
-          paymentStatus: normPayStatus,
-          rawDonation: d
-        };
-      });
-      setDonations(mappedDons);
-
+        setLoadingData(false);
+      } else if (!hasTransientFailure) {
+        retryCountRef.current = 0;
+        setLoadingData(false);
+      }
     } catch (err) {
       console.error("Error loading fundraising details:", err);
-      message.error("Failed to load fundraising records from server.");
-    } finally {
-      setLoadingData(false);
+      if (retryCountRef.current >= 3 || !isTransientError(err)) {
+        if (campaignsRef.current.length === 0 && donationsRef.current.length === 0) {
+          message.error("Failed to load fundraising records from server.");
+        }
+        setLoadingData(false);
+      } else {
+        retryCountRef.current += 1;
+        if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = setTimeout(() => {
+          fetchFundraisingData(true);
+        }, 4000);
+      }
     }
   };
 
