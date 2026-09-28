@@ -54,7 +54,7 @@ public class Event {
     private String audience = "BOTH";
 
     @Column(name = "CREATED_BY_TYPE")
-    private String createdByType = "ADMIN";
+    private String createdByType;
 
     @Transient
     private Long registeredCount;

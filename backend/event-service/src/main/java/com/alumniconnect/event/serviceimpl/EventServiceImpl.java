@@ -25,6 +25,21 @@ public class EventServiceImpl implements EventService {
     @org.springframework.beans.factory.annotation.Value("${auth-service.url:http://localhost:8101}")
     private String authServiceUrl;
 
+    @jakarta.annotation.PostConstruct
+    public void init() {
+        try {
+            // Targeted migration for confirmed existing events
+            eventRepository.updateCreatedByTypeIfNull(6, "ADMIN");
+            eventRepository.updateCreatedByTypeIfNull(25, "ALUMNI");
+            eventRepository.updateCreatedByTypeIfNull(30010, "ADMIN");
+            eventRepository.updateCreatedByTypeIfNull(30011, "ADMIN");
+            eventRepository.updateCreatedByTypeIfNull(60007, "ADMIN");
+            eventRepository.updateCreatedByTypeIfNull(60008, "ADMIN");
+        } catch (Exception e) {
+            System.err.println("Could not run targeted createdByType backfill on startup: " + e.getMessage());
+        }
+    }
+
     @Override
     public Event addEvent(Event event) {
         if (event.getCreatedByType() == null || event.getCreatedByType().trim().isEmpty()) {
