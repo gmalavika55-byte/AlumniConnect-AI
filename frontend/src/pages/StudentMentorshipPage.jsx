@@ -103,8 +103,96 @@ export const StudentMentorshipPage = () => {
     }
     setLoadingAi(true);
     try {
-      const res = await api.get(`/mentorship/ai/recommendations/${currentStudentId}`);
-      const recs = res.data?.recommendations || [];
+      let recs = [];
+      try {
+        const res = await api.get(`/mentorship/ai/recommendations/${currentStudentId}`);
+        if (res.data && Array.isArray(res.data.recommendations) && res.data.recommendations.length > 0) {
+          recs = res.data.recommendations;
+        }
+      } catch (apiErr) {
+        console.warn('Backend AI service call failed, proceeding to fallback matching:', apiErr);
+      }
+
+      // Local fallback matching if backend returns empty or fails
+      if (recs.length === 0 && mentors && mentors.length > 0) {
+        const studentSkills = (currentUser?.skills || '')
+          .toLowerCase()
+          .split(',')
+          .map(s => s.trim())
+          .filter(Boolean);
+        const studentDept = (currentUser?.department || '').toLowerCase().trim();
+        const studentGoal = (currentUser?.careerGoal || '').toLowerCase().trim();
+
+        // Use available mentors (filtering mentors available for mentorship)
+        const candidateMentors = (mentors || []).filter(m => {
+          const avail = (m.availableForMentorship || '').toLowerCase();
+          return avail === 'yes' || avail === 'true' || !m.availableForMentorship;
+        });
+
+        const scored = candidateMentors.map(m => {
+          let score = 70;
+          const reasons = [];
+
+          // 1. Shared skills (+10 each, max +20)
+          const mentorSkills = (m.skills || []).map(s => (s || '').toLowerCase().trim()).filter(Boolean);
+          const matchedSkills = [];
+          for (const sSkill of studentSkills) {
+            for (const mSkill of mentorSkills) {
+              if (sSkill.includes(mSkill) || mSkill.includes(sSkill)) {
+                if (!matchedSkills.includes(mSkill)) {
+                  matchedSkills.push(mSkill);
+                }
+              }
+            }
+          }
+
+          if (matchedSkills.length > 0) {
+            const skillBonus = Math.min(matchedSkills.length * 10, 20);
+            score += skillBonus;
+            const displaySkills = matchedSkills
+              .map(s => s.charAt(0).toUpperCase() + s.slice(1))
+              .join(', ');
+            reasons.push(`Shared expertise in ${displaySkills}`);
+          }
+
+          // 2. Department match (+5)
+          const mDept = (m.department || '').toLowerCase().trim();
+          if (mDept && studentDept && (mDept.includes(studentDept) || studentDept.includes(mDept))) {
+            score += 5;
+            reasons.push(`Alumni from ${m.department} department`);
+          }
+
+          // 3. Career goal / role alignment (+5)
+          const mRole = (m.role || '').toLowerCase().trim();
+          if (studentGoal && mRole && (mRole.includes(studentGoal) || studentGoal.includes(mRole))) {
+            score += 5;
+            reasons.push('Aligned with your career goal');
+          } else if (m.company && m.company !== 'Independent' && m.company !== 'N/A') {
+            reasons.push(`Industry professional at ${m.company}`);
+          }
+
+          if (reasons.length === 0) {
+            reasons.push('Verified alumni mentor open for guidance');
+          }
+
+          const finalScore = Math.min(score, 98);
+
+          return {
+            alumniId: m.id,
+            name: m.name,
+            designation: m.role || 'Alumni Mentor',
+            company: m.company || 'Enterprise',
+            department: m.department || 'Engineering',
+            experience: m.experience || 2,
+            matchScore: finalScore,
+            reasons: reasons
+          };
+        });
+
+        scored.sort((a, b) => b.matchScore - a.matchScore);
+        recs = scored.slice(0, 5);
+      }
+
       setAiRecommendations(recs);
       setHasSearchedAi(true);
       if (recs.length > 0) {
@@ -113,7 +201,7 @@ export const StudentMentorshipPage = () => {
         message.info('No suitable mentors are currently available. Please try again later.');
       }
     } catch (err) {
-      console.error('Error fetching AI recommendations:', err);
+      console.error('Error in AI recommendations handler:', err);
       message.error('Unable to load AI mentor recommendations. Please check server connection.');
     } finally {
       setLoadingAi(false);
