@@ -184,9 +184,17 @@ export const StudentDashboard = () => {
 
   // ── Stats derived from real data ──
   const availableMentorsCount = mentors.filter(m => m.availableForMentorship && m.availableForMentorship.toLowerCase() === 'yes').length;
-  const registeredEventsCount = registrationsLoaded
-    ? registeredEventIds.size
-    : events.filter(e => e.registered).length;
+  
+  // Registered Upcoming Events only (Exclude past, COMPLETED, PAST, CANCELLED)
+  const registeredUpcomingEvents = events.filter(e => {
+    if (!isEventRegistered(e)) return false;
+    if (isEventPast(e)) return false;
+    const status = e.status ? e.status.toUpperCase() : '';
+    if (status === 'COMPLETED' || status === 'PAST' || status === 'CANCELLED') return false;
+    return true;
+  });
+
+  const registeredEventsCount = registeredUpcomingEvents.length;
   const pendingCount = requests.filter(r => r.status?.toUpperCase() === 'PENDING').length;
   const acceptedCount = requests.filter(r => r.status?.toUpperCase() === 'ACCEPTED').length;
   const activeRequestsCount = requests.filter(r => {
@@ -200,8 +208,8 @@ export const StudentDashboard = () => {
     .slice(0, 3);
 
   // Upcoming registered event date text
-  const upcomingRegistered = events
-    .filter(e => isEventRegistered(e) && e.eventDate && !isEventPast(e))
+  const upcomingRegistered = [...registeredUpcomingEvents]
+    .filter(e => e.eventDate)
     .sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate));
 
   let nextEventText = 'No upcoming registered events';
